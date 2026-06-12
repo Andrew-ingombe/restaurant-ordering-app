@@ -355,3 +355,33 @@ export const updateWaiterOrderStatus = async (
 
   return data.order
 }
+
+export type DashboardSummary = {
+  date: string
+  timezone: string
+  summary: {
+    totalSales: number
+    paidOrders: number
+    completedOrders: number
+    activeOrders: number
+    averageOrderValue: number
+  }
+  statusBreakdown: {
+    status: string
+    count: number
+  }[]
+  bestSellingItems: {
+    menuItem: string
+    name: string
+    quantity: number
+    sales: number
+  }[]
+  recentOrders: DraftOrder[]
+}
+
+export const getDashboardSummary = async (
+  date?: string
+): Promise<DashboardSummary> => {
+  const query = date ? `?date=${encodeURIComponent(date)}` : ""
+  return authenticatedRequest(`/dashboard/summary${query}`)
+}

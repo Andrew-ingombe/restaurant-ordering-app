@@ -29,6 +29,7 @@ import { WaiterOrderDetailPage } from "./pages/waiter-order-detail-page"
 import { WaiterOrdersPage } from "./pages/waiter-orders-page"
 import { KitchenPage } from "./pages/kitchen-page"
 import { disconnectSocket } from "./lib/socket"
+import { OwnerDashboardPage } from "./pages/owner-dashboard-page"
 
 const getStoredUser = (): AuthUser | null => {
   const storedUser = localStorage.getItem("auth_user")
@@ -155,7 +156,7 @@ function AppRoutes() {
             user?.role !== role ? (
               <Navigate to={user ? rolePath(user.role) : "/login"} replace />
             ) : role === "owner" ? (
-              <OwnerPage user={user} onLogout={logout} />
+              <OwnerDashboardPage user={user} onLogout={logout} />
             ) : role === "waiter" ? (
               <WaiterPage user={user} onLogout={logout} />
             ) : (
@@ -203,6 +204,17 @@ function AppRoutes() {
         element={
           user?.role === "waiter" ? (
             <WaiterOrderDetailPage />
+          ) : (
+            <Navigate to={user ? rolePath(user.role) : "/login"} replace />
+          )
+        }
+      />
+
+      <Route
+        path="/owner/staff"
+        element={
+          user?.role === "owner" ? (
+            <OwnerPage user={user} onLogout={logout} />
           ) : (
             <Navigate to={user ? rolePath(user.role) : "/login"} replace />
           )
