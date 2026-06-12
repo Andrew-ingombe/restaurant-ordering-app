@@ -11,6 +11,8 @@ import {
   CardTitle,
 } from "@workspace/ui/components/card"
 
+import { getSocket } from "../lib/socket"
+
 import { getMyOrders } from "../lib/api"
 import type { DraftOrder } from "../lib/api"
 
@@ -39,6 +41,26 @@ export function WaiterOrdersPage() {
         )
       })
       .finally(() => setLoading(false))
+  }, [])
+
+  useEffect(() => {
+    const socket = getSocket()
+
+    if (!socket) return
+
+    const updateOrder = (updatedOrder: DraftOrder) => {
+      setOrders((current) =>
+        current.map((order) =>
+          order._id === updatedOrder._id ? updatedOrder : order
+        )
+      )
+    }
+
+    socket.on("order:updated", updateOrder)
+
+    return () => {
+      socket.off("order:updated", updateOrder)
+    }
   }, [])
 
   return (

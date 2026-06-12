@@ -28,6 +28,7 @@ import { WaiterPage } from "./pages/waiter-page"
 import { WaiterOrderDetailPage } from "./pages/waiter-order-detail-page"
 import { WaiterOrdersPage } from "./pages/waiter-orders-page"
 import { KitchenPage } from "./pages/kitchen-page"
+import { disconnectSocket } from "./lib/socket"
 
 const getStoredUser = (): AuthUser | null => {
   const storedUser = localStorage.getItem("auth_user")
@@ -127,6 +128,7 @@ function AppRoutes() {
   const [user, setUser] = useState<AuthUser | null>(getStoredUser)
 
   const logout = () => {
+    disconnectSocket()
     localStorage.removeItem("auth_token")
     localStorage.removeItem("auth_user")
     setUser(null)

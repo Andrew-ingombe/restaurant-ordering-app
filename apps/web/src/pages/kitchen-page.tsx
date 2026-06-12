@@ -12,6 +12,7 @@ import { Separator } from "@workspace/ui/components/separator"
 
 import { getKitchenOrders, updateKitchenOrderStatus } from "../lib/api"
 import type { AuthUser, DraftOrder, KitchenStatus } from "../lib/api"
+import { getSocket } from "../lib/socket"
 
 type KitchenPageProps = {
   user: AuthUser
@@ -167,6 +168,39 @@ export function KitchenPage({ user, onLogout }: KitchenPageProps) {
     return () => {
       window.clearInterval(refreshTimer)
       window.clearInterval(clockTimer)
+    }
+  }, [])
+
+  useEffect(() => {
+    const socket = getSocket()
+
+    if (!socket) return
+
+    const upsertOrder = (updatedOrder: DraftOrder) => {
+      setOrders((current) => {
+        const exists = current.some((order) => order._id === updatedOrder._id)
+
+        if (exists) {
+          return current.map((order) =>
+            order._id === updatedOrder._id ? updatedOrder : order
+          )
+        }
+
+        return [...current, updatedOrder]
+      })
+    }
+
+    socket.on("order:submitted", upsertOrder)
+    socket.on("order:updated", upsertOrder)
+
+    socket.on("connect_error", (socketError) => {
+      console.error("Kitchen socket error:", socketError.message)
+    })
+
+    return () => {
+      socket.off("order:submitted", upsertOrder)
+      socket.off("order:updated", upsertOrder)
+      socket.off("connect_error")
     }
   }, [])
 

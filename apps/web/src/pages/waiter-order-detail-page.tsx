@@ -13,6 +13,8 @@ import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
 import { Separator } from "@workspace/ui/components/separator"
 
+import { getSocket } from "../lib/socket"
+
 import { getMyOrder, initializePayment, verifyPayment } from "../lib/api"
 import type { DraftOrder } from "../lib/api"
 import { loadLencoScript } from "../lib/lenco"
@@ -52,6 +54,24 @@ export function WaiterOrderDetailPage() {
             : "Could not load order"
         )
       })
+  }, [id])
+
+  useEffect(() => {
+    const socket = getSocket()
+
+    if (!socket || !id) return
+
+    const updateOrder = (updatedOrder: DraftOrder) => {
+      if (updatedOrder._id === id) {
+        setOrder(updatedOrder)
+      }
+    }
+
+    socket.on("order:updated", updateOrder)
+
+    return () => {
+      socket.off("order:updated", updateOrder)
+    }
   }, [id])
 
   const handlePayment = async () => {
