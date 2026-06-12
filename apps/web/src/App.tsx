@@ -24,6 +24,7 @@ import type { AuthUser, UserRole } from "./lib/api"
 import { OwnerPage } from "./pages/owner-page"
 import { OwnerMenuPage } from "./pages/owner-menu-page"
 import { OwnerMenuItemsPage } from "./pages/owner-menu-items-page"
+import { WaiterPage } from "./pages/waiter-page"
 
 const getStoredUser = (): AuthUser | null => {
   const storedUser = localStorage.getItem("auth_user")
@@ -178,6 +179,8 @@ function AppRoutes() {
             user?.role === role ? (
               role === "owner" ? (
                 <OwnerPage user={user} onLogout={logout} />
+              ) : role === "waiter" ? (
+                <WaiterPage user={user} onLogout={logout} />
               ) : (
                 <Dashboard user={user} onLogout={logout} />
               )

@@ -195,3 +195,55 @@ export const updateMenuItem = async (
 
   return data.item
 }
+
+export type PublicMenuItem = {
+  _id: string
+  category: MenuItemCategory
+  name: string
+  description: string
+  price: number
+  imageUrl: string
+}
+
+export type DraftOrder = {
+  _id: string
+  orderNumber: string
+  subtotal: number
+  total: number
+  status: string
+}
+
+export const getPublicMenu = async (): Promise<{
+  categories: MenuCategory[]
+  items: PublicMenuItem[]
+}> => {
+  const response = await fetch(`${API_URL}/menu`)
+  const data = await response.json()
+
+  if (!response.ok) {
+    throw new Error(data.message || "Could not load menu")
+  }
+
+  return data
+}
+
+export const createDraftOrder = async (details: {
+  orderType: "dine_in" | "takeaway"
+  tableName: string
+  customer: {
+    name: string
+    phone: string
+  }
+  items: {
+    menuItem: string
+    quantity: number
+    notes: string
+  }[]
+}): Promise<DraftOrder> => {
+  const data = await authenticatedRequest("/orders/drafts", {
+    method: "POST",
+    body: JSON.stringify(details),
+  })
+
+  return data.order
+}
