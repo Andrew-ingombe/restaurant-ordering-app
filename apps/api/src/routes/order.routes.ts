@@ -31,9 +31,20 @@ const draftOrderSchema = z
       .object({
         name: z.string().trim().max(100).optional().default(""),
         phone: z.string().trim().max(30).optional().default(""),
+        email: z
+          .string()
+          .trim()
+          .email()
+          .or(z.literal(""))
+          .optional()
+          .default(""),
       })
       .optional()
-      .default({ name: "", phone: "" }),
+      .default({
+        name: "",
+        phone: "",
+        email: "",
+      }),
     items: z.array(orderItemSchema).min(1),
   })
   .refine(

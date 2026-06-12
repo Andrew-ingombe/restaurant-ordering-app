@@ -15,4 +15,7 @@ export const env = {
   jwtSecret: required("JWT_SECRET"),
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || "7d",
   port: Number(process.env.PORT) || 4000,
+  lencoSecretKey: required("LENCO_SECRET_KEY"),
+  lencoBaseUrl:
+    process.env.LENCO_BASE_URL || "https://sandbox.lenco.co/access/v2",
 }

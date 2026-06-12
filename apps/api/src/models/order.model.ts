@@ -72,6 +72,12 @@ const orderSchema = new Schema(
         trim: true,
         default: "",
       },
+      email: {
+        type: String,
+        trim: true,
+        lowercase: true,
+        default: "",
+      },
     },
     items: {
       type: [orderItemSchema],

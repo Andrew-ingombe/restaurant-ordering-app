@@ -6,6 +6,7 @@ import { userRouter } from "./routes/user.routes"
 import { NextFunction, Request, Response } from "express"
 import { menuRouter } from "./routes/menu.routes"
 import { orderRouter } from "./routes/order.routes"
+import { paymentRouter } from "./routes/payment.routes"
 
 export const createApp = () => {
   const app = express()
@@ -27,6 +28,7 @@ export const createApp = () => {
   app.use("/users", userRouter)
   app.use("/menu", menuRouter)
   app.use("/orders", orderRouter)
+  app.use("/payments", paymentRouter)
 
   app.use(
     (
