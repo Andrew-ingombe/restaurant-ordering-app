@@ -114,7 +114,7 @@ export type MenuCategory = {
 
 export const getManagedMenu = async (): Promise<{
   categories: MenuCategory[]
-  items: unknown[]
+  items: MenuItem[]
 }> => authenticatedRequest("/menu/manage")
 
 export const createMenuCategory = async (details: {
@@ -144,4 +144,54 @@ export const updateMenuCategory = async (
   })
 
   return data.category
+}
+
+export type MenuItemCategory = {
+  _id: string
+  name: string
+}
+
+export type MenuItem = {
+  _id: string
+  category: MenuItemCategory
+  name: string
+  description: string
+  price: number
+  available: boolean
+  imageUrl: string
+  sortOrder: number
+}
+
+export const createMenuItem = async (details: {
+  category: string
+  name: string
+  description: string
+  price: number
+  imageUrl?: string
+}): Promise<MenuItem> => {
+  const data = await authenticatedRequest("/menu/items", {
+    method: "POST",
+    body: JSON.stringify(details),
+  })
+
+  return data.item
+}
+
+export const updateMenuItem = async (
+  id: string,
+  details: Partial<{
+    category: string
+    name: string
+    description: string
+    price: number
+    available: boolean
+    imageUrl: string
+  }>
+): Promise<MenuItem> => {
+  const data = await authenticatedRequest(`/menu/items/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(details),
+  })
+
+  return data.item
 }

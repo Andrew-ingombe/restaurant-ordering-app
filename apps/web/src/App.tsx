@@ -23,6 +23,7 @@ import { login } from "./lib/api"
 import type { AuthUser, UserRole } from "./lib/api"
 import { OwnerPage } from "./pages/owner-page"
 import { OwnerMenuPage } from "./pages/owner-menu-page"
+import { OwnerMenuItemsPage } from "./pages/owner-menu-items-page"
 
 const getStoredUser = (): AuthUser | null => {
   const storedUser = localStorage.getItem("auth_user")
@@ -199,6 +200,17 @@ function AppRoutes() {
         element={
           user?.role === "owner" ? (
             <OwnerMenuPage />
+          ) : (
+            <Navigate to={user ? rolePath(user.role) : "/login"} replace />
+          )
+        }
+      />
+
+      <Route
+        path="/owner/menu/items"
+        element={
+          user?.role === "owner" ? (
+            <OwnerMenuItemsPage />
           ) : (
             <Navigate to={user ? rolePath(user.role) : "/login"} replace />
           )

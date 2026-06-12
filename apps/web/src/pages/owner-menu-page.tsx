@@ -133,9 +133,15 @@ export function OwnerMenuPage() {
             </p>
           </div>
 
-          <Button variant="outline" onClick={() => navigate("/owner")}>
-            Back to dashboard
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={() => navigate("/owner/menu/items")}>
+              Manage items
+            </Button>
+
+            <Button variant="outline" onClick={() => navigate("/owner")}>
+              Back to dashboard
+            </Button>
+          </div>
         </div>
       </header>
 
