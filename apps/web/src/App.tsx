@@ -27,6 +27,7 @@ import { OwnerMenuItemsPage } from "./pages/owner-menu-items-page"
 import { WaiterPage } from "./pages/waiter-page"
 import { WaiterOrderDetailPage } from "./pages/waiter-order-detail-page"
 import { WaiterOrdersPage } from "./pages/waiter-orders-page"
+import { KitchenPage } from "./pages/kitchen-page"
 
 const getStoredUser = (): AuthUser | null => {
   const storedUser = localStorage.getItem("auth_user")
@@ -122,35 +123,6 @@ function LoginPage({ onLogin }: { onLogin: (user: AuthUser) => void }) {
   )
 }
 
-function Dashboard({
-  user,
-  onLogout,
-}: {
-  user: AuthUser
-  onLogout: () => void
-}) {
-  return (
-    <main className="min-h-svh bg-muted p-6">
-      <Card className="mx-auto max-w-3xl">
-        <CardHeader>
-          <CardTitle className="capitalize">{user.role} dashboard</CardTitle>
-          <CardDescription>Signed in as {user.name}</CardDescription>
-        </CardHeader>
-
-        <CardContent>
-          <p className="mb-6">
-            The {user.role} workspace is ready for development.
-          </p>
-
-          <Button variant="outline" onClick={onLogout}>
-            Sign out
-          </Button>
-        </CardContent>
-      </Card>
-    </main>
-  )
-}
-
 function AppRoutes() {
   const [user, setUser] = useState<AuthUser | null>(getStoredUser)
 
@@ -178,27 +150,18 @@ function AppRoutes() {
           key={role}
           path={`/${role}`}
           element={
-            user?.role === role ? (
-              role === "owner" ? (
-                <OwnerPage user={user} onLogout={logout} />
-              ) : role === "waiter" ? (
-                <WaiterPage user={user} onLogout={logout} />
-              ) : (
-                <Dashboard user={user} onLogout={logout} />
-              )
-            ) : (
+            user?.role !== role ? (
               <Navigate to={user ? rolePath(user.role) : "/login"} replace />
+            ) : role === "owner" ? (
+              <OwnerPage user={user} onLogout={logout} />
+            ) : role === "waiter" ? (
+              <WaiterPage user={user} onLogout={logout} />
+            ) : (
+              <KitchenPage user={user} onLogout={logout} />
             )
           }
         />
       ))}
-
-      <Route
-        path="*"
-        element={
-          <Navigate to={user ? rolePath(user.role) : "/login"} replace />
-        }
-      />
 
       <Route
         path="/owner/menu"
@@ -241,6 +204,13 @@ function AppRoutes() {
           ) : (
             <Navigate to={user ? rolePath(user.role) : "/login"} replace />
           )
+        }
+      />
+
+      <Route
+        path="*"
+        element={
+          <Navigate to={user ? rolePath(user.role) : "/login"} replace />
         }
       />
     </Routes>

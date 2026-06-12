@@ -231,6 +231,10 @@ export type DraftOrder = {
   status: string
   paymentStatus: string
   createdAt: string
+  waiter?: {
+    _id: string
+    name: string
+  }
 }
 
 export const getPublicMenu = async (): Promise<{
@@ -316,6 +320,25 @@ export const verifyPayment = async (
   const data = await authenticatedRequest("/payments/verify", {
     method: "POST",
     body: JSON.stringify({ orderId, reference }),
+  })
+
+  return data.order
+}
+
+export type KitchenStatus = "submitted" | "accepted" | "preparing" | "ready"
+
+export const getKitchenOrders = async (): Promise<DraftOrder[]> => {
+  const data = await authenticatedRequest("/kitchen/orders")
+  return data.orders
+}
+
+export const updateKitchenOrderStatus = async (
+  orderId: string,
+  status: Exclude<KitchenStatus, "submitted">
+): Promise<DraftOrder> => {
+  const data = await authenticatedRequest(`/kitchen/orders/${orderId}/status`, {
+    method: "PATCH",
+    body: JSON.stringify({ status }),
   })
 
   return data.order
