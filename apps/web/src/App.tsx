@@ -21,6 +21,7 @@ import { Label } from "@workspace/ui/components/label"
 
 import { login } from "./lib/api"
 import type { AuthUser, UserRole } from "./lib/api"
+import { OwnerPage } from "./pages/owner-page"
 
 const getStoredUser = (): AuthUser | null => {
   const storedUser = localStorage.getItem("auth_user")
@@ -173,7 +174,11 @@ function AppRoutes() {
           path={`/${role}`}
           element={
             user?.role === role ? (
-              <Dashboard user={user} onLogout={logout} />
+              role === "owner" ? (
+                <OwnerPage user={user} onLogout={logout} />
+              ) : (
+                <Dashboard user={user} onLogout={logout} />
+              )
             ) : (
               <Navigate to={user ? rolePath(user.role) : "/login"} replace />
             )
