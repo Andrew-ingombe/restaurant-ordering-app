@@ -1,5 +1,6 @@
 import cors from "cors"
 import express from "express"
+import mongoose from "mongoose"
 
 export const createApp = () => {
   const app = express()
@@ -8,9 +9,12 @@ export const createApp = () => {
   app.use(express.json())
 
   app.get("/health", (_request, response) => {
-    response.status(200).json({
-      status: "ok",
+    const databaseConnected = mongoose.connection.readyState === 1
+
+    response.status(databaseConnected ? 200 : 503).json({
+      status: databaseConnected ? "ok" : "unavailable",
       service: "restaurant-ordering-api",
+      database: databaseConnected ? "connected" : "disconnected",
     })
   })
 

@@ -1,8 +1,21 @@
-import { createApp } from "./app.js"
+import { createApp } from "./app"
+import { connectDatabase } from "./config/database"
 
-const port = Number(process.env.PORT) || 4000
-const app = createApp()
+import { env } from "./config/env.js"
 
-app.listen(port, () => {
-  console.log(`API running at http://localhost:${port}`)
-})
+const startServer = async () => {
+  try {
+    await connectDatabase()
+
+    const app = createApp()
+
+    app.listen(env.port, () => {
+      console.log(`API running on port ${env.port}`)
+    })
+  } catch (error) {
+    console.error("Failed to start API:", error)
+    process.exit(1)
+  }
+}
+
+void startServer()
