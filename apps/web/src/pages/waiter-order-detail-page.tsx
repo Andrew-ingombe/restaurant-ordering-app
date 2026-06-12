@@ -15,7 +15,12 @@ import { Separator } from "@workspace/ui/components/separator"
 
 import { getSocket } from "../lib/socket"
 
-import { getMyOrder, initializePayment, verifyPayment } from "../lib/api"
+import {
+  getMyOrder,
+  initializePayment,
+  verifyPayment,
+  updateWaiterOrderStatus,
+} from "../lib/api"
 import type { DraftOrder } from "../lib/api"
 import { loadLencoScript } from "../lib/lenco"
 
@@ -36,6 +41,30 @@ export function WaiterOrderDetailPage() {
   const [processing, setProcessing] = useState(false)
   const [error, setError] = useState("")
   const [message, setMessage] = useState("")
+  const [updatingStatus, setUpdatingStatus] = useState(false)
+
+  const handleStatusChange = async (status: "served" | "completed") => {
+    if (!order) return
+
+    setUpdatingStatus(true)
+    setError("")
+    setMessage("")
+
+    try {
+      const updatedOrder = await updateWaiterOrderStatus(order._id, status)
+
+      setOrder(updatedOrder)
+      setMessage(`Order marked as ${status}`)
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : "Could not update order"
+      )
+    } finally {
+      setUpdatingStatus(false)
+    }
+  }
 
   useEffect(() => {
     if (!id) return
@@ -177,6 +206,13 @@ export function WaiterOrderDetailPage() {
 
   const canPay = ["draft", "awaiting_payment"].includes(order.status)
 
+  const nextWaiterStatus =
+    order.status === "ready"
+      ? "served"
+      : order.status === "served"
+        ? "completed"
+        : null
+
   return (
     <main className="min-h-svh bg-muted/40 p-4 md:p-6">
       <Card className="mx-auto max-w-2xl">
@@ -281,6 +317,20 @@ export function WaiterOrderDetailPage() {
                 {processing
                   ? "Processing..."
                   : `Pay ${formatPrice(order.total)}`}
+              </Button>
+            )}
+
+            {nextWaiterStatus && (
+              <Button
+                className="flex-1"
+                disabled={updatingStatus}
+                onClick={() => handleStatusChange(nextWaiterStatus)}
+              >
+                {updatingStatus
+                  ? "Updating..."
+                  : nextWaiterStatus === "served"
+                    ? "Mark served"
+                    : "Complete order"}
               </Button>
             )}
           </div>

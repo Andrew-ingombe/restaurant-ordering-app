@@ -178,6 +178,12 @@ export function KitchenPage({ user, onLogout }: KitchenPageProps) {
 
     const upsertOrder = (updatedOrder: DraftOrder) => {
       setOrders((current) => {
+        const activeStatuses = ["submitted", "accepted", "preparing", "ready"]
+
+        if (!activeStatuses.includes(updatedOrder.status)) {
+          return current.filter((order) => order._id !== updatedOrder._id)
+        }
+
         const exists = current.some((order) => order._id === updatedOrder._id)
 
         if (exists) {

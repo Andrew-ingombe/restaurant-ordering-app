@@ -343,3 +343,15 @@ export const updateKitchenOrderStatus = async (
 
   return data.order
 }
+
+export const updateWaiterOrderStatus = async (
+  orderId: string,
+  status: "served" | "completed"
+): Promise<DraftOrder> => {
+  const data = await authenticatedRequest(`/orders/${orderId}/status`, {
+    method: "PATCH",
+    body: JSON.stringify({ status }),
+  })
+
+  return data.order
+}

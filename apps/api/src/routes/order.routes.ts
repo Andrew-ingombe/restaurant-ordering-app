@@ -10,6 +10,7 @@ import {
 import { requireRole } from "../middleware/role.middleware"
 import { MenuItem } from "../models/menu-item.model"
 import { Order } from "../models/order.model"
+import { getSocketServer } from "../lib/socket"
 
 export const orderRouter = Router()
 
@@ -54,6 +55,15 @@ const draftOrderSchema = z
       path: ["tableName"],
     }
   )
+
+const waiterStatusSchema = z.object({
+  status: z.enum(["served", "completed"]),
+})
+
+const waiterTransitions: Record<string, string> = {
+  ready: "served",
+  served: "completed",
+}
 
 const generateOrderNumber = () => {
   const timestamp = Date.now().toString().slice(-8)
@@ -153,6 +163,100 @@ orderRouter.get(
       .limit(100)
 
     response.json({ orders })
+  })
+)
+
+orderRouter.patch(
+  "/:id/status",
+  asyncHandler(async (request, response) => {
+    const authenticatedRequest = request as AuthenticatedRequest
+
+    if (!Types.ObjectId.isValid(request.params.id as string)) {
+      response.status(400).json({
+        message: "Invalid order ID",
+      })
+      return
+    }
+
+    const result = waiterStatusSchema.safeParse(request.body)
+
+    if (!result.success) {
+      response.status(400).json({
+        message: "Invalid waiter order status",
+        errors: result.error.flatten().fieldErrors,
+      })
+      return
+    }
+
+    const currentOrder = await Order.findOne({
+      _id: request.params.id,
+      waiter: authenticatedRequest.user?.id,
+    })
+
+    if (!currentOrder) {
+      response.status(404).json({
+        message: "Order not found",
+      })
+      return
+    }
+
+    if (currentOrder.paymentStatus !== "paid") {
+      response.status(409).json({
+        message: "Only paid orders can be completed",
+      })
+      return
+    }
+
+    const expectedStatus = waiterTransitions[currentOrder.status]
+
+    if (expectedStatus !== result.data.status) {
+      response.status(409).json({
+        message: `Order cannot move from ${currentOrder.status} to ${result.data.status}`,
+        currentStatus: currentOrder.status,
+        expectedStatus: expectedStatus || null,
+      })
+      return
+    }
+
+    const order = await Order.findOneAndUpdate(
+      {
+        _id: currentOrder._id,
+        waiter: authenticatedRequest.user?.id,
+        status: currentOrder.status,
+        paymentStatus: "paid",
+      },
+      {
+        $set: {
+          status: result.data.status,
+        },
+      },
+      {
+        new: true,
+        runValidators: true,
+      }
+    )
+
+    if (!order) {
+      response.status(409).json({
+        message: "Order status changed. Refresh and try again.",
+      })
+      return
+    }
+
+    const orderPayload = order.toObject()
+
+    getSocketServer()
+      .to(`user:${authenticatedRequest.user?.id}`)
+      .emit("order:updated", orderPayload)
+
+    getSocketServer().to("role:kitchen").emit("order:updated", orderPayload)
+
+    getSocketServer().to("role:owner").emit("order:updated", orderPayload)
+
+    response.json({
+      message: `Order marked as ${result.data.status}`,
+      order,
+    })
   })
 )
 
