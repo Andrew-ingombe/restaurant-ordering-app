@@ -10,14 +10,21 @@ import { MenuItem } from "../models/menu-item.model"
 
 export const menuRouter = Router()
 
-const categorySchema = z.object({
+const createCategorySchema = z.object({
   name: z.string().trim().min(2),
   description: z.string().trim().optional().default(""),
   active: z.boolean().optional().default(true),
   sortOrder: z.number().int().optional().default(0),
 })
 
-const itemSchema = z.object({
+const updateCategorySchema = z.object({
+  name: z.string().trim().min(2).optional(),
+  description: z.string().trim().optional(),
+  active: z.boolean().optional(),
+  sortOrder: z.number().int().optional(),
+})
+
+const createItemSchema = z.object({
   category: z.string().refine(Types.ObjectId.isValid, {
     message: "Invalid category",
   }),
@@ -27,6 +34,21 @@ const itemSchema = z.object({
   available: z.boolean().optional().default(true),
   imageUrl: z.string().trim().optional().default(""),
   sortOrder: z.number().int().optional().default(0),
+})
+
+const updateItemSchema = z.object({
+  category: z
+    .string()
+    .refine(Types.ObjectId.isValid, {
+      message: "Invalid category",
+    })
+    .optional(),
+  name: z.string().trim().min(2).optional(),
+  description: z.string().trim().optional(),
+  price: z.number().int().nonnegative().optional(),
+  available: z.boolean().optional(),
+  imageUrl: z.string().trim().optional(),
+  sortOrder: z.number().int().optional(),
 })
 
 menuRouter.get(
@@ -67,7 +89,7 @@ menuRouter.post(
   authenticate,
   requireOwner,
   asyncHandler(async (request, response) => {
-    const result = categorySchema.safeParse(request.body)
+    const result = createCategorySchema.safeParse(request.body)
 
     if (!result.success) {
       response.status(400).json({
@@ -78,6 +100,7 @@ menuRouter.post(
     }
 
     const category = await MenuCategory.create(result.data)
+
     response.status(201).json({ category })
   })
 )
@@ -87,12 +110,18 @@ menuRouter.patch(
   authenticate,
   requireOwner,
   asyncHandler(async (request, response) => {
-    const result = categorySchema.partial().safeParse(request.body)
+    const result = updateCategorySchema.safeParse(request.body)
 
     if (!result.success) {
       response.status(400).json({
         message: "Invalid category details",
+        errors: result.error.flatten().fieldErrors,
       })
+      return
+    }
+
+    if (!Types.ObjectId.isValid(request.params.id as string)) {
+      response.status(400).json({ message: "Invalid category ID" })
       return
     }
 
@@ -119,7 +148,7 @@ menuRouter.post(
   authenticate,
   requireOwner,
   asyncHandler(async (request, response) => {
-    const result = itemSchema.safeParse(request.body)
+    const result = createItemSchema.safeParse(request.body)
 
     if (!result.success) {
       response.status(400).json({
@@ -139,6 +168,7 @@ menuRouter.post(
     }
 
     const item = await MenuItem.create(result.data)
+
     await item.populate("category", "name")
 
     response.status(201).json({ item })
@@ -150,12 +180,18 @@ menuRouter.patch(
   authenticate,
   requireOwner,
   asyncHandler(async (request, response) => {
-    const result = itemSchema.partial().safeParse(request.body)
+    const result = updateItemSchema.safeParse(request.body)
 
     if (!result.success) {
       response.status(400).json({
         message: "Invalid menu item details",
+        errors: result.error.flatten().fieldErrors,
       })
+      return
+    }
+
+    if (!Types.ObjectId.isValid(request.params.id as string)) {
+      response.status(400).json({ message: "Invalid menu item ID" })
       return
     }
 
@@ -165,9 +201,7 @@ menuRouter.patch(
       })
 
       if (!categoryExists) {
-        response.status(404).json({
-          message: "Category not found",
-        })
+        response.status(404).json({ message: "Category not found" })
         return
       }
     }
