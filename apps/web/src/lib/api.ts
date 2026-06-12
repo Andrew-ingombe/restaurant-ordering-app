@@ -222,6 +222,7 @@ export type DraftOrder = {
   customer: {
     name: string
     phone: string
+    email?: string
   }
   items: OrderItem[]
   subtotal: number
@@ -274,5 +275,48 @@ export const getMyOrders = async (): Promise<DraftOrder[]> => {
 
 export const getMyOrder = async (id: string): Promise<DraftOrder> => {
   const data = await authenticatedRequest(`/orders/${id}`)
+  return data.order
+}
+
+export type CheckoutDetails = {
+  reference: string
+  amount: number
+  currency: string
+  email: string
+  customer: {
+    firstName: string
+    lastName: string
+    phone: string
+  }
+}
+
+export const initializePayment = async (
+  orderId: string,
+  customer: {
+    name: string
+    phone: string
+    email: string
+  }
+): Promise<CheckoutDetails> => {
+  const data = await authenticatedRequest(
+    `/payments/orders/${orderId}/initialize`,
+    {
+      method: "POST",
+      body: JSON.stringify({ customer }),
+    }
+  )
+
+  return data.checkout
+}
+
+export const verifyPayment = async (
+  orderId: string,
+  reference: string
+): Promise<DraftOrder> => {
+  const data = await authenticatedRequest("/payments/verify", {
+    method: "POST",
+    body: JSON.stringify({ orderId, reference }),
+  })
+
   return data.order
 }
