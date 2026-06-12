@@ -13,6 +13,7 @@ import {
 import { requireRole } from "../middleware/role.middleware"
 import { Order } from "../models/order.model"
 import { Payment } from "../models/payment.model"
+import { getSocketServer } from "../lib/socket"
 
 export const paymentRouter = Router()
 
@@ -269,6 +270,12 @@ paymentRouter.post(
     order.status = "submitted"
 
     await Promise.all([payment.save(), order.save()])
+
+    await order.populate("waiter", "name")
+
+    getSocketServer()
+      .to("role:kitchen")
+      .emit("order:submitted", order.toObject())
 
     response.json({
       message: "Payment verified successfully",

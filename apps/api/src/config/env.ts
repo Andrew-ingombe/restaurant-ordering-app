@@ -18,4 +18,5 @@ export const env = {
   lencoSecretKey: required("LENCO_SECRET_KEY"),
   lencoBaseUrl:
     process.env.LENCO_BASE_URL || "https://sandbox.lenco.co/access/v2",
+  frontendUrl: process.env.FRONTEND_URL || "http://localhost:5173",
 }

@@ -6,6 +6,7 @@ import { asyncHandler } from "../middleware/async-handler"
 import { authenticate } from "../middleware/auth.middleware"
 import { requireRole } from "../middleware/role.middleware"
 import { Order } from "../models/order.model"
+import { getSocketServer } from "../lib/socket"
 
 export const kitchenRouter = Router()
 
@@ -84,6 +85,8 @@ kitchenRouter.patch(
       return
     }
 
+    const waiterId = currentOrder.waiter.toString()
+
     const order = await Order.findOneAndUpdate(
       {
         _id: currentOrder._id,
@@ -107,6 +110,12 @@ kitchenRouter.patch(
       })
       return
     }
+
+    getSocketServer()
+      .to(`user:${waiterId}`)
+      .emit("order:updated", order.toObject())
+
+    getSocketServer().to("role:kitchen").emit("order:updated", order.toObject())
 
     response.json({
       message: `Order marked as ${result.data.status}`,
