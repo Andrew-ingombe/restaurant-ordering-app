@@ -3,6 +3,8 @@ import express from "express"
 import mongoose from "mongoose"
 import { authRouter } from "./routes/auth.routes"
 import { userRouter } from "./routes/user.routes"
+import { NextFunction, Request, Response } from "express"
+import { menuRouter } from "./routes/menu.routes"
 
 export const createApp = () => {
   const app = express()
@@ -22,6 +24,22 @@ export const createApp = () => {
 
   app.use("/auth", authRouter)
   app.use("/users", userRouter)
+  app.use("/menu", menuRouter)
+
+  app.use(
+    (
+      error: unknown,
+      _request: Request,
+      response: Response,
+      _next: NextFunction
+    ) => {
+      console.error(error)
+
+      response.status(500).json({
+        message: "Internal server error",
+      })
+    }
+  )
 
   return app
 }
