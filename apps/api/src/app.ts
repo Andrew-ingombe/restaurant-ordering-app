@@ -2,6 +2,7 @@ import cors from "cors"
 import express from "express"
 import mongoose from "mongoose"
 import { authRouter } from "./routes/auth.routes"
+import { userRouter } from "./routes/user.routes"
 
 export const createApp = () => {
   const app = express()
@@ -20,6 +21,7 @@ export const createApp = () => {
   })
 
   app.use("/auth", authRouter)
+  app.use("/users", userRouter)
 
   return app
 }
