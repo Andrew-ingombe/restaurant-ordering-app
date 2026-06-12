@@ -25,6 +25,8 @@ import { OwnerPage } from "./pages/owner-page"
 import { OwnerMenuPage } from "./pages/owner-menu-page"
 import { OwnerMenuItemsPage } from "./pages/owner-menu-items-page"
 import { WaiterPage } from "./pages/waiter-page"
+import { WaiterOrderDetailPage } from "./pages/waiter-order-detail-page"
+import { WaiterOrdersPage } from "./pages/waiter-orders-page"
 
 const getStoredUser = (): AuthUser | null => {
   const storedUser = localStorage.getItem("auth_user")
@@ -214,6 +216,28 @@ function AppRoutes() {
         element={
           user?.role === "owner" ? (
             <OwnerMenuItemsPage />
+          ) : (
+            <Navigate to={user ? rolePath(user.role) : "/login"} replace />
+          )
+        }
+      />
+
+      <Route
+        path="/waiter/orders"
+        element={
+          user?.role === "waiter" ? (
+            <WaiterOrdersPage />
+          ) : (
+            <Navigate to={user ? rolePath(user.role) : "/login"} replace />
+          )
+        }
+      />
+
+      <Route
+        path="/waiter/orders/:id"
+        element={
+          user?.role === "waiter" ? (
+            <WaiterOrderDetailPage />
           ) : (
             <Navigate to={user ? rolePath(user.role) : "/login"} replace />
           )

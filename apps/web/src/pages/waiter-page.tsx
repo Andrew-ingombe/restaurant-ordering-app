@@ -170,9 +170,20 @@ export function WaiterPage({ user, onLogout }: WaiterPageProps) {
             <p className="text-sm text-muted-foreground">Waiter: {user.name}</p>
           </div>
 
-          <Button variant="outline" onClick={onLogout}>
-            Sign out
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                window.location.href = "/waiter/orders"
+              }}
+            >
+              My orders
+            </Button>
+
+            <Button variant="outline" onClick={onLogout}>
+              Sign out
+            </Button>
+          </div>
         </div>
       </header>
 

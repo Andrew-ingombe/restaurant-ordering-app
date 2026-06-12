@@ -205,12 +205,31 @@ export type PublicMenuItem = {
   imageUrl: string
 }
 
+export type OrderItem = {
+  menuItem: string
+  name: string
+  unitPrice: number
+  quantity: number
+  notes: string
+  lineTotal: number
+}
+
 export type DraftOrder = {
   _id: string
   orderNumber: string
+  orderType: "dine_in" | "takeaway"
+  tableName: string
+  customer: {
+    name: string
+    phone: string
+  }
+  items: OrderItem[]
   subtotal: number
   total: number
+  currency: string
   status: string
+  paymentStatus: string
+  createdAt: string
 }
 
 export const getPublicMenu = async (): Promise<{
@@ -245,5 +264,15 @@ export const createDraftOrder = async (details: {
     body: JSON.stringify(details),
   })
 
+  return data.order
+}
+
+export const getMyOrders = async (): Promise<DraftOrder[]> => {
+  const data = await authenticatedRequest("/orders/mine")
+  return data.orders
+}
+
+export const getMyOrder = async (id: string): Promise<DraftOrder> => {
+  const data = await authenticatedRequest(`/orders/${id}`)
   return data.order
 }
