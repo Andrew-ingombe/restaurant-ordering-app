@@ -103,3 +103,45 @@ export const updateStaffStatus = async (
 
   return data.user
 }
+
+export type MenuCategory = {
+  _id: string
+  name: string
+  description: string
+  active: boolean
+  sortOrder: number
+}
+
+export const getManagedMenu = async (): Promise<{
+  categories: MenuCategory[]
+  items: unknown[]
+}> => authenticatedRequest("/menu/manage")
+
+export const createMenuCategory = async (details: {
+  name: string
+  description: string
+}): Promise<MenuCategory> => {
+  const data = await authenticatedRequest("/menu/categories", {
+    method: "POST",
+    body: JSON.stringify(details),
+  })
+
+  return data.category
+}
+
+export const updateMenuCategory = async (
+  id: string,
+  details: Partial<{
+    name: string
+    description: string
+    active: boolean
+    sortOrder: number
+  }>
+): Promise<MenuCategory> => {
+  const data = await authenticatedRequest(`/menu/categories/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(details),
+  })
+
+  return data.category
+}

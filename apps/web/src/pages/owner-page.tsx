@@ -30,6 +30,7 @@ import {
 
 import { createStaff, getStaff, updateStaffStatus } from "../lib/api"
 import type { AuthUser, StaffRole, StaffUser } from "../lib/api"
+import { useNavigate } from "react-router-dom"
 
 type OwnerPageProps = {
   user: AuthUser
@@ -49,6 +50,8 @@ export function OwnerPage({ user, onLogout }: OwnerPageProps) {
   const [phone, setPhone] = useState("")
   const [password, setPassword] = useState("")
   const [role, setRole] = useState<StaffRole>("waiter")
+
+  const navigate = useNavigate()
 
   const loadStaff = async () => {
     try {
@@ -133,9 +136,13 @@ export function OwnerPage({ user, onLogout }: OwnerPageProps) {
             </p>
           </div>
 
-          <Button variant="outline" onClick={onLogout}>
-            Sign out
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={() => navigate("/owner/menu")}>Manage menu</Button>
+
+            <Button variant="outline" onClick={onLogout}>
+              Sign out
+            </Button>
+          </div>
         </div>
       </header>
 
