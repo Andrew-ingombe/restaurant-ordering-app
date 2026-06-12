@@ -1,6 +1,7 @@
 import cors from "cors"
 import express from "express"
 import mongoose from "mongoose"
+import { authRouter } from "./routes/auth.routes"
 
 export const createApp = () => {
   const app = express()
@@ -17,6 +18,8 @@ export const createApp = () => {
       database: databaseConnected ? "connected" : "disconnected",
     })
   })
+
+  app.use("/auth", authRouter)
 
   return app
 }
