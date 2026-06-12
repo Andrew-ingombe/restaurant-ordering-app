@@ -1,69 +1,200 @@
-import { useEffect, useState } from "react"
+import { useState } from "react"
+import type { FormEvent } from "react"
+import {
+  BrowserRouter,
+  Navigate,
+  Route,
+  Routes,
+  useNavigate,
+} from "react-router-dom"
 
 import { Button } from "@workspace/ui/components/button"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@workspace/ui/components/card"
+import { Input } from "@workspace/ui/components/input"
+import { Label } from "@workspace/ui/components/label"
 
-type ApiHealth = {
-  status: string
-  service: string
+import { login } from "./lib/api"
+import type { AuthUser, UserRole } from "./lib/api"
+
+const getStoredUser = (): AuthUser | null => {
+  const storedUser = localStorage.getItem("auth_user")
+
+  if (!storedUser) return null
+
+  try {
+    return JSON.parse(storedUser)
+  } catch {
+    localStorage.removeItem("auth_user")
+    localStorage.removeItem("auth_token")
+    return null
+  }
 }
 
-export function App() {
-  const [health, setHealth] = useState<ApiHealth | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const checkApi = async () => {
-    setError(null)
+const rolePath = (role: UserRole) => `/${role}`
+
+function LoginPage({ onLogin }: { onLogin: (user: AuthUser) => void }) {
+  const navigate = useNavigate()
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [error, setError] = useState("")
+  const [loading, setLoading] = useState(false)
+
+  const handleSubmit = async (event: FormEvent) => {
+    event.preventDefault()
+    setError("")
+    setLoading(true)
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/health`)
+      const result = await login(email, password)
 
-      if (!response.ok) {
-        throw new Error(`API returned ${response.status}`)
-      }
+      localStorage.setItem("auth_token", result.token)
+      localStorage.setItem("auth_user", JSON.stringify(result.user))
 
-      const data: ApiHealth = await response.json()
-      setHealth(data)
+      onLogin(result.user)
+      navigate(rolePath(result.user.role), { replace: true })
     } catch (requestError) {
-      setHealth(null)
       setError(
         requestError instanceof Error
           ? requestError.message
-          : "Could not reach the API"
+          : "Unable to log in"
       )
+    } finally {
+      setLoading(false)
     }
   }
 
-  useEffect(() => {
-    void checkApi()
-  }, [])
+  return (
+    <main className="flex min-h-svh items-center justify-center bg-muted p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <CardTitle>Restaurant Ordering</CardTitle>
+          <CardDescription>Sign in to access your workspace.</CardDescription>
+        </CardHeader>
+
+        <CardContent>
+          <form className="space-y-4" onSubmit={handleSubmit}>
+            <div className="space-y-2">
+              <Label htmlFor="email">Email address</Label>
+              <Input
+                id="email"
+                type="email"
+                autoComplete="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                required
+                minLength={8}
+              />
+            </div>
+
+            {error && <p className="text-sm text-destructive">{error}</p>}
+
+            <Button className="w-full" disabled={loading}>
+              {loading ? "Signing in..." : "Sign in"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+    </main>
+  )
+}
+
+function Dashboard({
+  user,
+  onLogout,
+}: {
+  user: AuthUser
+  onLogout: () => void
+}) {
+  return (
+    <main className="min-h-svh bg-muted p-6">
+      <Card className="mx-auto max-w-3xl">
+        <CardHeader>
+          <CardTitle className="capitalize">{user.role} dashboard</CardTitle>
+          <CardDescription>Signed in as {user.name}</CardDescription>
+        </CardHeader>
+
+        <CardContent>
+          <p className="mb-6">
+            The {user.role} workspace is ready for development.
+          </p>
+
+          <Button variant="outline" onClick={onLogout}>
+            Sign out
+          </Button>
+        </CardContent>
+      </Card>
+    </main>
+  )
+}
+
+function AppRoutes() {
+  const [user, setUser] = useState<AuthUser | null>(getStoredUser)
+
+  const logout = () => {
+    localStorage.removeItem("auth_token")
+    localStorage.removeItem("auth_user")
+    setUser(null)
+  }
 
   return (
-    <main className="flex min-h-svh items-center justify-center bg-muted p-6">
-      <section className="w-full max-w-md rounded-xl border bg-card p-6 shadow-sm">
-        <h1 className="text-2xl font-semibold">Restaurant Ordering</h1>
-
-        <p className="mt-2 text-sm text-muted-foreground">
-          Frontend and API deployment status
-        </p>
-
-        <div className="mt-6 rounded-lg border p-4">
-          {health ? (
-            <>
-              <p className="font-medium text-green-600">API connected</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {health.service}
-              </p>
-            </>
-          ) : error ? (
-            <p className="text-sm text-destructive">{error}</p>
+    <Routes>
+      <Route
+        path="/login"
+        element={
+          user ? (
+            <Navigate to={rolePath(user.role)} replace />
           ) : (
-            <p className="text-sm text-muted-foreground">Checking API...</p>
-          )}
-        </div>
+            <LoginPage onLogin={setUser} />
+          )
+        }
+      />
 
-        <Button className="mt-4 w-full" onClick={checkApi}>
-          Check API again
-        </Button>
-      </section>
-    </main>
+      {(["owner", "waiter", "kitchen"] as UserRole[]).map((role) => (
+        <Route
+          key={role}
+          path={`/${role}`}
+          element={
+            user?.role === role ? (
+              <Dashboard user={user} onLogout={logout} />
+            ) : (
+              <Navigate to={user ? rolePath(user.role) : "/login"} replace />
+            )
+          }
+        />
+      ))}
+
+      <Route
+        path="*"
+        element={
+          <Navigate to={user ? rolePath(user.role) : "/login"} replace />
+        }
+      />
+    </Routes>
+  )
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AppRoutes />
+    </BrowserRouter>
   )
 }
