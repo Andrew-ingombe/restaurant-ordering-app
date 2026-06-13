@@ -31,6 +31,7 @@ import { KitchenPage } from "./pages/kitchen-page"
 import { disconnectSocket } from "./lib/socket"
 import { OwnerDashboardPage } from "./pages/owner-dashboard-page"
 import { OwnerTablesPage } from "./pages/owner-tables-page"
+import { CustomerMenuPage } from "./pages/customer-menu-page"
 
 const getStoredUser = (): AuthUser | null => {
   const storedUser = localStorage.getItem("auth_user")
@@ -232,6 +233,8 @@ function AppRoutes() {
           )
         }
       />
+
+      <Route path="/menu/table/:token" element={<CustomerMenuPage />} />
 
       <Route
         path="*"

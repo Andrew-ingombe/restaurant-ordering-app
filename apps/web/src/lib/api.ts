@@ -421,3 +421,67 @@ export const updateTable = async (
 
   return data.table
 }
+
+export type CustomerTableMenu = {
+  table: {
+    id: string
+    name: string
+  }
+  categories: MenuCategory[]
+  items: PublicMenuItem[]
+}
+
+export type CustomerOrderResponse = {
+  message: string
+  order: {
+    id: string
+    orderNumber: string
+    tableName: string
+    total: number
+    status: "awaiting_waiter"
+  }
+}
+
+export const getCustomerTableMenu = async (
+  token: string
+): Promise<CustomerTableMenu> => {
+  const response = await fetch(
+    `${API_URL}/customer-menu/table/${encodeURIComponent(token)}`
+  )
+  const data = await response.json()
+
+  if (!response.ok) {
+    throw new Error(data.message || "Could not load menu")
+  }
+
+  return data
+}
+
+export const submitCustomerOrder = async (details: {
+  token: string
+  customer: {
+    name: string
+    phone: string
+  }
+  items: {
+    menuItem: string
+    quantity: number
+    notes: string
+  }[]
+}): Promise<CustomerOrderResponse> => {
+  const response = await fetch(`${API_URL}/customer-orders`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(details),
+  })
+
+  const data = await response.json()
+
+  if (!response.ok) {
+    throw new Error(data.message || "Could not submit order")
+  }
+
+  return data
+}
