@@ -166,6 +166,74 @@ orderRouter.get(
   })
 )
 
+orderRouter.get(
+  "/customer-requests",
+  asyncHandler(async (_request, response) => {
+    const orders = await Order.find({
+      source: "customer_qr",
+      status: "awaiting_waiter",
+      waiter: { $exists: false },
+    })
+      .sort({ createdAt: 1 })
+      .limit(100)
+
+    response.json({ orders })
+  })
+)
+
+orderRouter.patch(
+  "/customer-requests/:id/claim",
+  asyncHandler(async (request, response) => {
+    const authenticatedRequest = request as AuthenticatedRequest
+
+    if (!Types.ObjectId.isValid(request.params.id as string)) {
+      response.status(400).json({
+        message: "Invalid order ID",
+      })
+      return
+    }
+
+    const order = await Order.findOneAndUpdate(
+      {
+        _id: request.params.id,
+        source: "customer_qr",
+        status: "awaiting_waiter",
+        waiter: { $exists: false },
+      },
+      {
+        $set: {
+          waiter: authenticatedRequest.user?.id,
+          status: "draft",
+        },
+      },
+      {
+        new: true,
+        runValidators: true,
+      }
+    )
+
+    if (!order) {
+      response.status(409).json({
+        message: "This request has already been claimed",
+      })
+      return
+    }
+
+    const payload = order.toObject()
+
+    getSocketServer().to("role:waiter").emit("order:customer-claimed", payload)
+
+    getSocketServer()
+      .to(`user:${authenticatedRequest.user?.id}`)
+      .emit("order:updated", payload)
+
+    response.json({
+      message: "Customer request claimed",
+      order,
+    })
+  })
+)
+
 orderRouter.patch(
   "/:id/status",
   asyncHandler(async (request, response) => {
