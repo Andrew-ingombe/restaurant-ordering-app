@@ -174,6 +174,15 @@ export function WaiterPage({ user, onLogout }: WaiterPageProps) {
             <Button
               variant="outline"
               onClick={() => {
+                window.location.href = "/waiter/requests"
+              }}
+            >
+              Customer requests
+            </Button>
+
+            <Button
+              variant="outline"
+              onClick={() => {
                 window.location.href = "/waiter/orders"
               }}
             >

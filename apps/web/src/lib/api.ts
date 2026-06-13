@@ -235,6 +235,8 @@ export type DraftOrder = {
     _id: string
     name: string
   }
+  source?: "waiter" | "customer_qr"
+  restaurantTable?: string
 }
 
 export const getPublicMenu = async (): Promise<{
@@ -484,4 +486,23 @@ export const submitCustomerOrder = async (details: {
   }
 
   return data
+}
+
+export const getCustomerOrderRequests = async (): Promise<DraftOrder[]> => {
+  const data = await authenticatedRequest("/orders/customer-requests")
+
+  return data.orders
+}
+
+export const claimCustomerOrderRequest = async (
+  orderId: string
+): Promise<DraftOrder> => {
+  const data = await authenticatedRequest(
+    `/orders/customer-requests/${orderId}/claim`,
+    {
+      method: "PATCH",
+    }
+  )
+
+  return data.order
 }

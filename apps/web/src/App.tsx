@@ -32,6 +32,7 @@ import { disconnectSocket } from "./lib/socket"
 import { OwnerDashboardPage } from "./pages/owner-dashboard-page"
 import { OwnerTablesPage } from "./pages/owner-tables-page"
 import { CustomerMenuPage } from "./pages/customer-menu-page"
+import { WaiterRequestsPage } from "./pages/waiter-requests-page"
 
 const getStoredUser = (): AuthUser | null => {
   const storedUser = localStorage.getItem("auth_user")
@@ -235,6 +236,17 @@ function AppRoutes() {
       />
 
       <Route path="/menu/table/:token" element={<CustomerMenuPage />} />
+
+      <Route
+        path="/waiter/requests"
+        element={
+          user?.role === "waiter" ? (
+            <WaiterRequestsPage />
+          ) : (
+            <Navigate to={user ? rolePath(user.role) : "/login"} replace />
+          )
+        }
+      />
 
       <Route
         path="*"
