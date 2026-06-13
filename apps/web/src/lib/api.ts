@@ -385,3 +385,39 @@ export const getDashboardSummary = async (
   const query = date ? `?date=${encodeURIComponent(date)}` : ""
   return authenticatedRequest(`/dashboard/summary${query}`)
 }
+
+export type RestaurantTable = {
+  id: string
+  name: string
+  active: boolean
+  menuUrl: string
+}
+
+export const getTables = async (): Promise<RestaurantTable[]> => {
+  const data = await authenticatedRequest("/tables")
+  return data.tables
+}
+
+export const createTable = async (name: string): Promise<RestaurantTable> => {
+  const data = await authenticatedRequest("/tables", {
+    method: "POST",
+    body: JSON.stringify({ name }),
+  })
+
+  return data.table
+}
+
+export const updateTable = async (
+  id: string,
+  details: Partial<{
+    name: string
+    active: boolean
+  }>
+): Promise<RestaurantTable> => {
+  const data = await authenticatedRequest(`/tables/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(details),
+  })
+
+  return data.table
+}

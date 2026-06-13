@@ -101,6 +101,10 @@ export function OwnerDashboardPage({
           </div>
 
           <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => navigate("/owner/tables")}>
+              Manage tables
+            </Button>
+
             <Button variant="outline" onClick={() => navigate("/owner/staff")}>
               Manage staff
             </Button>

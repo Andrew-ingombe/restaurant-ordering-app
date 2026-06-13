@@ -30,6 +30,7 @@ import { WaiterOrdersPage } from "./pages/waiter-orders-page"
 import { KitchenPage } from "./pages/kitchen-page"
 import { disconnectSocket } from "./lib/socket"
 import { OwnerDashboardPage } from "./pages/owner-dashboard-page"
+import { OwnerTablesPage } from "./pages/owner-tables-page"
 
 const getStoredUser = (): AuthUser | null => {
   const storedUser = localStorage.getItem("auth_user")
@@ -215,6 +216,17 @@ function AppRoutes() {
         element={
           user?.role === "owner" ? (
             <OwnerPage user={user} onLogout={logout} />
+          ) : (
+            <Navigate to={user ? rolePath(user.role) : "/login"} replace />
+          )
+        }
+      />
+
+      <Route
+        path="/owner/tables"
+        element={
+          user?.role === "owner" ? (
+            <OwnerTablesPage />
           ) : (
             <Navigate to={user ? rolePath(user.role) : "/login"} replace />
           )
