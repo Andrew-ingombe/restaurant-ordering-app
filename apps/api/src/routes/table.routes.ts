@@ -28,7 +28,7 @@ const createTableToken = (tableId: string) =>
       tableId,
       purpose: "customer-menu",
     },
-    env.jwtSecret
+    env.tableTokenSecret
   )
 
 const serializeTable = (table: {

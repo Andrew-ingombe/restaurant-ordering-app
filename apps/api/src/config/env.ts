@@ -20,4 +20,5 @@ export const env = {
     process.env.LENCO_BASE_URL || "https://sandbox.lenco.co/access/v2",
   frontendUrl: process.env.FRONTEND_URL || "http://localhost:5173",
   restaurantTimezone: process.env.RESTAURANT_TIMEZONE || "Africa/Lusaka",
+  tableTokenSecret: required("TABLE_TOKEN_SECRET"),
 }
