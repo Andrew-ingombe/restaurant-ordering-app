@@ -11,6 +11,7 @@ import { kitchenRouter } from "./routes/kitchen.routes"
 import { dashboardRouter } from "./routes/dashboard.routes"
 import { tableRouter } from "./routes/table.routes"
 import { customerMenuRouter } from "./routes/customer-menu.routes"
+import { customerOrderRouter } from "./routes/customer-order.routes"
 
 export const createApp = () => {
   const app = express()
@@ -37,6 +38,7 @@ export const createApp = () => {
   app.use("/dashboard", dashboardRouter)
   app.use("/tables", tableRouter)
   app.use("/customer-menu", customerMenuRouter)
+  app.use("/customer-orders", customerOrderRouter)
 
   app.use(
     (

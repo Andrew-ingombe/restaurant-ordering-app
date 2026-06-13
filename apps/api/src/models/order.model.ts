@@ -48,13 +48,24 @@ const orderSchema = new Schema(
     waiter: {
       type: Schema.Types.ObjectId,
       ref: "User",
-      required: true,
+      required: false,
       index: true,
     },
     orderType: {
       type: String,
       enum: ["dine_in", "takeaway"],
       default: "dine_in",
+    },
+    source: {
+      type: String,
+      enum: ["waiter", "customer_qr"],
+      default: "waiter",
+      index: true,
+    },
+    restaurantTable: {
+      type: Schema.Types.ObjectId,
+      ref: "RestaurantTable",
+      index: true,
     },
     tableName: {
       type: String,
@@ -101,6 +112,7 @@ const orderSchema = new Schema(
       type: String,
       enum: [
         "draft",
+        "awaiting_waiter",
         "awaiting_payment",
         "submitted",
         "accepted",

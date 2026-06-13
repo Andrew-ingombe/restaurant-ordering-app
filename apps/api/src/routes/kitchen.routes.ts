@@ -85,6 +85,13 @@ kitchenRouter.patch(
       return
     }
 
+    if (!currentOrder.waiter) {
+      response.status(409).json({
+        message: "This order has no waiter assigned",
+      })
+      return
+    }
+
     const waiterId = currentOrder.waiter.toString()
 
     const order = await Order.findOneAndUpdate(
