@@ -9,6 +9,7 @@ import { orderRouter } from "./routes/order.routes"
 import { paymentRouter } from "./routes/payment.routes"
 import { kitchenRouter } from "./routes/kitchen.routes"
 import { dashboardRouter } from "./routes/dashboard.routes"
+import { tableRouter } from "./routes/table.routes"
 
 export const createApp = () => {
   const app = express()
@@ -33,6 +34,7 @@ export const createApp = () => {
   app.use("/payments", paymentRouter)
   app.use("/kitchen", kitchenRouter)
   app.use("/dashboard", dashboardRouter)
+  app.use("/tables", tableRouter)
 
   app.use(
     (
