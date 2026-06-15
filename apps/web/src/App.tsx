@@ -27,6 +27,7 @@ import { OwnerDashboardPage } from "./pages/owner-dashboard-page"
 import { OwnerTablesPage } from "./pages/owner-tables-page"
 import { CustomerMenuPage } from "./pages/customer-menu-page"
 import { WaiterRequestsPage } from "./pages/waiter-requests-page"
+import { WaiterEditOrderPage } from "./pages/waiter-edit-order-page"
 
 import {
   ArrowRight,
@@ -370,6 +371,17 @@ function AppRoutes() {
         element={
           user?.role === "waiter" ? (
             <WaiterRequestsPage />
+          ) : (
+            <Navigate to={user ? rolePath(user.role) : "/login"} replace />
+          )
+        }
+      />
+
+      <Route
+        path="/waiter/orders/:id/edit"
+        element={
+          user?.role === "waiter" ? (
+            <WaiterEditOrderPage />
           ) : (
             <Navigate to={user ? rolePath(user.role) : "/login"} replace />
           )

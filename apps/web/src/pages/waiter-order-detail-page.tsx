@@ -16,7 +16,19 @@ import {
   UserRound,
   UtensilsCrossed,
   WalletCards,
+  XCircle,
 } from "lucide-react"
+
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@workspace/ui/components/alert-dialog"
 
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
@@ -28,6 +40,7 @@ import {
   initializePayment,
   updateWaiterOrderStatus,
   verifyPayment,
+  cancelOrder,
 } from "../lib/api"
 import type { DraftOrder } from "../lib/api"
 import { loadLencoScript } from "../lib/lenco"
@@ -120,6 +133,8 @@ export function WaiterOrderDetailPage() {
   const [error, setError] = useState("")
   const [message, setMessage] = useState("")
   const [updatingStatus, setUpdatingStatus] = useState(false)
+  const [cancelling, setCancelling] = useState(false)
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
 
   const handleStatusChange = async (status: "served" | "completed") => {
     if (!order) return
@@ -141,6 +156,30 @@ export function WaiterOrderDetailPage() {
       )
     } finally {
       setUpdatingStatus(false)
+    }
+  }
+
+  const handleCancelOrder = async () => {
+    if (!order) return
+
+    setCancelling(true)
+    setError("")
+    setMessage("")
+
+    try {
+      const cancelledOrder = await cancelOrder(order._id)
+
+      setOrder(cancelledOrder)
+      setMessage("Order cancelled successfully")
+      setCancelDialogOpen(false)
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : "Could not cancel order"
+      )
+    } finally {
+      setCancelling(false)
     }
   }
 
@@ -545,9 +584,19 @@ export function WaiterOrderDetailPage() {
                 </span>
               </div>
 
+              {canPay && order.status === "draft" && (
+                <Button
+                  className="mt-5 h-12 w-full rounded-xl border-white/20 bg-white/10 text-white hover:bg-white/20"
+                  variant="outline"
+                  onClick={() => navigate(`/waiter/orders/${order._id}/edit`)}
+                >
+                  Edit draft order
+                </Button>
+              )}
+
               {canPay && (
                 <Button
-                  className="mt-5 h-12 w-full rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
+                  className="mt-3 h-12 w-full rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
                   disabled={processing}
                   onClick={handlePayment}
                 >
@@ -562,6 +611,18 @@ export function WaiterOrderDetailPage() {
                       Pay {formatPrice(order.total)}
                     </>
                   )}
+                </Button>
+              )}
+
+              {canPay && (
+                <Button
+                  className="mt-3 h-12 w-full rounded-xl border-red-200 text-red-700 hover:bg-red-50 hover:text-red-800"
+                  variant="outline"
+                  disabled={cancelling || processing}
+                  onClick={() => setCancelDialogOpen(true)}
+                >
+                  <XCircle className="size-4" />
+                  Cancel order
                 </Button>
               )}
             </div>
@@ -615,6 +676,72 @@ export function WaiterOrderDetailPage() {
           </aside>
         </div>
       </div>
+
+      <AlertDialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+        <AlertDialogContent className="rounded-[24px] border-0 p-0 sm:max-w-md">
+          <div className="p-6">
+            <div className="flex size-12 items-center justify-center rounded-full bg-red-50 text-red-600">
+              <XCircle className="size-6" />
+            </div>
+
+            <AlertDialogHeader className="mt-5 text-left">
+              <AlertDialogTitle className="text-xl font-black">
+                Cancel this order?
+              </AlertDialogTitle>
+
+              <AlertDialogDescription className="leading-6">
+                Order{" "}
+                <strong className="text-neutral-900">
+                  {order.orderNumber}
+                </strong>{" "}
+                will be cancelled and cannot continue to payment or the kitchen.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+
+            <div className="mt-5 rounded-2xl bg-neutral-100 p-4">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-neutral-500">
+                  {order.tableName || "Takeaway"}
+                </span>
+
+                <span className="font-black text-neutral-950">
+                  {formatPrice(order.total)}
+                </span>
+              </div>
+            </div>
+
+            <AlertDialogFooter className="mt-6 gap-2 sm:space-x-0">
+              <AlertDialogCancel
+                className="h-11 rounded-xl"
+                disabled={cancelling}
+              >
+                Keep order
+              </AlertDialogCancel>
+
+              <AlertDialogAction
+                className="h-11 rounded-xl bg-red-600 text-white hover:bg-red-700"
+                disabled={cancelling}
+                onClick={(event) => {
+                  event.preventDefault()
+                  void handleCancelOrder()
+                }}
+              >
+                {cancelling ? (
+                  <>
+                    <RefreshCw className="size-4 animate-spin" />
+                    Cancelling...
+                  </>
+                ) : (
+                  <>
+                    <XCircle className="size-4" />
+                    Cancel order
+                  </>
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
     </main>
   )
 }

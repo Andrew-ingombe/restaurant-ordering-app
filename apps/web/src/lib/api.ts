@@ -506,3 +506,36 @@ export const claimCustomerOrderRequest = async (
 
   return data.order
 }
+
+export const updateDraftOrder = async (
+  orderId: string,
+  details: {
+    orderType: "dine_in" | "takeaway"
+    tableName: string
+    customer: {
+      name: string
+      phone: string
+      email: string
+    }
+    items: {
+      menuItem: string
+      quantity: number
+      notes: string
+    }[]
+  }
+): Promise<DraftOrder> => {
+  const data = await authenticatedRequest(`/orders/drafts/${orderId}`, {
+    method: "PATCH",
+    body: JSON.stringify(details),
+  })
+
+  return data.order
+}
+
+export const cancelOrder = async (orderId: string): Promise<DraftOrder> => {
+  const data = await authenticatedRequest(`/orders/${orderId}/cancel`, {
+    method: "PATCH",
+  })
+
+  return data.order
+}

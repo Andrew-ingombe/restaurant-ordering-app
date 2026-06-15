@@ -11,6 +11,7 @@ import { requireRole } from "../middleware/role.middleware"
 import { MenuItem } from "../models/menu-item.model"
 import { Order } from "../models/order.model"
 import { getSocketServer } from "../lib/socket"
+import { Payment } from "../models/payment.model"
 
 export const orderRouter = Router()
 
@@ -55,6 +56,19 @@ const draftOrderSchema = z
       path: ["tableName"],
     }
   )
+
+const updateDraftOrderSchema = z.object({
+  orderType: z.enum(["dine_in", "takeaway"]).optional(),
+  tableName: z.string().trim().max(50).optional(),
+  customer: z
+    .object({
+      name: z.string().trim().max(100).optional().default(""),
+      phone: z.string().trim().max(30).optional().default(""),
+      email: z.string().trim().email().or(z.literal("")).optional().default(""),
+    })
+    .optional(),
+  items: z.array(orderItemSchema).min(1).optional(),
+})
 
 const waiterStatusSchema = z.object({
   status: z.enum(["served", "completed"]),
@@ -328,6 +342,75 @@ orderRouter.patch(
   })
 )
 
+orderRouter.patch(
+  "/:id/cancel",
+  asyncHandler(async (request, response) => {
+    const authenticatedRequest = request as AuthenticatedRequest
+
+    if (!Types.ObjectId.isValid(request.params.id as string)) {
+      response.status(400).json({
+        message: "Invalid order ID",
+      })
+      return
+    }
+
+    const order = await Order.findOne({
+      _id: request.params.id,
+      waiter: authenticatedRequest.user?.id,
+    })
+
+    if (!order) {
+      response.status(404).json({
+        message: "Order not found",
+      })
+      return
+    }
+
+    if (order.paymentStatus === "paid") {
+      response.status(409).json({
+        message: "Paid orders cannot be cancelled without a refund process",
+      })
+      return
+    }
+
+    if (!["draft", "awaiting_payment"].includes(order.status)) {
+      response.status(409).json({
+        message: `Order cannot be cancelled from ${order.status}`,
+      })
+      return
+    }
+
+    order.status = "cancelled"
+
+    await order.save()
+
+    await Payment.updateMany(
+      {
+        order: order._id,
+        status: "pending",
+      },
+      {
+        $set: {
+          status: "cancelled",
+        },
+      }
+    )
+
+    const orderPayload = order.toObject()
+
+    getSocketServer()
+      .to(`user:${authenticatedRequest.user?.id}`)
+      .emit("order:updated", orderPayload)
+
+    getSocketServer().to("role:owner").emit("order:updated", orderPayload)
+
+    response.json({
+      message: "Order cancelled",
+      order,
+    })
+  })
+)
+
 orderRouter.get(
   "/:id",
   asyncHandler(async (request, response) => {
@@ -356,7 +439,7 @@ orderRouter.patch(
   "/drafts/:id",
   asyncHandler(async (request, response) => {
     const authenticatedRequest = request as AuthenticatedRequest
-    const result = draftOrderSchema.partial().safeParse(request.body)
+    const result = updateDraftOrderSchema.safeParse(request.body)
 
     if (!result.success) {
       response.status(400).json({
