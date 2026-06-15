@@ -12,11 +12,17 @@ import {
   Users,
   UtensilsCrossed,
   WalletCards,
+  KeyRound,
 } from "lucide-react"
 
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
-import { Input } from "@workspace/ui/components/input"
+import { Calendar } from "@workspace/ui/components/calendar"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@workspace/ui/components/popover"
 import {
   Table,
   TableBody,
@@ -53,6 +59,31 @@ const statusStyles: Record<string, string> = {
   cancelled: "bg-red-50 text-red-700",
 }
 
+const parseDate = (value: string) => {
+  if (!value) return undefined
+
+  const [year, month, day] = value.split("-").map(Number)
+  return new Date(year, month - 1, day)
+}
+
+const serializeDate = (date: Date) => {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, "0")
+  const day = String(date.getDate()).padStart(2, "0")
+
+  return `${year}-${month}-${day}`
+}
+
+const formatSelectedDate = (value: string) => {
+  const date = parseDate(value)
+
+  if (!date) return "Select date"
+
+  return new Intl.DateTimeFormat("en-ZM", {
+    dateStyle: "medium",
+  }).format(date)
+}
+
 export function OwnerDashboardPage({
   user,
   onLogout,
@@ -62,6 +93,7 @@ export function OwnerDashboardPage({
   const [selectedDate, setSelectedDate] = useState("")
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
+  const [calendarOpen, setCalendarOpen] = useState(false)
 
   const loadDashboard = async (date?: string) => {
     setLoading(true)
@@ -112,6 +144,11 @@ export function OwnerDashboardPage({
       icon: LayoutDashboard,
       active: true,
       action: () => navigate("/owner"),
+    },
+    {
+      label: "Orders",
+      icon: ReceiptText,
+      action: () => navigate("/owner/orders"),
     },
     {
       label: "Menu",
@@ -238,16 +275,40 @@ export function OwnerDashboardPage({
               </div>
 
               <div className="flex flex-wrap items-end gap-2">
-                <div className="relative">
-                  <CalendarDays className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-neutral-400" />
-                  <Input
-                    id="dashboard-date"
-                    type="date"
-                    className="h-11 rounded-xl border-0 bg-neutral-100 pl-10 shadow-none"
-                    value={selectedDate}
-                    onChange={(event) => setSelectedDate(event.target.value)}
-                  />
-                </div>
+                <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="h-11 justify-start rounded-xl bg-neutral-100 px-4 font-normal hover:bg-neutral-100"
+                    >
+                      <CalendarDays className="size-4 text-neutral-400" />
+                      <span
+                        className={
+                          selectedDate ? "text-neutral-900" : "text-neutral-400"
+                        }
+                      >
+                        {formatSelectedDate(selectedDate)}
+                      </span>
+                    </Button>
+                  </PopoverTrigger>
+
+                  <PopoverContent
+                    className="w-auto rounded-2xl border-neutral-200 p-0"
+                    align="end"
+                  >
+                    <Calendar
+                      mode="single"
+                      selected={parseDate(selectedDate)}
+                      onSelect={(date) => {
+                        if (!date) return
+
+                        setSelectedDate(serializeDate(date))
+                        setCalendarOpen(false)
+                      }}
+                    />
+                  </PopoverContent>
+                </Popover>
 
                 <Button
                   className="h-11 rounded-xl bg-[#ef1428] px-5 text-white hover:bg-[#d91023]"
@@ -284,6 +345,15 @@ export function OwnerDashboardPage({
                   </Button>
                 )
               })}
+
+              <Button
+                className="shrink-0 rounded-xl"
+                variant="outline"
+                onClick={() => navigate("/account/password")}
+              >
+                <KeyRound className="size-4" />
+                Change password
+              </Button>
             </div>
           </header>
 

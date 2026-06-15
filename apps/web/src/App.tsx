@@ -30,6 +30,8 @@ import { WaiterRequestsPage } from "./pages/waiter-requests-page"
 import { WaiterEditOrderPage } from "./pages/waiter-edit-order-page"
 import { getCurrentUser } from "./lib/api"
 import { ChangePasswordPage } from "./pages/change-password-page"
+import { OwnerOrdersPage } from "./pages/owner-orders-page"
+import { OwnerOrderDetailPage } from "./pages/owner-order-detail-page"
 
 import {
   ArrowRight,
@@ -373,6 +375,28 @@ function AppRoutes() {
         element={
           user?.role === "owner" ? (
             <OwnerMenuItemsPage />
+          ) : (
+            <Navigate to={user ? rolePath(user.role) : "/login"} replace />
+          )
+        }
+      />
+
+      <Route
+        path="/owner/orders"
+        element={
+          user?.role === "owner" ? (
+            <OwnerOrdersPage user={user} onLogout={logout} />
+          ) : (
+            <Navigate to={user ? rolePath(user.role) : "/login"} replace />
+          )
+        }
+      />
+
+      <Route
+        path="/owner/orders/:id"
+        element={
+          user?.role === "owner" ? (
+            <OwnerOrderDetailPage user={user} onLogout={logout} />
           ) : (
             <Navigate to={user ? rolePath(user.role) : "/login"} replace />
           )

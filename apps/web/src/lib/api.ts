@@ -560,3 +560,104 @@ export const changePassword = async (details: {
     body: JSON.stringify(details),
   })
 }
+
+export type OwnerOrderStatus =
+  | "draft"
+  | "awaiting_waiter"
+  | "awaiting_payment"
+  | "submitted"
+  | "accepted"
+  | "preparing"
+  | "ready"
+  | "served"
+  | "completed"
+  | "cancelled"
+
+export type OwnerOrder = Omit<
+  DraftOrder,
+  "status" | "waiter" | "restaurantTable"
+> & {
+  status: OwnerOrderStatus
+  waiter?: {
+    _id: string
+    name: string
+    email?: string
+  } | null
+  restaurantTable?:
+    | {
+        _id: string
+        name: string
+      }
+    | string
+    | null
+  updatedAt?: string
+}
+
+export type OwnerOrderFilters = {
+  search?: string
+  status?: OwnerOrderStatus | "all"
+  dateFrom?: string
+  dateTo?: string
+  page?: number
+  limit?: number
+}
+
+export type OwnerOrderHistory = {
+  orders: OwnerOrder[]
+  pagination: {
+    page: number
+    limit: number
+    totalOrders: number
+    totalPages: number
+    hasPreviousPage: boolean
+    hasNextPage: boolean
+  }
+  filters: {
+    search: string
+    status: OwnerOrderStatus | "all"
+    dateFrom: string | null
+    dateTo: string | null
+  }
+  timezone: string
+}
+
+export const getOwnerOrders = async (
+  filters: OwnerOrderFilters = {}
+): Promise<OwnerOrderHistory> => {
+  const query = new URLSearchParams()
+
+  if (filters.search) {
+    query.set("search", filters.search)
+  }
+
+  if (filters.status && filters.status !== "all") {
+    query.set("status", filters.status)
+  }
+
+  if (filters.dateFrom) {
+    query.set("dateFrom", filters.dateFrom)
+  }
+
+  if (filters.dateTo) {
+    query.set("dateTo", filters.dateTo)
+  }
+
+  if (filters.page) {
+    query.set("page", filters.page.toString())
+  }
+
+  if (filters.limit) {
+    query.set("limit", filters.limit.toString())
+  }
+
+  const queryString = query.toString()
+
+  return authenticatedRequest(
+    `/dashboard/orders${queryString ? `?${queryString}` : ""}`
+  )
+}
+
+export const getOwnerOrder = async (orderId: string): Promise<OwnerOrder> => {
+  const data = await authenticatedRequest(`/dashboard/orders/${orderId}`)
+  return data.order
+}
