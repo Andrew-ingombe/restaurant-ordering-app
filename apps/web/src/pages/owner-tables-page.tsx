@@ -2,15 +2,22 @@ import { useEffect, useState } from "react"
 import type { FormEvent } from "react"
 import { useNavigate } from "react-router-dom"
 import { QRCodeSVG } from "qrcode.react"
+import {
+  Check,
+  Copy,
+  Download,
+  LayoutDashboard,
+  Pencil,
+  Plus,
+  QrCode,
+  Save,
+  Users,
+  UtensilsCrossed,
+  X,
+} from "lucide-react"
 
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@workspace/ui/components/card"
 import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
 
@@ -19,12 +26,15 @@ import type { RestaurantTable } from "../lib/api"
 
 export function OwnerTablesPage() {
   const navigate = useNavigate()
+
   const [tables, setTables] = useState<RestaurantTable[]>([])
   const [name, setName] = useState("")
   const [editingId, setEditingId] = useState("")
   const [editingName, setEditingName] = useState("")
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
+  const [updatingId, setUpdatingId] = useState("")
+  const [copiedId, setCopiedId] = useState("")
   const [error, setError] = useState("")
 
   useEffect(() => {
@@ -61,6 +71,9 @@ export function OwnerTablesPage() {
   }
 
   const saveName = async (table: RestaurantTable) => {
+    setUpdatingId(table.id)
+    setError("")
+
     try {
       const updated = await updateTable(table.id, {
         name: editingName,
@@ -78,10 +91,15 @@ export function OwnerTablesPage() {
           ? requestError.message
           : "Could not rename table"
       )
+    } finally {
+      setUpdatingId("")
     }
   }
 
   const toggleTable = async (table: RestaurantTable) => {
+    setUpdatingId(table.id)
+    setError("")
+
     try {
       const updated = await updateTable(table.id, {
         active: !table.active,
@@ -96,6 +114,21 @@ export function OwnerTablesPage() {
           ? requestError.message
           : "Could not update table"
       )
+    } finally {
+      setUpdatingId("")
+    }
+  }
+
+  const copyMenuLink = async (table: RestaurantTable) => {
+    try {
+      await navigator.clipboard.writeText(table.menuUrl)
+      setCopiedId(table.id)
+
+      window.setTimeout(() => {
+        setCopiedId("")
+      }, 2000)
+    } catch {
+      setError("Could not copy the menu link")
     }
   }
 
@@ -118,131 +151,355 @@ export function OwnerTablesPage() {
     URL.revokeObjectURL(url)
   }
 
+  const navigation = [
+    {
+      label: "Dashboard",
+      icon: LayoutDashboard,
+      action: () => navigate("/owner"),
+    },
+    {
+      label: "Menu",
+      icon: UtensilsCrossed,
+      action: () => navigate("/owner/menu"),
+    },
+    {
+      label: "Staff",
+      icon: Users,
+      action: () => navigate("/owner/staff"),
+    },
+    {
+      label: "Tables & QR",
+      icon: QrCode,
+      active: true,
+      action: () => navigate("/owner/tables"),
+    },
+  ]
+
+  const activeTables = tables.filter((table) => table.active).length
+
   return (
-    <main className="min-h-svh bg-muted/40">
-      <header className="border-b bg-background">
-        <div className="mx-auto flex max-w-6xl items-center justify-between p-4">
-          <div>
-            <h1 className="text-xl font-semibold">Restaurant Tables</h1>
-            <p className="text-sm text-muted-foreground">
-              Create table QR codes for customer ordering.
-            </p>
+    <main className="min-h-svh">
+      <div className="mx-auto flex min-h-[calc(100svh-24px)] max-w-[1600px] overflow-hidden rounded-[28px] bg-[#f5f5f6] md:min-h-[calc(100svh-40px)]">
+        <aside className="hidden w-64 shrink-0 flex-col border-r border-black/5 bg-white p-5 lg:flex">
+          <div className="flex items-center gap-3 px-2 py-3">
+            <div className="flex size-10 items-center justify-center rounded-xl bg-[#ef1428] text-white">
+              <UtensilsCrossed className="size-5" />
+            </div>
+
+            <div>
+              <p className="text-lg font-black tracking-tight">FOODLY</p>
+              <p className="text-xs text-neutral-400">Restaurant admin</p>
+            </div>
           </div>
 
-          <Button variant="outline" onClick={() => navigate("/owner")}>
-            Back to dashboard
-          </Button>
-        </div>
-      </header>
+          <nav className="mt-10 space-y-2">
+            {navigation.map((item) => {
+              const Icon = item.icon
 
-      <div className="mx-auto max-w-6xl space-y-6 p-4 md:p-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Add table</CardTitle>
-          </CardHeader>
+              return (
+                <button
+                  key={item.label}
+                  type="button"
+                  onClick={item.action}
+                  className={`flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-medium transition ${
+                    item.active
+                      ? "bg-neutral-950 text-white"
+                      : "text-neutral-500 hover:bg-neutral-100 hover:text-neutral-950"
+                  }`}
+                >
+                  <Icon className="size-4" />
+                  {item.label}
+                </button>
+              )
+            })}
+          </nav>
 
-          <CardContent>
-            <form
-              className="flex max-w-md items-end gap-3"
-              onSubmit={handleCreate}
-            >
-              <div className="flex-1 space-y-2">
-                <Label htmlFor="table-name">Table name or number</Label>
-                <Input
-                  id="table-name"
-                  value={name}
-                  onChange={(event) => setName(event.target.value)}
-                  placeholder="Table 1"
-                  required
-                />
+          <div className="mt-auto rounded-2xl bg-[#fff0f1] p-4">
+            <div className="flex size-10 items-center justify-center rounded-full bg-[#ef1428] text-white">
+              <QrCode className="size-4" />
+            </div>
+
+            <p className="mt-3 font-bold">Customer ordering</p>
+            <p className="mt-1 text-xs leading-5 text-neutral-500">
+              Print each table's QR code so customers can browse the menu and
+              submit selections.
+            </p>
+          </div>
+        </aside>
+
+        <div className="min-w-0 flex-1">
+          <header className="border-b border-black/5 bg-white/80 px-4 py-4 backdrop-blur md:px-7">
+            <div>
+              <p className="text-xs font-semibold tracking-[0.2em] text-[#ef1428] uppercase">
+                Customer ordering
+              </p>
+              <h1 className="mt-1 text-2xl font-black tracking-tight md:text-3xl">
+                Tables and QR codes
+              </h1>
+              <p className="mt-1 text-sm text-neutral-400">
+                Create secure menu links for every restaurant table.
+              </p>
+            </div>
+
+            <div className="mt-4 flex gap-2 overflow-x-auto pb-1 lg:hidden">
+              {navigation.map((item) => {
+                const Icon = item.icon
+
+                return (
+                  <Button
+                    key={item.label}
+                    className="shrink-0 rounded-xl"
+                    variant={item.active ? "default" : "outline"}
+                    onClick={item.action}
+                  >
+                    <Icon className="size-4" />
+                    {item.label}
+                  </Button>
+                )
+              })}
+            </div>
+          </header>
+
+          <div className="space-y-5 p-4 md:p-7">
+            <section className="grid gap-3 sm:grid-cols-3">
+              <div className="rounded-[22px] bg-[#ef1428] p-5 text-white">
+                <p className="text-sm text-white/75">Total tables</p>
+                <p className="mt-5 text-3xl font-black">{tables.length}</p>
               </div>
 
-              <Button disabled={submitting}>
-                {submitting ? "Creating..." : "Create table"}
-              </Button>
-            </form>
+              <div className="rounded-[22px] bg-white p-5">
+                <p className="text-sm text-neutral-500">Active tables</p>
+                <p className="mt-5 text-3xl font-black">{activeTables}</p>
+              </div>
 
-            {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
-          </CardContent>
-        </Card>
+              <div className="rounded-[22px] bg-white p-5">
+                <p className="text-sm text-neutral-500">Inactive tables</p>
+                <p className="mt-5 text-3xl font-black">
+                  {tables.length - activeTables}
+                </p>
+              </div>
+            </section>
 
-        {loading ? (
-          <p className="text-sm text-muted-foreground">Loading tables...</p>
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {tables.map((table) => (
-              <Card key={table.id}>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle>{table.name}</CardTitle>
-                    <Badge variant={table.active ? "default" : "secondary"}>
-                      {table.active ? "Active" : "Inactive"}
-                    </Badge>
+            {error && (
+              <p className="rounded-2xl bg-red-50 p-4 text-sm text-red-700">
+                {error}
+              </p>
+            )}
+
+            <section className="rounded-[24px] bg-white p-5">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <div className="flex size-11 items-center justify-center rounded-full bg-neutral-950 text-white">
+                    <Plus className="size-5" />
                   </div>
-                </CardHeader>
 
-                <CardContent className="space-y-4">
-                  <div className="flex justify-center rounded-lg bg-white p-4">
-                    <QRCodeSVG
-                      id={`qr-${table.id}`}
-                      value={table.menuUrl}
-                      size={190}
-                      level="H"
+                  <h2 className="mt-4 text-xl font-black">
+                    Add restaurant table
+                  </h2>
+                  <p className="mt-1 text-sm text-neutral-400">
+                    A secure customer-menu QR code is generated automatically.
+                  </p>
+                </div>
+
+                <form
+                  className="flex w-full max-w-xl flex-col gap-3 sm:flex-row sm:items-end"
+                  onSubmit={handleCreate}
+                >
+                  <div className="flex-1 space-y-2">
+                    <Label htmlFor="table-name">Table name or number</Label>
+                    <Input
+                      id="table-name"
+                      className="h-12 rounded-xl border-0 bg-neutral-100 px-4 shadow-none"
+                      value={name}
+                      onChange={(event) => setName(event.target.value)}
+                      placeholder="e.g. Table 6"
+                      required
                     />
                   </div>
 
-                  {editingId === table.id ? (
-                    <div className="flex gap-2">
-                      <Input
-                        value={editingName}
-                        onChange={(event) => setEditingName(event.target.value)}
-                      />
+                  <Button
+                    className="h-12 rounded-xl bg-[#ef1428] px-6 text-white hover:bg-[#d91023]"
+                    disabled={submitting}
+                  >
+                    {submitting ? "Creating..." : "Create table"}
+                  </Button>
+                </form>
+              </div>
+            </section>
 
-                      <Button onClick={() => void saveName(table)}>Save</Button>
+            {loading ? (
+              <div className="rounded-[24px] bg-white p-12 text-center text-sm text-neutral-400">
+                Loading tables...
+              </div>
+            ) : (
+              <section className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
+                {tables.map((table) => (
+                  <article
+                    key={table.id}
+                    className="overflow-hidden rounded-[24px] bg-white"
+                  >
+                    <div
+                      className={`h-2 ${
+                        table.active ? "bg-[#ef1428]" : "bg-neutral-300"
+                      }`}
+                    />
+
+                    <div className="p-5">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-xs font-semibold tracking-[0.18em] text-neutral-400 uppercase">
+                            Dine-in table
+                          </p>
+                          <h2 className="mt-1 text-xl font-black">
+                            {table.name}
+                          </h2>
+                        </div>
+
+                        <Badge
+                          className={`rounded-full border-0 ${
+                            table.active
+                              ? "bg-emerald-50 text-emerald-700"
+                              : "bg-neutral-100 text-neutral-500"
+                          }`}
+                        >
+                          {table.active && <Check className="size-3" />}
+                          {table.active ? "Active" : "Inactive"}
+                        </Badge>
+                      </div>
+
+                      <div className="mt-5 flex justify-center rounded-[20px] border border-dashed border-neutral-200 bg-[#fafafa] p-5">
+                        <div className="rounded-2xl bg-white p-3 shadow-sm">
+                          <QRCodeSVG
+                            id={`qr-${table.id}`}
+                            value={table.menuUrl}
+                            size={190}
+                            level="H"
+                            fgColor="#171717"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="mt-4 rounded-xl bg-neutral-100 px-3 py-2">
+                        <p className="truncate text-xs text-neutral-500">
+                          {table.menuUrl}
+                        </p>
+                      </div>
+
+                      {editingId === table.id ? (
+                        <div className="mt-4 flex gap-2">
+                          <Input
+                            className="h-11 rounded-xl border-0 bg-neutral-100 shadow-none"
+                            value={editingName}
+                            onChange={(event) =>
+                              setEditingName(event.target.value)
+                            }
+                            autoFocus
+                          />
+
+                          <Button
+                            className="size-11 rounded-xl bg-neutral-950 text-white hover:bg-neutral-800"
+                            size="icon"
+                            disabled={
+                              updatingId === table.id || !editingName.trim()
+                            }
+                            onClick={() => void saveName(table)}
+                          >
+                            <Save className="size-4" />
+                          </Button>
+
+                          <Button
+                            className="size-11 rounded-xl"
+                            size="icon"
+                            variant="outline"
+                            onClick={() => {
+                              setEditingId("")
+                              setEditingName("")
+                            }}
+                          >
+                            <X className="size-4" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="mt-4 grid grid-cols-2 gap-2">
+                          <Button
+                            className="rounded-xl"
+                            variant="outline"
+                            onClick={() => {
+                              setEditingId(table.id)
+                              setEditingName(table.name)
+                            }}
+                          >
+                            <Pencil className="size-4" />
+                            Rename
+                          </Button>
+
+                          <Button
+                            className="rounded-xl"
+                            variant="outline"
+                            onClick={() => void copyMenuLink(table)}
+                          >
+                            {copiedId === table.id ? (
+                              <>
+                                <Check className="size-4 text-emerald-600" />
+                                Copied
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="size-4" />
+                                Copy link
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      )}
+
+                      <div className="mt-2 grid grid-cols-2 gap-2">
+                        <Button
+                          className="rounded-xl"
+                          variant="outline"
+                          onClick={() => downloadQrCode(table)}
+                        >
+                          <Download className="size-4" />
+                          Download QR
+                        </Button>
+
+                        <Button
+                          className={`rounded-xl ${
+                            !table.active
+                              ? "bg-neutral-950 text-white hover:bg-neutral-800"
+                              : ""
+                          }`}
+                          variant={table.active ? "outline" : "default"}
+                          disabled={updatingId === table.id}
+                          onClick={() => void toggleTable(table)}
+                        >
+                          {updatingId === table.id
+                            ? "Updating..."
+                            : table.active
+                              ? "Deactivate"
+                              : "Activate"}
+                        </Button>
+                      </div>
                     </div>
-                  ) : (
-                    <Button
-                      className="w-full"
-                      variant="outline"
-                      onClick={() => {
-                        setEditingId(table.id)
-                        setEditingName(table.name)
-                      }}
-                    >
-                      Rename
-                    </Button>
-                  )}
+                  </article>
+                ))}
 
-                  <Button
-                    className="w-full"
-                    variant="outline"
-                    onClick={() =>
-                      void navigator.clipboard.writeText(table.menuUrl)
-                    }
-                  >
-                    Copy menu link
-                  </Button>
+                {tables.length === 0 && (
+                  <div className="rounded-[24px] border border-dashed border-neutral-300 bg-white p-12 text-center md:col-span-2 2xl:col-span-3">
+                    <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-neutral-100">
+                      <QrCode className="size-5 text-neutral-500" />
+                    </div>
 
-                  <Button
-                    className="w-full"
-                    variant="outline"
-                    onClick={() => downloadQrCode(table)}
-                  >
-                    Download QR code
-                  </Button>
-
-                  <Button
-                    className="w-full"
-                    variant={table.active ? "outline" : "default"}
-                    onClick={() => void toggleTable(table)}
-                  >
-                    {table.active ? "Deactivate" : "Activate"}
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
+                    <p className="mt-4 font-bold">No restaurant tables</p>
+                    <p className="mt-1 text-sm text-neutral-400">
+                      Create your first table to generate its QR code.
+                    </p>
+                  </div>
+                )}
+              </section>
+            )}
           </div>
-        )}
+        </div>
       </div>
     </main>
   )

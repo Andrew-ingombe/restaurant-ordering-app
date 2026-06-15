@@ -1,16 +1,23 @@
 import { useEffect, useState } from "react"
 import type { FormEvent } from "react"
 import { useNavigate } from "react-router-dom"
+import {
+  ArrowLeft,
+  Check,
+  ChevronRight,
+  CircleOff,
+  LayoutDashboard,
+  ListPlus,
+  Pencil,
+  Plus,
+  QrCode,
+  Tags,
+  Users,
+  UtensilsCrossed,
+} from "lucide-react"
 
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@workspace/ui/components/card"
 import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
 import { Textarea } from "@workspace/ui/components/textarea"
@@ -100,6 +107,7 @@ export function OwnerMenuPage() {
     setEditingId(category._id)
     setName(category.name)
     setDescription(category.description)
+    window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
   const toggleCategory = async (category: MenuCategory) => {
@@ -122,148 +130,336 @@ export function OwnerMenuPage() {
     }
   }
 
+  const navigation = [
+    {
+      label: "Dashboard",
+      icon: LayoutDashboard,
+      action: () => navigate("/owner"),
+    },
+    {
+      label: "Menu",
+      icon: UtensilsCrossed,
+      active: true,
+      action: () => navigate("/owner/menu"),
+    },
+    {
+      label: "Staff",
+      icon: Users,
+      action: () => navigate("/owner/staff"),
+    },
+    {
+      label: "Tables & QR",
+      icon: QrCode,
+      action: () => navigate("/owner/tables"),
+    },
+  ]
+
+  const activeCount = categories.filter((category) => category.active).length
+
   return (
-    <main className="min-h-svh bg-muted/40">
-      <header className="border-b bg-background">
-        <div className="mx-auto flex max-w-6xl items-center justify-between p-4">
-          <div>
-            <h1 className="text-xl font-semibold">Menu Management</h1>
-            <p className="text-sm text-muted-foreground">
-              Manage categories and menu items.
-            </p>
+    <main className="min-h-svh">
+      <div className="mx-auto flex min-h-[calc(100svh-24px)] max-w-[1600px] overflow-hidden rounded-[28px] bg-[#f5f5f6] md:min-h-[calc(100svh-40px)]">
+        <aside className="hidden w-64 shrink-0 flex-col border-r border-black/5 bg-white p-5 lg:flex">
+          <div className="flex items-center gap-3 px-2 py-3">
+            <div className="flex size-10 items-center justify-center rounded-xl bg-[#ef1428] text-white">
+              <UtensilsCrossed className="size-5" />
+            </div>
+
+            <div>
+              <p className="text-lg font-black tracking-tight">FOODLY</p>
+              <p className="text-xs text-neutral-400">Restaurant admin</p>
+            </div>
           </div>
 
-          <div className="flex gap-2">
-            <Button onClick={() => navigate("/owner/menu/items")}>
+          <nav className="mt-10 space-y-2">
+            {navigation.map((item) => {
+              const Icon = item.icon
+
+              return (
+                <button
+                  key={item.label}
+                  type="button"
+                  onClick={item.action}
+                  className={`flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-medium transition ${
+                    item.active
+                      ? "bg-neutral-950 text-white"
+                      : "text-neutral-500 hover:bg-neutral-100 hover:text-neutral-950"
+                  }`}
+                >
+                  <Icon className="size-4" />
+                  {item.label}
+                </button>
+              )
+            })}
+          </nav>
+
+          <div className="mt-auto rounded-2xl bg-[#fff0f1] p-4">
+            <div className="flex size-10 items-center justify-center rounded-full bg-[#ef1428] text-white">
+              <ListPlus className="size-4" />
+            </div>
+
+            <p className="mt-3 font-bold">Build your menu</p>
+            <p className="mt-1 text-xs leading-5 text-neutral-500">
+              Organize dishes into categories before adding menu items.
+            </p>
+
+            <Button
+              className="mt-4 w-full rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
+              onClick={() => navigate("/owner/menu/items")}
+            >
               Manage items
             </Button>
-
-            <Button variant="outline" onClick={() => navigate("/owner")}>
-              Back to dashboard
-            </Button>
           </div>
-        </div>
-      </header>
+        </aside>
 
-      <div className="mx-auto grid max-w-6xl gap-6 p-4 md:p-6 lg:grid-cols-[360px_1fr]">
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              {editingId ? "Edit category" : "Add category"}
-            </CardTitle>
-            <CardDescription>
-              Group menu items into sections such as meals and drinks.
-            </CardDescription>
-          </CardHeader>
-
-          <CardContent>
-            <form className="space-y-4" onSubmit={handleSubmit}>
-              <div className="space-y-2">
-                <Label htmlFor="category-name">Name</Label>
-                <Input
-                  id="category-name"
-                  value={name}
-                  onChange={(event) => setName(event.target.value)}
-                  required
-                  minLength={2}
-                />
+        <div className="min-w-0 flex-1">
+          <header className="border-b border-black/5 bg-white/80 px-4 py-4 backdrop-blur md:px-7">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold tracking-[0.2em] text-[#ef1428] uppercase">
+                  Menu setup
+                </p>
+                <h1 className="mt-1 text-2xl font-black tracking-tight md:text-3xl">
+                  Menu categories
+                </h1>
+                <p className="mt-1 text-sm text-neutral-400">
+                  Organize your dishes into clear sections.
+                </p>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="category-description">Description</Label>
-                <Textarea
-                  id="category-description"
-                  value={description}
-                  onChange={(event) => setDescription(event.target.value)}
-                />
-              </div>
-
-              {error && <p className="text-sm text-destructive">{error}</p>}
-
-              <Button className="w-full" disabled={submitting}>
-                {submitting
-                  ? "Saving..."
-                  : editingId
-                    ? "Update category"
-                    : "Create category"}
-              </Button>
-
-              {editingId && (
+              <div className="flex gap-2">
                 <Button
-                  className="w-full"
-                  type="button"
-                  variant="outline"
-                  onClick={resetForm}
+                  className="h-11 rounded-xl bg-[#ef1428] px-5 text-white hover:bg-[#d91023]"
+                  onClick={() => navigate("/owner/menu/items")}
                 >
-                  Cancel editing
+                  <UtensilsCrossed className="size-4" />
+                  Manage items
                 </Button>
-              )}
-            </form>
-          </CardContent>
-        </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Categories</CardTitle>
-            <CardDescription>
-              Inactive categories are hidden from the public menu.
-            </CardDescription>
-          </CardHeader>
+                <Button
+                  className="size-11 rounded-xl"
+                  size="icon"
+                  variant="outline"
+                  onClick={() => navigate("/owner")}
+                >
+                  <ArrowLeft className="size-4" />
+                </Button>
+              </div>
+            </div>
 
-          <CardContent className="space-y-3">
-            {loading && (
-              <p className="text-sm text-muted-foreground">
-                Loading categories...
+            <div className="mt-4 flex gap-2 overflow-x-auto pb-1 lg:hidden">
+              {navigation.map((item) => {
+                const Icon = item.icon
+
+                return (
+                  <Button
+                    key={item.label}
+                    className="shrink-0 rounded-xl"
+                    variant={item.active ? "default" : "outline"}
+                    onClick={item.action}
+                  >
+                    <Icon className="size-4" />
+                    {item.label}
+                  </Button>
+                )
+              })}
+            </div>
+          </header>
+
+          <div className="grid gap-5 p-4 md:p-7 xl:grid-cols-[380px_1fr]">
+            <section className="self-start rounded-[24px] bg-white p-5 xl:sticky xl:top-7">
+              <div className="flex size-11 items-center justify-center rounded-full bg-neutral-950 text-white">
+                {editingId ? (
+                  <Pencil className="size-4" />
+                ) : (
+                  <Plus className="size-5" />
+                )}
+              </div>
+
+              <h2 className="mt-5 text-xl font-black">
+                {editingId ? "Edit category" : "Add category"}
+              </h2>
+              <p className="mt-1 text-sm leading-6 text-neutral-400">
+                Group related menu items into sections such as main meals,
+                drinks, and desserts.
               </p>
-            )}
 
-            {!loading && categories.length === 0 && (
-              <p className="text-sm text-muted-foreground">
-                No categories have been created.
-              </p>
-            )}
+              <form className="mt-6 space-y-5" onSubmit={handleSubmit}>
+                <div className="space-y-2">
+                  <Label htmlFor="category-name">Category name</Label>
+                  <Input
+                    id="category-name"
+                    className="h-12 rounded-xl border-0 bg-neutral-100 px-4 shadow-none"
+                    value={name}
+                    onChange={(event) => setName(event.target.value)}
+                    placeholder="e.g. Main Meals"
+                    required
+                    minLength={2}
+                  />
+                </div>
 
-            {categories.map((category) => (
-              <div
-                key={category._id}
-                className="flex items-center justify-between gap-4 rounded-lg border p-4"
-              >
+                <div className="space-y-2">
+                  <Label htmlFor="category-description">Description</Label>
+                  <Textarea
+                    id="category-description"
+                    className="min-h-28 resize-none rounded-xl border-0 bg-neutral-100 px-4 py-3 shadow-none"
+                    value={description}
+                    onChange={(event) => setDescription(event.target.value)}
+                    placeholder="Briefly describe this category"
+                  />
+                </div>
+
+                {error && (
+                  <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700">
+                    {error}
+                  </p>
+                )}
+
+                <Button
+                  className="h-12 w-full rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
+                  disabled={submitting}
+                >
+                  {submitting
+                    ? "Saving..."
+                    : editingId
+                      ? "Update category"
+                      : "Create category"}
+                </Button>
+
+                {editingId && (
+                  <Button
+                    className="h-12 w-full rounded-xl"
+                    type="button"
+                    variant="outline"
+                    onClick={resetForm}
+                  >
+                    Cancel editing
+                  </Button>
+                )}
+              </form>
+            </section>
+
+            <section className="min-w-0 rounded-[24px] bg-white p-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <div className="flex items-center gap-2">
-                    <p className="font-medium">{category.name}</p>
-                    <Badge variant={category.active ? "default" : "secondary"}>
-                      {category.active ? "Active" : "Inactive"}
-                    </Badge>
-                  </div>
-
-                  {category.description && (
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      {category.description}
-                    </p>
-                  )}
+                  <h2 className="text-xl font-black">Categories</h2>
+                  <p className="mt-1 text-sm text-neutral-400">
+                    Inactive categories are hidden from customers.
+                  </p>
                 </div>
 
                 <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => startEditing(category)}
-                  >
-                    Edit
-                  </Button>
-
-                  <Button
-                    size="sm"
-                    variant={category.active ? "outline" : "default"}
-                    onClick={() => toggleCategory(category)}
-                  >
-                    {category.active ? "Deactivate" : "Activate"}
-                  </Button>
+                  <Badge variant="secondary" className="rounded-full px-3 py-1">
+                    {categories.length} total
+                  </Badge>
+                  <Badge className="rounded-full bg-[#ef1428] px-3 py-1 text-white">
+                    {activeCount} active
+                  </Badge>
                 </div>
               </div>
-            ))}
-          </CardContent>
-        </Card>
+
+              {loading && (
+                <div className="mt-6 rounded-2xl bg-neutral-50 p-10 text-center text-sm text-neutral-400">
+                  Loading categories...
+                </div>
+              )}
+
+              {!loading && categories.length === 0 && (
+                <div className="mt-6 rounded-2xl border border-dashed border-neutral-200 p-12 text-center">
+                  <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-neutral-100">
+                    <Tags className="size-5 text-neutral-500" />
+                  </div>
+                  <p className="mt-4 font-bold">No categories yet</p>
+                  <p className="mt-1 text-sm text-neutral-400">
+                    Create your first category using the form.
+                  </p>
+                </div>
+              )}
+
+              <div className="mt-6 grid gap-3 md:grid-cols-2">
+                {categories.map((category, index) => (
+                  <article
+                    key={category._id}
+                    className={`group rounded-[20px] border p-4 transition ${
+                      editingId === category._id
+                        ? "border-[#ef1428] bg-[#fff8f8]"
+                        : "border-neutral-100 hover:border-neutral-200 hover:bg-neutral-50"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div
+                        className={`flex size-11 shrink-0 items-center justify-center rounded-full font-black ${
+                          category.active
+                            ? "bg-neutral-950 text-white"
+                            : "bg-neutral-100 text-neutral-400"
+                        }`}
+                      >
+                        {String(index + 1).padStart(2, "0")}
+                      </div>
+
+                      <Badge
+                        className={`rounded-full border-0 ${
+                          category.active
+                            ? "bg-emerald-50 text-emerald-700"
+                            : "bg-neutral-100 text-neutral-500"
+                        }`}
+                      >
+                        {category.active ? (
+                          <Check className="size-3" />
+                        ) : (
+                          <CircleOff className="size-3" />
+                        )}
+                        {category.active ? "Active" : "Inactive"}
+                      </Badge>
+                    </div>
+
+                    <div className="mt-5">
+                      <h3 className="text-lg font-black">{category.name}</h3>
+                      <p className="mt-2 min-h-10 text-sm leading-5 text-neutral-400">
+                        {category.description ||
+                          "No category description added."}
+                      </p>
+                    </div>
+
+                    <div className="mt-5 flex gap-2 border-t border-neutral-100 pt-4">
+                      <Button
+                        className="flex-1 rounded-xl"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => startEditing(category)}
+                      >
+                        <Pencil className="size-3.5" />
+                        Edit
+                      </Button>
+
+                      <Button
+                        className={`flex-1 rounded-xl ${
+                          category.active
+                            ? ""
+                            : "bg-neutral-950 text-white hover:bg-neutral-800"
+                        }`}
+                        size="sm"
+                        variant={category.active ? "outline" : "default"}
+                        onClick={() => void toggleCategory(category)}
+                      >
+                        {category.active ? "Deactivate" : "Activate"}
+                      </Button>
+                    </div>
+
+                    <button
+                      type="button"
+                      className="mt-3 flex w-full items-center justify-between rounded-xl bg-neutral-50 px-3 py-2 text-xs font-medium text-neutral-500 transition hover:bg-neutral-100"
+                      onClick={() => navigate("/owner/menu/items")}
+                    >
+                      View menu items
+                      <ChevronRight className="size-3.5" />
+                    </button>
+                  </article>
+                ))}
+              </div>
+            </section>
+          </div>
+        </div>
       </div>
     </main>
   )

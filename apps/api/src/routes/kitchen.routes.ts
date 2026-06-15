@@ -118,11 +118,11 @@ kitchenRouter.patch(
       return
     }
 
-    getSocketServer()
-      .to(`user:${waiterId}`)
-      .emit("order:updated", order.toObject())
+    const orderPayload = order.toObject()
 
-    getSocketServer().to("role:kitchen").emit("order:updated", order.toObject())
+    getSocketServer().to(`user:${waiterId}`).emit("order:updated", orderPayload)
+    getSocketServer().to("role:kitchen").emit("order:updated", orderPayload)
+    getSocketServer().to("role:owner").emit("order:updated", orderPayload)
 
     response.json({
       message: `Order marked as ${result.data.status}`,

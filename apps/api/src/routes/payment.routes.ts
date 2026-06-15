@@ -273,9 +273,10 @@ paymentRouter.post(
 
     await order.populate("waiter", "name")
 
-    getSocketServer()
-      .to("role:kitchen")
-      .emit("order:submitted", order.toObject())
+    const orderPayload = order.toObject()
+
+    getSocketServer().to("role:kitchen").emit("order:submitted", orderPayload)
+    getSocketServer().to("role:owner").emit("order:updated", orderPayload)
 
     response.json({
       message: "Payment verified successfully",

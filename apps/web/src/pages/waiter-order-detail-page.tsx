@@ -1,34 +1,112 @@
 import { useEffect, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
+import {
+  ArrowLeft,
+  Check,
+  CheckCircle2,
+  ChefHat,
+  Clock3,
+  CreditCard,
+  Mail,
+  MapPin,
+  PackageCheck,
+  Phone,
+  ReceiptText,
+  RefreshCw,
+  UserRound,
+  UtensilsCrossed,
+  WalletCards,
+} from "lucide-react"
 
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@workspace/ui/components/card"
 import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
-import { Separator } from "@workspace/ui/components/separator"
-
-import { getSocket } from "../lib/socket"
 
 import {
   getMyOrder,
   initializePayment,
-  verifyPayment,
   updateWaiterOrderStatus,
+  verifyPayment,
 } from "../lib/api"
 import type { DraftOrder } from "../lib/api"
 import { loadLencoScript } from "../lib/lenco"
+import { getSocket } from "../lib/socket"
 
 const formatPrice = (price: number) =>
   new Intl.NumberFormat("en-ZM", {
     style: "currency",
     currency: "ZMW",
   }).format(price / 100)
+
+const formatStatus = (status: string) => status.replaceAll("_", " ")
+
+const statusConfig: Record<
+  string,
+  {
+    className: string
+    accent: string
+    icon: typeof Clock3
+    description: string
+  }
+> = {
+  draft: {
+    className: "bg-neutral-100 text-neutral-700",
+    accent: "bg-neutral-950",
+    icon: ReceiptText,
+    description: "Order is ready for payment",
+  },
+  awaiting_payment: {
+    className: "bg-amber-50 text-amber-700",
+    accent: "bg-amber-400",
+    icon: WalletCards,
+    description: "Waiting for payment confirmation",
+  },
+  submitted: {
+    className: "bg-blue-50 text-blue-700",
+    accent: "bg-blue-500",
+    icon: ReceiptText,
+    description: "Order has been sent to the kitchen",
+  },
+  accepted: {
+    className: "bg-violet-50 text-violet-700",
+    accent: "bg-violet-500",
+    icon: CheckCircle2,
+    description: "Kitchen has accepted the order",
+  },
+  preparing: {
+    className: "bg-amber-50 text-amber-700",
+    accent: "bg-amber-400",
+    icon: ChefHat,
+    description: "Kitchen is preparing the order",
+  },
+  ready: {
+    className: "bg-emerald-50 text-emerald-700",
+    accent: "bg-emerald-500",
+    icon: PackageCheck,
+    description: "Order is ready to serve",
+  },
+  served: {
+    className: "bg-cyan-50 text-cyan-700",
+    accent: "bg-cyan-500",
+    icon: UtensilsCrossed,
+    description: "Order has been served",
+  },
+  completed: {
+    className: "bg-neutral-950 text-white",
+    accent: "bg-neutral-950",
+    icon: CheckCircle2,
+    description: "Order has been completed",
+  },
+}
+
+const getStatusConfig = (status: string) =>
+  statusConfig[status] || {
+    className: "bg-neutral-100 text-neutral-700",
+    accent: "bg-neutral-400",
+    icon: Clock3,
+    description: "Order status updated",
+  }
 
 export function WaiterOrderDetailPage() {
   const navigate = useNavigate()
@@ -194,14 +272,32 @@ export function WaiterOrderDetailPage() {
 
   if (error && !order) {
     return (
-      <main className="p-6">
-        <p className="text-destructive">{error}</p>
+      <main className="flex min-h-svh items-center justify-center bg-[#252323] p-4">
+        <div className="w-full max-w-md rounded-[24px] bg-white p-8 text-center">
+          <p className="text-red-700">{error}</p>
+
+          <Button
+            className="mt-5 rounded-xl"
+            variant="outline"
+            onClick={() => navigate("/waiter/orders")}
+          >
+            <ArrowLeft className="size-4" />
+            Back to orders
+          </Button>
+        </div>
       </main>
     )
   }
 
   if (!order) {
-    return <main className="p-6 text-muted-foreground">Loading order...</main>
+    return (
+      <main className="flex min-h-svh items-center justify-center">
+        <div className="text-center text-white">
+          <RefreshCw className="mx-auto size-6 animate-spin" />
+          <p className="mt-3 text-sm text-white/60">Loading order...</p>
+        </div>
+      </main>
+    )
   }
 
   const canPay = ["draft", "awaiting_payment"].includes(order.status)
@@ -213,129 +309,312 @@ export function WaiterOrderDetailPage() {
         ? "completed"
         : null
 
+  const currentStatus = getStatusConfig(order.status)
+  const StatusIcon = currentStatus.icon
+
+  const itemCount = order.items.reduce(
+    (total, item) => total + item.quantity,
+    0
+  )
+
   return (
-    <main className="min-h-svh bg-muted/40 p-4 md:p-6">
-      <Card className="mx-auto max-w-2xl">
-        <CardHeader>
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <CardTitle>{order.orderNumber}</CardTitle>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {order.tableName || "Takeaway"}
-              </p>
+    <main className="min-h-svh">
+      <div className="mx-auto min-h-[calc(100svh-24px)] max-w-6xl overflow-hidden rounded-[28px] bg-[#f5f5f6] md:min-h-[calc(100svh-40px)]">
+        <header className="border-b border-black/5 bg-white/90 px-4 py-4 backdrop-blur md:px-7">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <Button
+                className="size-11 rounded-xl"
+                size="icon"
+                variant="outline"
+                onClick={() => navigate("/waiter/orders")}
+              >
+                <ArrowLeft className="size-4" />
+              </Button>
+
+              <div>
+                <p className="text-xs font-semibold tracking-[0.2em] text-[#ef1428] uppercase">
+                  Order details
+                </p>
+
+                <h1 className="text-2xl font-black tracking-tight">
+                  {order.orderNumber}
+                </h1>
+
+                <p className="mt-1 flex items-center gap-1.5 text-sm text-neutral-400">
+                  <MapPin className="size-3.5" />
+                  {order.tableName || "Takeaway"}
+                </p>
+              </div>
             </div>
 
-            <Badge className="capitalize">
-              {order.status.replaceAll("_", " ")}
+            <Badge
+              className={`rounded-full border-0 px-4 py-2 capitalize ${currentStatus.className}`}
+            >
+              <StatusIcon className="size-4" />
+              {formatStatus(order.status)}
             </Badge>
           </div>
-        </CardHeader>
+        </header>
 
-        <CardContent className="space-y-5">
-          <div className="space-y-4">
-            {order.items.map((item) => (
-              <div key={item.menuItem}>
-                <div className="flex justify-between gap-4">
-                  <span>
-                    {item.quantity} × {item.name}
-                  </span>
-                  <span>{formatPrice(item.lineTotal)}</span>
-                </div>
-
-                {item.notes && (
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Note: {item.notes}
+        <div className="grid gap-5 p-4 md:p-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+          <section className="space-y-5">
+            <div className="rounded-[24px] bg-white p-5">
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <p className="text-xs font-semibold tracking-[0.16em] text-[#ef1428] uppercase">
+                    Current progress
                   </p>
-                )}
-              </div>
-            ))}
-          </div>
-
-          <Separator />
-
-          <div className="flex justify-between text-lg font-semibold">
-            <span>Total</span>
-            <span>{formatPrice(order.total)}</span>
-          </div>
-
-          {canPay && (
-            <>
-              <Separator />
-
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="payment-name">Customer name</Label>
-                  <Input
-                    id="payment-name"
-                    value={customerName}
-                    onChange={(event) => setCustomerName(event.target.value)}
-                  />
+                  <h2 className="mt-1 text-xl font-black">
+                    {formatStatus(order.status)}
+                  </h2>
+                  <p className="mt-1 text-sm text-neutral-400">
+                    {currentStatus.description}
+                  </p>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="payment-phone">Phone number</Label>
-                  <Input
-                    id="payment-phone"
-                    type="tel"
-                    value={customerPhone}
-                    onChange={(event) => setCustomerPhone(event.target.value)}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="payment-email">Email address</Label>
-                  <Input
-                    id="payment-email"
-                    type="email"
-                    value={customerEmail}
-                    onChange={(event) => setCustomerEmail(event.target.value)}
-                  />
+                <div
+                  className={`flex size-12 items-center justify-center rounded-full text-white ${currentStatus.accent}`}
+                >
+                  <StatusIcon className="size-5" />
                 </div>
               </div>
-            </>
-          )}
+            </div>
 
-          {error && <p className="text-sm text-destructive">{error}</p>}
+            <div className="rounded-[24px] bg-white p-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-black">Ordered items</h2>
+                  <p className="mt-1 text-sm text-neutral-400">
+                    {itemCount} {itemCount === 1 ? "item" : "items"} in this
+                    order
+                  </p>
+                </div>
 
-          {message && <p className="text-sm text-green-600">{message}</p>}
+                <div className="flex size-11 items-center justify-center rounded-full bg-neutral-950 text-white">
+                  <ReceiptText className="size-5" />
+                </div>
+              </div>
 
-          <div className="flex gap-3">
-            <Button
-              className="flex-1"
-              variant="outline"
-              onClick={() => navigate("/waiter/orders")}
-            >
-              Back to orders
-            </Button>
+              <div className="mt-5 space-y-3">
+                {order.items.map((item, index) => (
+                  <div
+                    key={`${item.menuItem}-${index}`}
+                    className="rounded-2xl border border-neutral-100 p-4"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-neutral-950 font-black text-white">
+                        {item.quantity}
+                      </div>
 
-            {canPay && (
-              <Button
-                className="flex-1"
-                disabled={processing}
-                onClick={handlePayment}
-              >
-                {processing
-                  ? "Processing..."
-                  : `Pay ${formatPrice(order.total)}`}
-              </Button>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex justify-between gap-4">
+                          <div>
+                            <p className="font-bold">{item.name}</p>
+                            <p className="mt-1 text-xs text-neutral-400">
+                              {formatPrice(item.unitPrice)} each
+                            </p>
+                          </div>
+
+                          <p className="shrink-0 font-black text-[#ef1428]">
+                            {formatPrice(item.lineTotal)}
+                          </p>
+                        </div>
+
+                        {item.notes && (
+                          <div className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                            <span className="font-bold">Note:</span>{" "}
+                            {item.notes}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-5 flex items-center justify-between border-t border-neutral-100 pt-5">
+                <span className="font-bold">Order total</span>
+                <span className="text-2xl font-black text-[#ef1428]">
+                  {formatPrice(order.total)}
+                </span>
+              </div>
+            </div>
+          </section>
+
+          <aside className="space-y-5">
+            <div className="rounded-[24px] bg-white p-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold tracking-[0.16em] text-[#ef1428] uppercase">
+                    Customer
+                  </p>
+                  <h2 className="mt-1 text-lg font-black">Contact details</h2>
+                </div>
+
+                <div className="flex size-10 items-center justify-center rounded-full bg-neutral-100">
+                  <UserRound className="size-4" />
+                </div>
+              </div>
+
+              {canPay ? (
+                <div className="mt-5 space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="payment-name">Customer name</Label>
+                    <Input
+                      id="payment-name"
+                      className="h-12 rounded-xl border-0 bg-neutral-100 px-4 shadow-none"
+                      value={customerName}
+                      onChange={(event) => setCustomerName(event.target.value)}
+                      placeholder="Full name"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="payment-phone">Phone number</Label>
+                    <Input
+                      id="payment-phone"
+                      className="h-12 rounded-xl border-0 bg-neutral-100 px-4 shadow-none"
+                      type="tel"
+                      value={customerPhone}
+                      onChange={(event) => setCustomerPhone(event.target.value)}
+                      placeholder="Phone number"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="payment-email">Email address</Label>
+                    <Input
+                      id="payment-email"
+                      className="h-12 rounded-xl border-0 bg-neutral-100 px-4 shadow-none"
+                      type="email"
+                      value={customerEmail}
+                      onChange={(event) => setCustomerEmail(event.target.value)}
+                      placeholder="Email address"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-5 space-y-3">
+                  <div className="flex items-center gap-3 rounded-xl bg-neutral-100 p-3">
+                    <UserRound className="size-4 text-neutral-400" />
+                    <span className="text-sm">
+                      {order.customer.name || "Guest customer"}
+                    </span>
+                  </div>
+
+                  {order.customer.phone && (
+                    <div className="flex items-center gap-3 rounded-xl bg-neutral-100 p-3">
+                      <Phone className="size-4 text-neutral-400" />
+                      <span className="text-sm">{order.customer.phone}</span>
+                    </div>
+                  )}
+
+                  {order.customer.email && (
+                    <div className="flex items-center gap-3 rounded-xl bg-neutral-100 p-3">
+                      <Mail className="size-4 text-neutral-400" />
+                      <span className="truncate text-sm">
+                        {order.customer.email}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-[24px] bg-neutral-950 p-5 text-white">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs tracking-[0.16em] text-white/50 uppercase">
+                    Payment
+                  </p>
+                  <h2 className="mt-1 text-lg font-black capitalize">
+                    {order.paymentStatus}
+                  </h2>
+                </div>
+
+                <div className="flex size-10 items-center justify-center rounded-full bg-white/10">
+                  <CreditCard className="size-4" />
+                </div>
+              </div>
+
+              <div className="mt-5 flex items-end justify-between">
+                <span className="text-sm text-white/50">Amount due</span>
+                <span className="text-2xl font-black">
+                  {formatPrice(order.total)}
+                </span>
+              </div>
+
+              {canPay && (
+                <Button
+                  className="mt-5 h-12 w-full rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
+                  disabled={processing}
+                  onClick={handlePayment}
+                >
+                  {processing ? (
+                    <>
+                      <RefreshCw className="size-4 animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <WalletCards className="size-4" />
+                      Pay {formatPrice(order.total)}
+                    </>
+                  )}
+                </Button>
+              )}
+            </div>
+
+            {error && (
+              <p className="rounded-2xl bg-red-50 p-4 text-sm text-red-700">
+                {error}
+              </p>
+            )}
+
+            {message && (
+              <p className="flex items-start gap-2 rounded-2xl bg-emerald-50 p-4 text-sm text-emerald-700">
+                <Check className="mt-0.5 size-4 shrink-0" />
+                {message}
+              </p>
             )}
 
             {nextWaiterStatus && (
               <Button
-                className="flex-1"
+                className="h-12 w-full rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
                 disabled={updatingStatus}
                 onClick={() => handleStatusChange(nextWaiterStatus)}
               >
-                {updatingStatus
-                  ? "Updating..."
-                  : nextWaiterStatus === "served"
-                    ? "Mark served"
-                    : "Complete order"}
+                {updatingStatus ? (
+                  <>
+                    <RefreshCw className="size-4 animate-spin" />
+                    Updating...
+                  </>
+                ) : nextWaiterStatus === "served" ? (
+                  <>
+                    <UtensilsCrossed className="size-4" />
+                    Mark served
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="size-4" />
+                    Complete order
+                  </>
+                )}
               </Button>
             )}
-          </div>
-        </CardContent>
-      </Card>
+
+            <Button
+              className="h-12 w-full rounded-xl"
+              variant="outline"
+              onClick={() => navigate("/waiter/orders")}
+            >
+              <ArrowLeft className="size-4" />
+              Back to orders
+            </Button>
+          </aside>
+        </div>
+      </div>
     </main>
   )
 }
