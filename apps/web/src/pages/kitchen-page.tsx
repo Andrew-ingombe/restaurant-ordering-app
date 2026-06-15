@@ -18,6 +18,7 @@ import { Button } from "@workspace/ui/components/button"
 import { getKitchenOrders, updateKitchenOrderStatus } from "../lib/api"
 import type { AuthUser, DraftOrder, KitchenStatus } from "../lib/api"
 import { getSocket } from "../lib/socket"
+import { useNavigate } from "react-router-dom"
 
 type KitchenPageProps = {
   user: AuthUser
@@ -222,6 +223,8 @@ export function KitchenPage({ user, onLogout }: KitchenPageProps) {
   const [error, setError] = useState("")
   const [, setClock] = useState(Date.now())
 
+  const navigate = useNavigate()
+
   const loadOrders = async (showRefreshing = false) => {
     if (showRefreshing) {
       setRefreshing(true)
@@ -374,6 +377,14 @@ export function KitchenPage({ user, onLogout }: KitchenPageProps) {
                   className={`size-4 ${refreshing ? "animate-spin" : ""}`}
                 />
                 Refresh
+              </Button>
+
+              <Button
+                className="h-11 rounded-xl"
+                variant="outline"
+                onClick={() => navigate("/account/password")}
+              >
+                Change password
               </Button>
 
               <Button

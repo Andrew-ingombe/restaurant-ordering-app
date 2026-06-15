@@ -29,6 +29,7 @@ import { Textarea } from "@workspace/ui/components/textarea"
 
 import { createDraftOrder, getPublicMenu } from "../lib/api"
 import type { AuthUser, MenuCategory, PublicMenuItem } from "../lib/api"
+import { useNavigate } from "react-router-dom"
 
 type CartItem = {
   item: PublicMenuItem
@@ -59,6 +60,8 @@ export function WaiterPage({ user, onLogout }: WaiterPageProps) {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
+
+  const navigate = useNavigate()
 
   useEffect(() => {
     void getPublicMenu()
@@ -224,6 +227,14 @@ export function WaiterPage({ user, onLogout }: WaiterPageProps) {
               >
                 <ClipboardList className="size-4" />
                 My orders
+              </Button>
+
+              <Button
+                className="h-11 rounded-xl"
+                variant="outline"
+                onClick={() => navigate("/account/password")}
+              >
+                Change password
               </Button>
 
               <Button

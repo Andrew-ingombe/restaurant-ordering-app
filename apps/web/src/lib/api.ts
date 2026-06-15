@@ -550,3 +550,13 @@ export const getCurrentUser = async (): Promise<AuthUser> => {
   const data = await authenticatedRequest("/auth/me")
   return data.user
 }
+
+export const changePassword = async (details: {
+  currentPassword: string
+  newPassword: string
+}): Promise<{ message: string }> => {
+  return authenticatedRequest("/auth/password", {
+    method: "PATCH",
+    body: JSON.stringify(details),
+  })
+}

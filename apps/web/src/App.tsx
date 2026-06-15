@@ -29,6 +29,7 @@ import { CustomerMenuPage } from "./pages/customer-menu-page"
 import { WaiterRequestsPage } from "./pages/waiter-requests-page"
 import { WaiterEditOrderPage } from "./pages/waiter-edit-order-page"
 import { getCurrentUser } from "./lib/api"
+import { ChangePasswordPage } from "./pages/change-password-page"
 
 import {
   ArrowRight,
@@ -442,6 +443,17 @@ function AppRoutes() {
             <WaiterEditOrderPage />
           ) : (
             <Navigate to={user ? rolePath(user.role) : "/login"} replace />
+          )
+        }
+      />
+
+      <Route
+        path="/account/password"
+        element={
+          user ? (
+            <ChangePasswordPage user={user} />
+          ) : (
+            <Navigate to="/login" replace />
           )
         }
       />

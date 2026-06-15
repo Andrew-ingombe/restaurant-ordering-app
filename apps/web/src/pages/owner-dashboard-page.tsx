@@ -204,14 +204,24 @@ export function OwnerDashboardPage({
               {user.role} account
             </p>
 
-            <Button
-              className="mt-4 w-full rounded-xl"
-              variant="outline"
-              onClick={onLogout}
-            >
-              <LogOut className="size-4" />
-              Sign out
-            </Button>
+            <div>
+              <Button
+                className="mt-4 w-full rounded-xl"
+                variant="outline"
+                onClick={() => navigate("/account/password")}
+              >
+                Change password
+              </Button>
+
+              <Button
+                className="mt-4 w-full rounded-xl"
+                variant="outline"
+                onClick={onLogout}
+              >
+                <LogOut className="size-4" />
+                Sign out
+              </Button>
+            </div>
           </div>
         </aside>
 

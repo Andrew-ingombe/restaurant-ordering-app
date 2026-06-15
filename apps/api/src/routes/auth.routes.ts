@@ -9,6 +9,7 @@ import {
   AuthenticatedRequest,
 } from "../middleware/auth.middleware"
 import { User } from "../models/user.model"
+import { asyncHandler } from "../middleware/async-handler"
 
 export const authRouter = Router()
 
@@ -18,6 +19,11 @@ const loginSchema = z.object({
     .email()
     .transform((value) => value.toLowerCase()),
   password: z.string().min(8),
+})
+
+const changePasswordSchema = z.object({
+  currentPassword: z.string().min(8),
+  newPassword: z.string().min(8).max(128),
 })
 
 authRouter.post("/login", async (request, response) => {
@@ -97,4 +103,59 @@ authRouter.get(
       },
     })
   }
+)
+
+authRouter.patch(
+  "/password",
+  authenticate,
+  asyncHandler(async (request, response) => {
+    const authenticatedRequest = request as AuthenticatedRequest
+    const result = changePasswordSchema.safeParse(request.body)
+
+    if (!result.success) {
+      response.status(400).json({
+        message: "Invalid password details",
+        errors: result.error.flatten().fieldErrors,
+      })
+      return
+    }
+
+    if (result.data.currentPassword === result.data.newPassword) {
+      response.status(400).json({
+        message: "New password must be different",
+      })
+      return
+    }
+
+    const user = await User.findById(authenticatedRequest.user?.id).select(
+      "+passwordHash"
+    )
+
+    if (!user || !user.active) {
+      response.status(401).json({
+        message: "Your account is unavailable",
+      })
+      return
+    }
+
+    const passwordMatches = await bcrypt.compare(
+      result.data.currentPassword,
+      user.passwordHash
+    )
+
+    if (!passwordMatches) {
+      response.status(400).json({
+        message: "Current password is incorrect",
+      })
+      return
+    }
+
+    user.passwordHash = await bcrypt.hash(result.data.newPassword, 12)
+
+    await user.save()
+
+    response.json({
+      message: "Password changed successfully",
+    })
+  })
 )
