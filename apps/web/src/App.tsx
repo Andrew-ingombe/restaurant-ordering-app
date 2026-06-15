@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import type { FormEvent } from "react"
 import {
   BrowserRouter,
@@ -28,6 +28,7 @@ import { OwnerTablesPage } from "./pages/owner-tables-page"
 import { CustomerMenuPage } from "./pages/customer-menu-page"
 import { WaiterRequestsPage } from "./pages/waiter-requests-page"
 import { WaiterEditOrderPage } from "./pages/waiter-edit-order-page"
+import { getCurrentUser } from "./lib/api"
 
 import {
   ArrowRight,
@@ -89,8 +90,8 @@ function LoginPage({ onLogin }: { onLogin: (user: AuthUser) => void }) {
   return (
     <main className="grid min-h-svh bg-white lg:grid-cols-[1.05fr_0.95fr]">
       <section className="relative hidden min-h-svh overflow-hidden bg-[#ef1428] p-10 text-white lg:flex lg:flex-col">
-        <div className="absolute -top-28 -right-28 size-80 rounded-full border-[60px] border-white/10" />
-        <div className="absolute -bottom-36 -left-28 size-96 rounded-full border-[70px] border-white/10" />
+        <div className="absolute -top-28 -right-28 size-80 rounded-full border-60 border-white/10" />
+        <div className="absolute -bottom-36 -left-28 size-96 rounded-full border-70 border-white/10" />
 
         <div className="relative flex items-center gap-3">
           <div className="flex size-12 items-center justify-center rounded-2xl bg-white text-[#ef1428]">
@@ -260,11 +261,68 @@ function LoginPage({ onLogin }: { onLogin: (user: AuthUser) => void }) {
 function AppRoutes() {
   const [user, setUser] = useState<AuthUser | null>(getStoredUser)
 
+  const [checkingSession, setCheckingSession] = useState(
+    Boolean(localStorage.getItem("auth_token"))
+  )
+
   const logout = () => {
     disconnectSocket()
     localStorage.removeItem("auth_token")
     localStorage.removeItem("auth_user")
     setUser(null)
+  }
+
+  useEffect(() => {
+    const token = localStorage.getItem("auth_token")
+
+    if (!token) {
+      setCheckingSession(false)
+      setUser(null)
+      return
+    }
+
+    void getCurrentUser()
+      .then((currentUser) => {
+        localStorage.setItem("auth_user", JSON.stringify(currentUser))
+        setUser(currentUser)
+      })
+      .catch(() => {
+        logout()
+      })
+      .finally(() => {
+        setCheckingSession(false)
+      })
+  }, [])
+
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      logout()
+      setCheckingSession(false)
+    }
+
+    window.addEventListener("auth:unauthorized", handleUnauthorized)
+
+    return () => {
+      window.removeEventListener("auth:unauthorized", handleUnauthorized)
+    }
+  }, [])
+
+  if (checkingSession) {
+    return (
+      <main className="flex min-h-svh items-center justify-center bg-[#f7f7f8] p-6">
+        <div className="text-center">
+          <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-[#ef1428] text-white">
+            <UtensilsCrossed className="size-6" />
+          </div>
+
+          <RefreshCw className="mx-auto mt-6 size-5 animate-spin text-[#ef1428]" />
+
+          <p className="mt-3 text-sm font-medium text-neutral-500">
+            Checking your session...
+          </p>
+        </div>
+      </main>
+    )
   }
 
   return (

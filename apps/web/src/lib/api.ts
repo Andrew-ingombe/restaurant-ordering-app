@@ -63,7 +63,13 @@ const authenticatedRequest = async (
     },
   })
 
-  const data = await response.json()
+  const data = await response.json().catch(() => ({
+    message: "Request failed",
+  }))
+
+  if (response.status === 401) {
+    window.dispatchEvent(new Event("auth:unauthorized"))
+  }
 
   if (!response.ok) {
     throw new Error(data.message || "Request failed")
@@ -538,4 +544,9 @@ export const cancelOrder = async (orderId: string): Promise<DraftOrder> => {
   })
 
   return data.order
+}
+
+export const getCurrentUser = async (): Promise<AuthUser> => {
+  const data = await authenticatedRequest("/auth/me")
+  return data.user
 }

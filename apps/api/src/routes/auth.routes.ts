@@ -83,7 +83,7 @@ authRouter.get(
     const user = await User.findById(request.user?.id)
 
     if (!user || !user.active) {
-      response.status(404).json({ message: "User not found" })
+      response.status(401).json({ message: "User not found" })
       return
     }
 
