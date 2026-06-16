@@ -51,14 +51,40 @@ const onboardingSchema = z.object({
     }),
 })
 
-const paymentSettingsSchema = z.object({
-  environment: z.enum(["sandbox", "production"]).default("sandbox"),
-  baseUrl: z.string().trim().url().optional(),
-  checkoutScriptUrl: z.string().trim().url().optional(),
-  publicKey: z.string().trim().min(1),
-  secretKey: z.string().trim().min(1),
-  enabled: z.boolean().optional().default(true),
-})
+const paymentSettingsSchema = z
+  .object({
+    environment: z.enum(["sandbox", "production"]).optional(),
+    baseUrl: z.string().trim().url().optional(),
+    checkoutScriptUrl: z.string().trim().url().optional(),
+    publicKey: z.string().trim().min(1).optional(),
+    secretKey: z.string().trim().min(1).optional(),
+    enabled: z.boolean().optional(),
+  })
+  .refine((data) => Object.keys(data).length > 0, {
+    message: "At least one payment setting is required",
+  })
+
+const subscriptionSettingsSchema = z
+  .object({
+    plan: z.enum(["pilot", "starter", "growth"]).optional(),
+    status: z
+      .enum(["trialing", "active", "past_due", "suspended", "cancelled"])
+      .optional(),
+    trialEndsAt: z.string().datetime().or(z.literal("")).optional(),
+    currentPeriodStartsAt: z.string().datetime().or(z.literal("")).optional(),
+    currentPeriodEndsAt: z.string().datetime().or(z.literal("")).optional(),
+    gracePeriodEndsAt: z.string().datetime().or(z.literal("")).optional(),
+  })
+  .refine((data) => Object.keys(data).length > 0, {
+    message: "At least one subscription setting is required",
+  })
+
+const parseOptionalDate = (value?: string) => {
+  if (value === "") return null
+  if (!value) return undefined
+
+  return new Date(value)
+}
 
 const defaultPaymentUrls = {
   sandbox: {
@@ -248,9 +274,7 @@ platformRouter.patch(
   "/restaurants/:id/payment-settings",
   asyncHandler(async (request, response) => {
     if (!Types.ObjectId.isValid(request.params.id as string)) {
-      response.status(400).json({
-        message: "Invalid restaurant ID",
-      })
+      response.status(400).json({ message: "Invalid restaurant ID" })
       return
     }
 
@@ -264,31 +288,176 @@ platformRouter.patch(
       return
     }
 
-    const urls = defaultPaymentUrls[result.data.environment]
+    const restaurant = await Restaurant.findById(request.params.id).select(
+      "+paymentSettings.publicKey +paymentSettings.encryptedSecretKey"
+    )
+
+    if (!restaurant) {
+      response.status(404).json({ message: "Restaurant not found" })
+      return
+    }
+
+    const environment =
+      result.data.environment ||
+      restaurant.paymentSettings?.environment ||
+      "sandbox"
+
+    const urls = defaultPaymentUrls[environment]
+
+    const publicKey =
+      result.data.publicKey || restaurant.paymentSettings?.publicKey || ""
+
+    const encryptedSecretKey = result.data.secretKey
+      ? encryptSecret(result.data.secretKey)
+      : restaurant.paymentSettings?.encryptedSecretKey || ""
+
+    const enabled =
+      result.data.enabled ?? Boolean(restaurant.paymentSettings?.enabled)
+
+    if (enabled && (!publicKey || !encryptedSecretKey)) {
+      response.status(400).json({
+        message:
+          "Public key and secret key are required before enabling payments",
+      })
+      return
+    }
+
+    restaurant.set({
+      "paymentSettings.provider": "lenco",
+      "paymentSettings.environment": environment,
+      "paymentSettings.baseUrl":
+        result.data.baseUrl ||
+        restaurant.paymentSettings?.baseUrl ||
+        urls.baseUrl,
+      "paymentSettings.checkoutScriptUrl":
+        result.data.checkoutScriptUrl ||
+        restaurant.paymentSettings?.checkoutScriptUrl ||
+        urls.checkoutScriptUrl,
+      "paymentSettings.publicKey": publicKey,
+      "paymentSettings.encryptedSecretKey": encryptedSecretKey,
+      "paymentSettings.enabled": enabled,
+    })
+
+    await restaurant.save()
+
+    response.json({
+      message: "Payment settings updated",
+      paymentSettings: {
+        provider: restaurant.paymentSettings?.provider || "lenco",
+        environment: restaurant.paymentSettings?.environment || "sandbox",
+        baseUrl: restaurant.paymentSettings?.baseUrl || urls.baseUrl,
+        checkoutScriptUrl:
+          restaurant.paymentSettings?.checkoutScriptUrl ||
+          urls.checkoutScriptUrl,
+        publicKeyConfigured: Boolean(restaurant.paymentSettings?.publicKey),
+        secretKeyConfigured: Boolean(
+          restaurant.paymentSettings?.encryptedSecretKey
+        ),
+        enabled: Boolean(restaurant.paymentSettings?.enabled),
+      },
+    })
+  })
+)
+
+platformRouter.get(
+  "/restaurants",
+  asyncHandler(async (_request, response) => {
+    const restaurants = await Restaurant.find()
+      .select("+paymentSettings.publicKey +paymentSettings.encryptedSecretKey")
+      .sort({ createdAt: -1 })
+      .lean()
+
+    response.json({
+      restaurants: restaurants.map((restaurant) => ({
+        id: restaurant._id,
+        name: restaurant.name,
+        slug: restaurant.slug,
+        active: restaurant.active,
+        settings: restaurant.settings,
+        subscription: restaurant.subscription,
+        paymentSettings: {
+          provider: restaurant.paymentSettings?.provider || "lenco",
+          environment: restaurant.paymentSettings?.environment || "sandbox",
+          baseUrl: restaurant.paymentSettings?.baseUrl || "",
+          checkoutScriptUrl:
+            restaurant.paymentSettings?.checkoutScriptUrl || "",
+          enabled: Boolean(restaurant.paymentSettings?.enabled),
+          publicKeyConfigured: Boolean(restaurant.paymentSettings?.publicKey),
+          secretKeyConfigured: Boolean(
+            restaurant.paymentSettings?.encryptedSecretKey
+          ),
+        },
+        createdAt: restaurant.createdAt,
+      })),
+    })
+  })
+)
+
+platformRouter.patch(
+  "/restaurants/:id/subscription",
+  asyncHandler(async (request, response) => {
+    if (!Types.ObjectId.isValid(request.params.id as string)) {
+      response.status(400).json({
+        message: "Invalid restaurant ID",
+      })
+      return
+    }
+
+    const result = subscriptionSettingsSchema.safeParse(request.body)
+
+    if (!result.success) {
+      response.status(400).json({
+        message: "Invalid subscription settings",
+        errors: result.error.flatten().fieldErrors,
+      })
+      return
+    }
+
+    const update: Record<string, unknown> = {}
+
+    if (result.data.plan !== undefined) {
+      update["subscription.plan"] = result.data.plan
+    }
+
+    if (result.data.status !== undefined) {
+      update["subscription.status"] = result.data.status
+    }
+
+    const trialEndsAt = parseOptionalDate(result.data.trialEndsAt)
+    const currentPeriodStartsAt = parseOptionalDate(
+      result.data.currentPeriodStartsAt
+    )
+    const currentPeriodEndsAt = parseOptionalDate(
+      result.data.currentPeriodEndsAt
+    )
+    const gracePeriodEndsAt = parseOptionalDate(result.data.gracePeriodEndsAt)
+
+    if (trialEndsAt !== undefined) {
+      update["subscription.trialEndsAt"] = trialEndsAt
+    }
+
+    if (currentPeriodStartsAt !== undefined) {
+      update["subscription.currentPeriodStartsAt"] = currentPeriodStartsAt
+    }
+
+    if (currentPeriodEndsAt !== undefined) {
+      update["subscription.currentPeriodEndsAt"] = currentPeriodEndsAt
+    }
+
+    if (gracePeriodEndsAt !== undefined) {
+      update["subscription.gracePeriodEndsAt"] = gracePeriodEndsAt
+    }
 
     const restaurant = await Restaurant.findByIdAndUpdate(
       request.params.id,
       {
-        $set: {
-          "paymentSettings.provider": "lenco",
-          "paymentSettings.environment": result.data.environment,
-          "paymentSettings.baseUrl": result.data.baseUrl || urls.baseUrl,
-          "paymentSettings.checkoutScriptUrl":
-            result.data.checkoutScriptUrl || urls.checkoutScriptUrl,
-          "paymentSettings.publicKey": result.data.publicKey,
-          "paymentSettings.encryptedSecretKey": encryptSecret(
-            result.data.secretKey
-          ),
-          "paymentSettings.enabled": result.data.enabled,
-        },
+        $set: update,
       },
       {
         new: true,
         runValidators: true,
       }
-    )
-      .select("+paymentSettings.publicKey +paymentSettings.encryptedSecretKey")
-      .lean()
+    ).lean()
 
     if (!restaurant) {
       response.status(404).json({
@@ -298,22 +467,8 @@ platformRouter.patch(
     }
 
     response.json({
-      message: "Payment settings updated",
-      paymentSettings: {
-        provider: restaurant.paymentSettings?.provider || "lenco",
-        environment: restaurant.paymentSettings?.environment || "sandbox",
-        baseUrl:
-          restaurant.paymentSettings?.baseUrl ||
-          defaultPaymentUrls.sandbox.baseUrl,
-        checkoutScriptUrl:
-          restaurant.paymentSettings?.checkoutScriptUrl ||
-          defaultPaymentUrls.sandbox.checkoutScriptUrl,
-        publicKeyConfigured: Boolean(restaurant.paymentSettings?.publicKey),
-        secretKeyConfigured: Boolean(
-          restaurant.paymentSettings?.encryptedSecretKey
-        ),
-        enabled: Boolean(restaurant.paymentSettings?.enabled),
-      },
+      message: "Subscription updated",
+      subscription: restaurant.subscription,
     })
   })
 )

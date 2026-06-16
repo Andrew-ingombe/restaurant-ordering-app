@@ -32,6 +32,8 @@ import { getCurrentUser } from "./lib/api"
 import { ChangePasswordPage } from "./pages/change-password-page"
 import { OwnerOrdersPage } from "./pages/owner-orders-page"
 import { OwnerOrderDetailPage } from "./pages/owner-order-detail-page"
+import { PlatformPage } from "./pages/platform-page"
+import { PlatformCreateRestaurantPage } from "./pages/platform-create-restaurant-page"
 
 import {
   ArrowRight,
@@ -57,7 +59,8 @@ const getStoredUser = (): AuthUser | null => {
   }
 }
 
-const rolePath = (role: UserRole) => `/${role}`
+const rolePath = (role: UserRole) =>
+  role === "platform_admin" ? "/platform" : `/${role}`
 
 function LoginPage({ onLogin }: { onLogin: (user: AuthUser) => void }) {
   const navigate = useNavigate()
@@ -478,6 +481,28 @@ function AppRoutes() {
             <ChangePasswordPage user={user} />
           ) : (
             <Navigate to="/login" replace />
+          )
+        }
+      />
+
+      <Route
+        path="/platform"
+        element={
+          user?.role === "platform_admin" ? (
+            <PlatformPage user={user} onLogout={logout} />
+          ) : (
+            <Navigate to={user ? rolePath(user.role) : "/login"} replace />
+          )
+        }
+      />
+
+      <Route
+        path="/platform/restaurants/new"
+        element={
+          user?.role === "platform_admin" ? (
+            <PlatformCreateRestaurantPage user={user} onLogout={logout} />
+          ) : (
+            <Navigate to={user ? rolePath(user.role) : "/login"} replace />
           )
         }
       />

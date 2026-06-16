@@ -10,6 +10,7 @@ import {
 } from "../middleware/auth.middleware"
 import { User } from "../models/user.model"
 import { asyncHandler } from "../middleware/async-handler"
+import { Restaurant } from "../models/restaurant.model"
 
 export const authRouter = Router()
 
@@ -25,6 +26,40 @@ const changePasswordSchema = z.object({
   currentPassword: z.string().min(8),
   newPassword: z.string().min(8).max(128),
 })
+
+const blockedSubscriptionStatuses = ["suspended", "cancelled"]
+
+const getRestaurantAccessStatus = async (restaurantId?: string) => {
+  if (!restaurantId) {
+    return {
+      allowed: true,
+    }
+  }
+
+  const restaurant = await Restaurant.findById(restaurantId).select(
+    "active subscription.status"
+  )
+
+  if (!restaurant || !restaurant.active) {
+    return {
+      allowed: false,
+      message: "Restaurant access is unavailable",
+    }
+  }
+
+  const subscriptionStatus = restaurant.subscription?.status || "trialing"
+
+  if (blockedSubscriptionStatuses.includes(subscriptionStatus)) {
+    return {
+      allowed: false,
+      message: `Restaurant access is ${subscriptionStatus}`,
+    }
+  }
+
+  return {
+    allowed: true,
+  }
+}
 
 authRouter.post("/login", async (request, response) => {
   const result = loginSchema.safeParse(request.body)
@@ -62,6 +97,16 @@ authRouter.post("/login", async (request, response) => {
   }
 
   const restaurantId = user.restaurant?.toString()
+  if (user.role !== "platform_admin") {
+    const accessStatus = await getRestaurantAccessStatus(restaurantId)
+
+    if (!accessStatus.allowed) {
+      response.status(403).json({
+        message: accessStatus.message,
+      })
+      return
+    }
+  }
 
   const token = jwt.sign(
     {
@@ -96,6 +141,19 @@ authRouter.get(
       return
     }
 
+    const restaurantId = user.restaurant?.toString()
+
+    if (user.role !== "platform_admin") {
+      const accessStatus = await getRestaurantAccessStatus(restaurantId)
+
+      if (!accessStatus.allowed) {
+        response.status(403).json({
+          message: accessStatus.message,
+        })
+        return
+      }
+    }
+
     response.json({
       user: {
         id: user.id,
@@ -103,7 +161,7 @@ authRouter.get(
         email: user.email,
         phone: user.phone,
         role: user.role,
-        restaurantId: user.restaurant?.toString(),
+        restaurantId,
       },
     })
   }

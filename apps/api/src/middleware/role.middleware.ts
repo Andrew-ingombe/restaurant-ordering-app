@@ -2,6 +2,7 @@ import { NextFunction, Response } from "express"
 
 import type { UserRole } from "../models/user.model"
 import { AuthenticatedRequest } from "./auth.middleware"
+import { Restaurant } from "../models/restaurant.model"
 
 export const requireOwner = (
   request: AuthenticatedRequest,
@@ -33,7 +34,7 @@ export const requirePlatformAdmin = (
   next()
 }
 
-export const requireRestaurantContext = (
+export const requireRestaurantContext = async (
   request: AuthenticatedRequest,
   response: Response,
   next: NextFunction
@@ -41,6 +42,26 @@ export const requireRestaurantContext = (
   if (!request.user?.restaurantId || request.user.role === "platform_admin") {
     response.status(403).json({
       message: "Restaurant access is required",
+    })
+    return
+  }
+
+  const restaurant = await Restaurant.findById(
+    request.user.restaurantId
+  ).select("active subscription.status")
+
+  if (!restaurant || !restaurant.active) {
+    response.status(403).json({
+      message: "Restaurant access is unavailable",
+    })
+    return
+  }
+
+  const subscriptionStatus = restaurant.subscription?.status || "trialing"
+
+  if (["suspended", "cancelled"].includes(subscriptionStatus)) {
+    response.status(403).json({
+      message: `Restaurant access is ${subscriptionStatus}`,
     })
     return
   }

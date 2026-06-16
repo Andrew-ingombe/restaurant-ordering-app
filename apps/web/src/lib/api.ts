@@ -1,6 +1,6 @@
 export const API_URL = import.meta.env.VITE_API_URL
 
-export type UserRole = "owner" | "waiter" | "kitchen"
+export type UserRole = "platform_admin" | "owner" | "waiter" | "kitchen"
 
 export type AuthUser = {
   id: string
@@ -8,6 +8,7 @@ export type AuthUser = {
   email: string
   phone?: string
   role: UserRole
+  restaurantId?: string
 }
 
 export type LoginResponse = {
@@ -655,4 +656,121 @@ export const getOwnerOrders = async (
 export const getOwnerOrder = async (orderId: string): Promise<OwnerOrder> => {
   const data = await authenticatedRequest(`/dashboard/orders/${orderId}`)
   return data.order
+}
+
+export type PlatformRestaurant = {
+  id: string
+  name: string
+  slug: string
+  active: boolean
+  settings: {
+    currency: string
+    timezone: string
+    phone: string
+    email: string
+    address: string
+    receiptFooter: string
+  }
+  subscription: {
+    plan: "pilot" | "starter" | "growth"
+    status: "trialing" | "active" | "past_due" | "suspended" | "cancelled"
+    trialEndsAt?: string
+    currentPeriodStartsAt?: string
+    currentPeriodEndsAt?: string
+    gracePeriodEndsAt?: string
+  }
+  paymentSettings: {
+    provider: "lenco"
+    environment: "sandbox" | "production"
+    baseUrl: string
+    checkoutScriptUrl: string
+    enabled: boolean
+    publicKeyConfigured: boolean
+    secretKeyConfigured: boolean
+  }
+  createdAt: string
+}
+
+export const getPlatformRestaurants = async (): Promise<
+  PlatformRestaurant[]
+> => {
+  const data = await authenticatedRequest("/platform/restaurants")
+  return data.restaurants
+}
+
+export const createPlatformRestaurant = async (details: {
+  restaurant: {
+    name: string
+    currency: string
+    timezone: string
+    phone: string
+    email: string
+    address: string
+    receiptFooter: string
+  }
+  owner: {
+    name: string
+    email: string
+    phone: string
+    password: string
+  }
+  subscription: {
+    plan: "pilot" | "starter" | "growth"
+    trialDays: number
+  }
+}): Promise<{
+  restaurant: PlatformRestaurant
+  owner: AuthUser
+}> => {
+  const data = await authenticatedRequest("/platform/restaurants", {
+    method: "POST",
+    body: JSON.stringify(details),
+  })
+
+  return {
+    restaurant: data.restaurant,
+    owner: data.owner,
+  }
+}
+
+export const updateRestaurantPaymentSettings = async (
+  restaurantId: string,
+  details: {
+    environment?: "sandbox" | "production"
+    publicKey?: string
+    secretKey?: string
+    enabled?: boolean
+  }
+): Promise<PlatformRestaurant["paymentSettings"]> => {
+  const data = await authenticatedRequest(
+    `/platform/restaurants/${restaurantId}/payment-settings`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(details),
+    }
+  )
+
+  return data.paymentSettings
+}
+
+export const updateRestaurantSubscription = async (
+  restaurantId: string,
+  details: Partial<{
+    plan: "pilot" | "starter" | "growth"
+    status: "trialing" | "active" | "past_due" | "suspended" | "cancelled"
+    trialEndsAt: string
+    currentPeriodStartsAt: string
+    currentPeriodEndsAt: string
+    gracePeriodEndsAt: string
+  }>
+): Promise<PlatformRestaurant["subscription"]> => {
+  const data = await authenticatedRequest(
+    `/platform/restaurants/${restaurantId}/subscription`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(details),
+    }
+  )
+
+  return data.subscription
 }

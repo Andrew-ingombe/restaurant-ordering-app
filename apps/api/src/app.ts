@@ -13,6 +13,7 @@ import { tableRouter } from "./routes/table.routes"
 import { customerMenuRouter } from "./routes/customer-menu.routes"
 import { customerOrderRouter } from "./routes/customer-order.routes"
 import { platformRouter } from "./routes/platform.routes"
+import { settingsRouter } from "./routes/settings.routes"
 
 export const createApp = () => {
   const app = express()
@@ -41,6 +42,7 @@ export const createApp = () => {
   app.use("/customer-menu", customerMenuRouter)
   app.use("/customer-orders", customerOrderRouter)
   app.use("/platform", platformRouter)
+  app.use("/settings", settingsRouter)
 
   app.use(
     (
