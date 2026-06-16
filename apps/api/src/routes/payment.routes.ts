@@ -10,14 +10,17 @@ import {
   authenticate,
   AuthenticatedRequest,
 } from "../middleware/auth.middleware"
-import { requireRole } from "../middleware/role.middleware"
+import {
+  requireRestaurantContext,
+  requireRole,
+} from "../middleware/role.middleware"
 import { Order } from "../models/order.model"
 import { Payment } from "../models/payment.model"
 import { getSocketServer } from "../lib/socket"
 
 export const paymentRouter = Router()
 
-paymentRouter.use(authenticate, requireRole("waiter"))
+paymentRouter.use(authenticate, requireRole("waiter"), requireRestaurantContext)
 
 const initializeSchema = z.object({
   customer: z.object({
@@ -42,6 +45,7 @@ paymentRouter.post(
   "/orders/:orderId/initialize",
   asyncHandler(async (request, response) => {
     const authenticatedRequest = request as AuthenticatedRequest
+    const restaurantId = authenticatedRequest.user!.restaurantId!
 
     if (!Types.ObjectId.isValid(request.params.orderId as string)) {
       response.status(400).json({
@@ -62,6 +66,7 @@ paymentRouter.post(
 
     const order = await Order.findOne({
       _id: request.params.orderId,
+      restaurant: restaurantId,
       waiter: authenticatedRequest.user?.id,
     })
 
@@ -95,17 +100,21 @@ paymentRouter.post(
 
     await Payment.updateMany(
       {
+        restaurant: restaurantId,
         order: order._id,
         status: "pending",
       },
       {
-        status: "cancelled",
+        $set: {
+          status: "cancelled",
+        },
       }
     )
 
     const reference = generatePaymentReference()
 
     await Payment.create({
+      restaurant: restaurantId,
       order: order._id,
       waiter: authenticatedRequest.user?.id,
       reference,
@@ -153,6 +162,7 @@ paymentRouter.post(
   "/verify",
   asyncHandler(async (request, response) => {
     const authenticatedRequest = request as AuthenticatedRequest
+    const restaurantId = authenticatedRequest.user!.restaurantId!
     const result = verifySchema.safeParse(request.body)
 
     if (!result.success) {
@@ -164,6 +174,7 @@ paymentRouter.post(
     }
 
     const payment = await Payment.findOne({
+      restaurant: restaurantId,
       reference: result.data.reference,
       order: result.data.orderId,
       waiter: authenticatedRequest.user?.id,
@@ -178,6 +189,7 @@ paymentRouter.post(
 
     const order = await Order.findOne({
       _id: result.data.orderId,
+      restaurant: restaurantId,
       waiter: authenticatedRequest.user?.id,
     })
 
@@ -275,8 +287,13 @@ paymentRouter.post(
 
     const orderPayload = order.toObject()
 
-    getSocketServer().to("role:kitchen").emit("order:submitted", orderPayload)
-    getSocketServer().to("role:owner").emit("order:updated", orderPayload)
+    getSocketServer()
+      .to(`restaurant:${restaurantId}:role:kitchen`)
+      .emit("order:submitted", orderPayload)
+
+    getSocketServer()
+      .to(`restaurant:${restaurantId}:role:owner`)
+      .emit("order:updated", orderPayload)
 
     response.json({
       message: "Payment verified successfully",

@@ -49,10 +49,19 @@ const paymentSchema = new Schema(
     verifiedAt: {
       type: Date,
     },
+    restaurant: {
+      type: Schema.Types.ObjectId,
+      ref: "Restaurant",
+      required: false,
+      index: true,
+    },
   },
   {
     timestamps: true,
   }
 )
+
+paymentSchema.index({ restaurant: 1, createdAt: -1 })
+paymentSchema.index({ restaurant: 1, status: 1 })
 
 export const Payment = model("Payment", paymentSchema)

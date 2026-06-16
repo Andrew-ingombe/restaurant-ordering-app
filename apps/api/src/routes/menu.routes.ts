@@ -3,12 +3,21 @@ import { Types } from "mongoose"
 import { z } from "zod"
 
 import { asyncHandler } from "../middleware/async-handler"
-import { authenticate } from "../middleware/auth.middleware"
-import { requireOwner } from "../middleware/role.middleware"
+import {
+  authenticate,
+  AuthenticatedRequest,
+} from "../middleware/auth.middleware"
+import {
+  requireOwner,
+  requireRestaurantContext,
+  requireRole,
+} from "../middleware/role.middleware"
 import { MenuCategory } from "../models/menu-category.model"
 import { MenuItem } from "../models/menu-item.model"
 
 export const menuRouter = Router()
+
+menuRouter.use(authenticate, requireRestaurantContext)
 
 const createCategorySchema = z.object({
   name: z.string().trim().min(2),
@@ -53,13 +62,23 @@ const updateItemSchema = z.object({
 
 menuRouter.get(
   "/",
-  asyncHandler(async (_request, response) => {
+  requireRole("owner", "waiter"),
+  asyncHandler(async (request, response) => {
+    const authenticatedRequest = request as AuthenticatedRequest
+    const restaurantId = authenticatedRequest.user!.restaurantId
+
     const [categories, items] = await Promise.all([
-      MenuCategory.find({ active: true }).sort({
+      MenuCategory.find({
+        restaurant: restaurantId,
+        active: true,
+      }).sort({
         sortOrder: 1,
         name: 1,
       }),
-      MenuItem.find({ available: true })
+      MenuItem.find({
+        restaurant: restaurantId,
+        available: true,
+      })
         .populate("category", "name")
         .sort({ sortOrder: 1, name: 1 }),
     ])
@@ -70,12 +89,21 @@ menuRouter.get(
 
 menuRouter.get(
   "/manage",
-  authenticate,
   requireOwner,
-  asyncHandler(async (_request, response) => {
+  asyncHandler(async (request, response) => {
+    const authenticatedRequest = request as AuthenticatedRequest
+    const restaurantId = authenticatedRequest.user!.restaurantId
+
     const [categories, items] = await Promise.all([
-      MenuCategory.find().sort({ sortOrder: 1, name: 1 }),
-      MenuItem.find()
+      MenuCategory.find({
+        restaurant: restaurantId,
+      }).sort({
+        sortOrder: 1,
+        name: 1,
+      }),
+      MenuItem.find({
+        restaurant: restaurantId,
+      })
         .populate("category", "name")
         .sort({ sortOrder: 1, name: 1 }),
     ])
@@ -86,9 +114,9 @@ menuRouter.get(
 
 menuRouter.post(
   "/categories",
-  authenticate,
   requireOwner,
   asyncHandler(async (request, response) => {
+    const authenticatedRequest = request as AuthenticatedRequest
     const result = createCategorySchema.safeParse(request.body)
 
     if (!result.success) {
@@ -99,7 +127,10 @@ menuRouter.post(
       return
     }
 
-    const category = await MenuCategory.create(result.data)
+    const category = await MenuCategory.create({
+      ...result.data,
+      restaurant: authenticatedRequest.user!.restaurantId,
+    })
 
     response.status(201).json({ category })
   })
@@ -107,9 +138,9 @@ menuRouter.post(
 
 menuRouter.patch(
   "/categories/:id",
-  authenticate,
   requireOwner,
   asyncHandler(async (request, response) => {
+    const authenticatedRequest = request as AuthenticatedRequest
     const result = updateCategorySchema.safeParse(request.body)
 
     if (!result.success) {
@@ -121,13 +152,20 @@ menuRouter.patch(
     }
 
     if (!Types.ObjectId.isValid(request.params.id as string)) {
-      response.status(400).json({ message: "Invalid category ID" })
+      response.status(400).json({
+        message: "Invalid category ID",
+      })
       return
     }
 
-    const category = await MenuCategory.findByIdAndUpdate(
-      request.params.id,
-      result.data,
+    const category = await MenuCategory.findOneAndUpdate(
+      {
+        _id: request.params.id,
+        restaurant: authenticatedRequest.user!.restaurantId,
+      },
+      {
+        $set: result.data,
+      },
       {
         new: true,
         runValidators: true,
@@ -135,7 +173,9 @@ menuRouter.patch(
     )
 
     if (!category) {
-      response.status(404).json({ message: "Category not found" })
+      response.status(404).json({
+        message: "Category not found",
+      })
       return
     }
 
@@ -145,9 +185,10 @@ menuRouter.patch(
 
 menuRouter.post(
   "/items",
-  authenticate,
   requireOwner,
   asyncHandler(async (request, response) => {
+    const authenticatedRequest = request as AuthenticatedRequest
+    const restaurantId = authenticatedRequest.user!.restaurantId
     const result = createItemSchema.safeParse(request.body)
 
     if (!result.success) {
@@ -160,14 +201,20 @@ menuRouter.post(
 
     const categoryExists = await MenuCategory.exists({
       _id: result.data.category,
+      restaurant: restaurantId,
     })
 
     if (!categoryExists) {
-      response.status(404).json({ message: "Category not found" })
+      response.status(404).json({
+        message: "Category not found",
+      })
       return
     }
 
-    const item = await MenuItem.create(result.data)
+    const item = await MenuItem.create({
+      ...result.data,
+      restaurant: restaurantId,
+    })
 
     await item.populate("category", "name")
 
@@ -177,9 +224,10 @@ menuRouter.post(
 
 menuRouter.patch(
   "/items/:id",
-  authenticate,
   requireOwner,
   asyncHandler(async (request, response) => {
+    const authenticatedRequest = request as AuthenticatedRequest
+    const restaurantId = authenticatedRequest.user!.restaurantId
     const result = updateItemSchema.safeParse(request.body)
 
     if (!result.success) {
@@ -191,24 +239,34 @@ menuRouter.patch(
     }
 
     if (!Types.ObjectId.isValid(request.params.id as string)) {
-      response.status(400).json({ message: "Invalid menu item ID" })
+      response.status(400).json({
+        message: "Invalid menu item ID",
+      })
       return
     }
 
     if (result.data.category) {
       const categoryExists = await MenuCategory.exists({
         _id: result.data.category,
+        restaurant: restaurantId,
       })
 
       if (!categoryExists) {
-        response.status(404).json({ message: "Category not found" })
+        response.status(404).json({
+          message: "Category not found",
+        })
         return
       }
     }
 
-    const item = await MenuItem.findByIdAndUpdate(
-      request.params.id,
-      result.data,
+    const item = await MenuItem.findOneAndUpdate(
+      {
+        _id: request.params.id,
+        restaurant: restaurantId,
+      },
+      {
+        $set: result.data,
+      },
       {
         new: true,
         runValidators: true,
@@ -216,7 +274,9 @@ menuRouter.patch(
     ).populate("category", "name")
 
     if (!item) {
-      response.status(404).json({ message: "Menu item not found" })
+      response.status(404).json({
+        message: "Menu item not found",
+      })
       return
     }
 

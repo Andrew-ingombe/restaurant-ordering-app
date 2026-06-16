@@ -36,10 +36,18 @@ const menuItemSchema = new Schema(
       type: Number,
       default: 0,
     },
+    restaurant: {
+      type: Schema.Types.ObjectId,
+      ref: "Restaurant",
+      required: false,
+      index: true,
+    },
   },
   {
     timestamps: true,
   }
 )
+
+menuItemSchema.index({ restaurant: 1, category: 1, available: 1 })
 
 export const MenuItem = model("MenuItem", menuItemSchema)

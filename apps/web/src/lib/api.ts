@@ -249,14 +249,7 @@ export const getPublicMenu = async (): Promise<{
   categories: MenuCategory[]
   items: PublicMenuItem[]
 }> => {
-  const response = await fetch(`${API_URL}/menu`)
-  const data = await response.json()
-
-  if (!response.ok) {
-    throw new Error(data.message || "Could not load menu")
-  }
-
-  return data
+  return authenticatedRequest("/menu")
 }
 
 export const createDraftOrder = async (details: {

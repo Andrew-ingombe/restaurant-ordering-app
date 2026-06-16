@@ -7,15 +7,18 @@ import {
   authenticate,
   AuthenticatedRequest,
 } from "../middleware/auth.middleware"
-import { requireRole } from "../middleware/role.middleware"
+import {
+  requireRestaurantContext,
+  requireRole,
+} from "../middleware/role.middleware"
+import { getSocketServer } from "../lib/socket"
 import { MenuItem } from "../models/menu-item.model"
 import { Order } from "../models/order.model"
-import { getSocketServer } from "../lib/socket"
 import { Payment } from "../models/payment.model"
 
 export const orderRouter = Router()
 
-orderRouter.use(authenticate, requireRole("waiter"))
+orderRouter.use(authenticate, requireRole("waiter"), requireRestaurantContext)
 
 const orderItemSchema = z.object({
   menuItem: z.string().refine(Types.ObjectId.isValid, {
@@ -87,11 +90,13 @@ const generateOrderNumber = () => {
 }
 
 const buildOrderItems = async (
-  requestedItems: z.infer<typeof orderItemSchema>[]
+  requestedItems: z.infer<typeof orderItemSchema>[],
+  restaurantId: string
 ) => {
   const requestedIds = requestedItems.map((item) => item.menuItem)
 
   const menuItems = await MenuItem.find({
+    restaurant: restaurantId,
     _id: { $in: requestedIds },
     available: true,
   })
@@ -124,6 +129,7 @@ orderRouter.post(
   "/drafts",
   asyncHandler(async (request, response) => {
     const authenticatedRequest = request as AuthenticatedRequest
+    const restaurantId = authenticatedRequest.user!.restaurantId!
     const result = draftOrderSchema.safeParse(request.body)
 
     if (!result.success) {
@@ -137,7 +143,7 @@ orderRouter.post(
     let items
 
     try {
-      items = await buildOrderItems(result.data.items)
+      items = await buildOrderItems(result.data.items, restaurantId)
     } catch (error) {
       response.status(400).json({
         message:
@@ -149,6 +155,7 @@ orderRouter.post(
     const subtotal = items.reduce((total, item) => total + item.lineTotal, 0)
 
     const order = await Order.create({
+      restaurant: restaurantId,
       orderNumber: generateOrderNumber(),
       waiter: authenticatedRequest.user?.id,
       orderType: result.data.orderType,
@@ -169,8 +176,10 @@ orderRouter.get(
   "/mine",
   asyncHandler(async (request, response) => {
     const authenticatedRequest = request as AuthenticatedRequest
+    const restaurantId = authenticatedRequest.user!.restaurantId!
 
     const orders = await Order.find({
+      restaurant: restaurantId,
       waiter: authenticatedRequest.user?.id,
     })
       .sort({ createdAt: -1 })
@@ -182,11 +191,15 @@ orderRouter.get(
 
 orderRouter.get(
   "/customer-requests",
-  asyncHandler(async (_request, response) => {
+  asyncHandler(async (request, response) => {
+    const authenticatedRequest = request as AuthenticatedRequest
+    const restaurantId = authenticatedRequest.user!.restaurantId!
+
     const orders = await Order.find({
+      restaurant: restaurantId,
       source: "customer_qr",
       status: "awaiting_waiter",
-      waiter: { $exists: false },
+      $or: [{ waiter: { $exists: false } }, { waiter: null }],
     })
       .sort({ createdAt: 1 })
       .limit(100)
@@ -199,6 +212,7 @@ orderRouter.patch(
   "/customer-requests/:id/claim",
   asyncHandler(async (request, response) => {
     const authenticatedRequest = request as AuthenticatedRequest
+    const restaurantId = authenticatedRequest.user!.restaurantId!
 
     if (!Types.ObjectId.isValid(request.params.id as string)) {
       response.status(400).json({
@@ -210,9 +224,10 @@ orderRouter.patch(
     const order = await Order.findOneAndUpdate(
       {
         _id: request.params.id,
+        restaurant: restaurantId,
         source: "customer_qr",
         status: "awaiting_waiter",
-        waiter: { $exists: false },
+        $or: [{ waiter: { $exists: false } }, { waiter: null }],
       },
       {
         $set: {
@@ -235,10 +250,16 @@ orderRouter.patch(
 
     const payload = order.toObject()
 
-    getSocketServer().to("role:waiter").emit("order:customer-claimed", payload)
+    getSocketServer()
+      .to(`restaurant:${restaurantId}:role:waiter`)
+      .emit("order:customer-claimed", payload)
 
     getSocketServer()
       .to(`user:${authenticatedRequest.user?.id}`)
+      .emit("order:updated", payload)
+
+    getSocketServer()
+      .to(`restaurant:${restaurantId}:role:owner`)
       .emit("order:updated", payload)
 
     response.json({
@@ -252,6 +273,7 @@ orderRouter.patch(
   "/:id/status",
   asyncHandler(async (request, response) => {
     const authenticatedRequest = request as AuthenticatedRequest
+    const restaurantId = authenticatedRequest.user!.restaurantId!
 
     if (!Types.ObjectId.isValid(request.params.id as string)) {
       response.status(400).json({
@@ -272,6 +294,7 @@ orderRouter.patch(
 
     const currentOrder = await Order.findOne({
       _id: request.params.id,
+      restaurant: restaurantId,
       waiter: authenticatedRequest.user?.id,
     })
 
@@ -303,6 +326,7 @@ orderRouter.patch(
     const order = await Order.findOneAndUpdate(
       {
         _id: currentOrder._id,
+        restaurant: restaurantId,
         waiter: authenticatedRequest.user?.id,
         status: currentOrder.status,
         paymentStatus: "paid",
@@ -331,9 +355,13 @@ orderRouter.patch(
       .to(`user:${authenticatedRequest.user?.id}`)
       .emit("order:updated", orderPayload)
 
-    getSocketServer().to("role:kitchen").emit("order:updated", orderPayload)
+    getSocketServer()
+      .to(`restaurant:${restaurantId}:role:kitchen`)
+      .emit("order:updated", orderPayload)
 
-    getSocketServer().to("role:owner").emit("order:updated", orderPayload)
+    getSocketServer()
+      .to(`restaurant:${restaurantId}:role:owner`)
+      .emit("order:updated", orderPayload)
 
     response.json({
       message: `Order marked as ${result.data.status}`,
@@ -346,6 +374,7 @@ orderRouter.patch(
   "/:id/cancel",
   asyncHandler(async (request, response) => {
     const authenticatedRequest = request as AuthenticatedRequest
+    const restaurantId = authenticatedRequest.user!.restaurantId!
 
     if (!Types.ObjectId.isValid(request.params.id as string)) {
       response.status(400).json({
@@ -356,6 +385,7 @@ orderRouter.patch(
 
     const order = await Order.findOne({
       _id: request.params.id,
+      restaurant: restaurantId,
       waiter: authenticatedRequest.user?.id,
     })
 
@@ -386,6 +416,7 @@ orderRouter.patch(
 
     await Payment.updateMany(
       {
+        restaurant: restaurantId,
         order: order._id,
         status: "pending",
       },
@@ -402,7 +433,9 @@ orderRouter.patch(
       .to(`user:${authenticatedRequest.user?.id}`)
       .emit("order:updated", orderPayload)
 
-    getSocketServer().to("role:owner").emit("order:updated", orderPayload)
+    getSocketServer()
+      .to(`restaurant:${restaurantId}:role:owner`)
+      .emit("order:updated", orderPayload)
 
     response.json({
       message: "Order cancelled",
@@ -415,19 +448,25 @@ orderRouter.get(
   "/:id",
   asyncHandler(async (request, response) => {
     const authenticatedRequest = request as AuthenticatedRequest
+    const restaurantId = authenticatedRequest.user!.restaurantId!
 
     if (!Types.ObjectId.isValid(request.params.id as string)) {
-      response.status(400).json({ message: "Invalid order ID" })
+      response.status(400).json({
+        message: "Invalid order ID",
+      })
       return
     }
 
     const order = await Order.findOne({
       _id: request.params.id,
+      restaurant: restaurantId,
       waiter: authenticatedRequest.user?.id,
     })
 
     if (!order) {
-      response.status(404).json({ message: "Order not found" })
+      response.status(404).json({
+        message: "Order not found",
+      })
       return
     }
 
@@ -439,6 +478,7 @@ orderRouter.patch(
   "/drafts/:id",
   asyncHandler(async (request, response) => {
     const authenticatedRequest = request as AuthenticatedRequest
+    const restaurantId = authenticatedRequest.user!.restaurantId!
     const result = updateDraftOrderSchema.safeParse(request.body)
 
     if (!result.success) {
@@ -450,12 +490,15 @@ orderRouter.patch(
     }
 
     if (!Types.ObjectId.isValid(request.params.id as string)) {
-      response.status(400).json({ message: "Invalid order ID" })
+      response.status(400).json({
+        message: "Invalid order ID",
+      })
       return
     }
 
     const order = await Order.findOne({
       _id: request.params.id,
+      restaurant: restaurantId,
       waiter: authenticatedRequest.user?.id,
       status: "draft",
     })
@@ -469,7 +512,7 @@ orderRouter.patch(
 
     if (result.data.items) {
       try {
-        const items = await buildOrderItems(result.data.items)
+        const items = await buildOrderItems(result.data.items, restaurantId)
         const subtotal = items.reduce(
           (total, item) => total + item.lineTotal,
           0

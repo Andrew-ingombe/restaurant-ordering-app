@@ -4,13 +4,19 @@ import { z } from "zod"
 
 import { env } from "../config/env"
 import { asyncHandler } from "../middleware/async-handler"
-import { authenticate } from "../middleware/auth.middleware"
-import { requireOwner } from "../middleware/role.middleware"
+import {
+  authenticate,
+  AuthenticatedRequest,
+} from "../middleware/auth.middleware"
+import {
+  requireOwner,
+  requireRestaurantContext,
+} from "../middleware/role.middleware"
 import { Order } from "../models/order.model"
 
 export const dashboardRouter = Router()
 
-dashboardRouter.use(authenticate, requireOwner)
+dashboardRouter.use(authenticate, requireOwner, requireRestaurantContext)
 
 const orderStatuses = [
   "draft",
@@ -73,6 +79,9 @@ const escapeRegex = (value: string) => {
 dashboardRouter.get(
   "/summary",
   asyncHandler(async (request, response) => {
+    const authenticatedRequest = request as AuthenticatedRequest
+    const restaurantId = authenticatedRequest.user!.restaurantId!
+    const restaurantObjectId = new Types.ObjectId(restaurantId)
     const dateResult = dateSchema.safeParse(request.query.date)
 
     if (!dateResult.success) {
@@ -85,6 +94,7 @@ dashboardRouter.get(
     const selectedDate = dateResult.data || getDateInTimezone()
 
     const matchDate = {
+      restaurant: restaurantObjectId,
       $expr: {
         $eq: [
           {
@@ -207,6 +217,9 @@ dashboardRouter.get(
 dashboardRouter.get(
   "/orders",
   asyncHandler(async (request, response) => {
+    const authenticatedRequest = request as AuthenticatedRequest
+    const restaurantId = authenticatedRequest.user!.restaurantId!
+    const restaurantObjectId = new Types.ObjectId(restaurantId)
     const result = orderHistoryQuerySchema.safeParse(request.query)
 
     if (!result.success) {
@@ -242,6 +255,7 @@ dashboardRouter.get(
     }
 
     const filter = {
+      restaurant: restaurantId,
       ...(search
         ? {
             orderNumber: {
@@ -299,6 +313,9 @@ dashboardRouter.get(
 dashboardRouter.get(
   "/orders/:id",
   asyncHandler(async (request, response) => {
+    const authenticatedRequest = request as AuthenticatedRequest
+    const restaurantId = authenticatedRequest.user!.restaurantId!
+    const restaurantObjectId = new Types.ObjectId(restaurantId)
     const orderId = request.params.id as string
 
     if (!Types.ObjectId.isValid(orderId)) {
@@ -308,7 +325,10 @@ dashboardRouter.get(
       return
     }
 
-    const order = await Order.findById(orderId)
+    const order = await Order.findOne({
+      _id: orderId,
+      restaurant: restaurantId,
+    })
       .populate("waiter", "name email")
       .populate("restaurantTable", "name")
       .lean()

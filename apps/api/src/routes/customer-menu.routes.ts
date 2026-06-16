@@ -15,6 +15,7 @@ const tokenSchema = z.string().trim().min(1)
 
 type TableTokenPayload = {
   tableId: string
+  restaurantId?: string
   purpose: "customer-menu"
 }
 
@@ -56,17 +57,21 @@ customerMenuRouter.get(
 
     const table = await RestaurantTable.findOne({
       _id: payload.tableId,
+      ...(payload.restaurantId ? { restaurant: payload.restaurantId } : {}),
       active: true,
     }).lean()
 
-    if (!table) {
+    if (!table?.restaurant) {
       response.status(404).json({
         message: "This table is unavailable",
       })
       return
     }
 
+    const restaurantId = table.restaurant
+
     const categories = await MenuCategory.find({
+      restaurant: restaurantId,
       active: true,
     })
       .sort({ sortOrder: 1, name: 1 })
@@ -75,6 +80,7 @@ customerMenuRouter.get(
     const categoryIds = categories.map((category) => category._id)
 
     const items = await MenuItem.find({
+      restaurant: restaurantId,
       available: true,
       category: { $in: categoryIds },
     })

@@ -14,6 +14,7 @@ export const customerOrderRouter = Router()
 
 type TableTokenPayload = {
   tableId: string
+  restaurantId?: string
   purpose: "customer-menu"
 }
 
@@ -82,19 +83,22 @@ customerOrderRouter.post(
 
     const table = await RestaurantTable.findOne({
       _id: payload.tableId,
+      ...(payload.restaurantId ? { restaurant: payload.restaurantId } : {}),
       active: true,
     })
 
-    if (!table) {
+    if (!table?.restaurant) {
       response.status(404).json({
         message: "This table is unavailable",
       })
       return
     }
 
+    const restaurantId = table.restaurant
     const requestedIds = result.data.items.map((item) => item.menuItem)
 
     const menuItems = await MenuItem.find({
+      restaurant: restaurantId,
       _id: { $in: requestedIds },
       available: true,
     })
@@ -128,6 +132,7 @@ customerOrderRouter.post(
     const subtotal = items.reduce((total, item) => total + item.lineTotal, 0)
 
     const order = await Order.create({
+      restaurant: restaurantId,
       orderNumber: generateOrderNumber(),
       source: "customer_qr",
       restaurantTable: table._id,
@@ -141,13 +146,20 @@ customerOrderRouter.post(
       items,
       subtotal,
       total: subtotal,
+      currency: "ZMW",
       status: "awaiting_waiter",
       paymentStatus: "unpaid",
     })
 
+    const orderPayload = order.toObject()
+
     getSocketServer()
-      .to("role:waiter")
-      .emit("order:customer-requested", order.toObject())
+      .to(`restaurant:${restaurantId}:role:waiter`)
+      .emit("order:customer-requested", orderPayload)
+
+    getSocketServer()
+      .to(`restaurant:${restaurantId}:role:owner`)
+      .emit("order:updated", orderPayload)
 
     response.status(201).json({
       message: "Your selection was sent to a waiter",

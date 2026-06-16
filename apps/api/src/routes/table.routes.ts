@@ -5,13 +5,19 @@ import { z } from "zod"
 
 import { env } from "../config/env"
 import { asyncHandler } from "../middleware/async-handler"
-import { authenticate } from "../middleware/auth.middleware"
-import { requireOwner } from "../middleware/role.middleware"
+import {
+  authenticate,
+  AuthenticatedRequest,
+} from "../middleware/auth.middleware"
+import {
+  requireOwner,
+  requireRestaurantContext,
+} from "../middleware/role.middleware"
 import { RestaurantTable } from "../models/restaurant-table.model"
 
 export const tableRouter = Router()
 
-tableRouter.use(authenticate, requireOwner)
+tableRouter.use(authenticate, requireOwner, requireRestaurantContext)
 
 const createTableSchema = z.object({
   name: z.string().trim().min(1).max(50),
@@ -22,21 +28,28 @@ const updateTableSchema = z.object({
   active: z.boolean().optional(),
 })
 
-const createTableToken = (tableId: string) =>
+const escapeRegex = (value: string) =>
+  value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+
+const createTableToken = (tableId: string, restaurantId: string) =>
   jwt.sign(
     {
       tableId,
+      restaurantId,
       purpose: "customer-menu",
     },
     env.tableTokenSecret
   )
 
-const serializeTable = (table: {
-  _id: Types.ObjectId
-  name: string
-  active: boolean
-}) => {
-  const token = createTableToken(table._id.toString())
+const serializeTable = (
+  table: {
+    _id: Types.ObjectId
+    name: string
+    active: boolean
+  },
+  restaurantId: string
+) => {
+  const token = createTableToken(table._id.toString(), restaurantId)
 
   return {
     id: table._id,
@@ -45,16 +58,21 @@ const serializeTable = (table: {
     menuUrl: `${env.frontendUrl}/menu/table/${token}`,
   }
 }
-
 tableRouter.get(
   "/",
-  asyncHandler(async (_request, response) => {
-    const tables = await RestaurantTable.find().sort({
+  asyncHandler(async (request, response) => {
+    const authenticatedRequest = request as AuthenticatedRequest
+
+    const tables = await RestaurantTable.find({
+      restaurant: authenticatedRequest.user!.restaurantId,
+    }).sort({
       name: 1,
     })
 
     response.json({
-      tables: tables.map(serializeTable),
+      tables: tables.map((table) =>
+        serializeTable(table, authenticatedRequest.user!.restaurantId!)
+      ),
     })
   })
 )
@@ -62,6 +80,9 @@ tableRouter.get(
 tableRouter.post(
   "/",
   asyncHandler(async (request, response) => {
+    const authenticatedRequest = request as AuthenticatedRequest
+    const restaurantId = authenticatedRequest.user!.restaurantId!
+
     const result = createTableSchema.safeParse(request.body)
 
     if (!result.success) {
@@ -73,8 +94,9 @@ tableRouter.post(
     }
 
     const existingTable = await RestaurantTable.findOne({
+      restaurant: restaurantId,
       name: {
-        $regex: `^${result.data.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`,
+        $regex: `^${escapeRegex(result.data.name)}$`,
         $options: "i",
       },
     })
@@ -86,10 +108,13 @@ tableRouter.post(
       return
     }
 
-    const table = await RestaurantTable.create(result.data)
+    const table = await RestaurantTable.create({
+      ...result.data,
+      restaurant: restaurantId,
+    })
 
     response.status(201).json({
-      table: serializeTable(table),
+      table: serializeTable(table, restaurantId),
     })
   })
 )
@@ -97,6 +122,9 @@ tableRouter.post(
 tableRouter.patch(
   "/:id",
   asyncHandler(async (request, response) => {
+    const authenticatedRequest = request as AuthenticatedRequest
+    const restaurantId = authenticatedRequest.user!.restaurantId!
+
     if (!Types.ObjectId.isValid(request.params.id as string)) {
       response.status(400).json({
         message: "Invalid table ID",
@@ -117,8 +145,9 @@ tableRouter.patch(
     if (result.data.name) {
       const duplicate = await RestaurantTable.exists({
         _id: { $ne: request.params.id },
+        restaurant: restaurantId,
         name: {
-          $regex: `^${result.data.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`,
+          $regex: `^${escapeRegex(result.data.name)}$`,
           $options: "i",
         },
       })
@@ -131,9 +160,14 @@ tableRouter.patch(
       }
     }
 
-    const table = await RestaurantTable.findByIdAndUpdate(
-      request.params.id,
-      result.data,
+    const table = await RestaurantTable.findOneAndUpdate(
+      {
+        _id: request.params.id,
+        restaurant: restaurantId,
+      },
+      {
+        $set: result.data,
+      },
       {
         new: true,
         runValidators: true,
@@ -148,7 +182,7 @@ tableRouter.patch(
     }
 
     response.json({
-      table: serializeTable(table),
+      table: serializeTable(table, restaurantId),
     })
   })
 )

@@ -2,12 +2,16 @@ import { NextFunction, Request, Response } from "express"
 import jwt from "jsonwebtoken"
 
 import { env } from "../config/env"
+import type { UserRole } from "../models/user.model"
+
+export type AuthenticatedUser = {
+  id: string
+  role: UserRole
+  restaurantId?: string
+}
 
 export type AuthenticatedRequest = Request & {
-  user?: {
-    id: string
-    role: string
-  }
+  user?: AuthenticatedUser
 }
 
 export const authenticate = (
@@ -24,14 +28,18 @@ export const authenticate = (
 
   try {
     const token = authorization.slice(7)
-    const payload = jwt.verify(token, env.jwtSecret) as {
-      id: string
-      role: string
+    const payload = jwt.verify(token, env.jwtSecret) as AuthenticatedUser
+
+    request.user = {
+      id: payload.id,
+      role: payload.role,
+      restaurantId: payload.restaurantId,
     }
 
-    request.user = payload
     next()
   } catch {
-    response.status(401).json({ message: "Invalid or expired token" })
+    response.status(401).json({
+      message: "Invalid or expired token",
+    })
   }
 }

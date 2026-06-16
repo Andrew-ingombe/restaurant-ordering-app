@@ -130,10 +130,19 @@ const orderSchema = new Schema(
       enum: ["unpaid", "pending", "paid", "failed", "refunded"],
       default: "unpaid",
     },
+    restaurant: {
+      type: Schema.Types.ObjectId,
+      ref: "Restaurant",
+      required: false,
+      index: true,
+    },
   },
   {
     timestamps: true,
   }
 )
+
+orderSchema.index({ restaurant: 1, createdAt: -1 })
+orderSchema.index({ restaurant: 1, status: 1, createdAt: -1 })
 
 export const Order = model("Order", orderSchema)

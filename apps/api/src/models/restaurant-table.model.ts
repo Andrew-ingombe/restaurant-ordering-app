@@ -5,16 +5,31 @@ const restaurantTableSchema = new Schema(
     name: {
       type: String,
       required: true,
-      unique: true,
       trim: true,
     },
     active: {
       type: Boolean,
       default: true,
     },
+    restaurant: {
+      type: Schema.Types.ObjectId,
+      ref: "Restaurant",
+      required: false,
+      index: true,
+    },
   },
   {
     timestamps: true,
+  }
+)
+
+restaurantTableSchema.index(
+  { restaurant: 1, name: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      restaurant: { $type: "objectId" },
+    },
   }
 )
 

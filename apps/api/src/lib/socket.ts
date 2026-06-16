@@ -3,10 +3,12 @@ import jwt from "jsonwebtoken"
 import type { Server as HttpServer } from "http"
 
 import { env } from "../config/env"
+import type { UserRole } from "../models/user.model"
 
 type SocketUser = {
   id: string
-  role: "owner" | "waiter" | "kitchen"
+  role: UserRole
+  restaurantId?: string
 }
 
 let io: Server | null = null
@@ -41,7 +43,12 @@ export const initializeSocket = (server: HttpServer) => {
     const user = socket.data.user as SocketUser
 
     socket.join(`user:${user.id}`)
-    socket.join(`role:${user.role}`)
+
+    if (user.restaurantId && user.role !== "platform_admin") {
+      socket.join(`restaurant:${user.restaurantId}`)
+      socket.join(`restaurant:${user.restaurantId}:role:${user.role}`)
+      socket.join(`restaurant:${user.restaurantId}:user:${user.id}`)
+    }
   })
 
   return io

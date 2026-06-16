@@ -21,4 +21,5 @@ export const env = {
   frontendUrl: process.env.FRONTEND_URL || "http://localhost:5173",
   restaurantTimezone: process.env.RESTAURANT_TIMEZONE || "Africa/Lusaka",
   tableTokenSecret: required("TABLE_TOKEN_SECRET"),
+  defaultTrialDays: Number(process.env.DEFAULT_TRIAL_DAYS) || 30,
 }

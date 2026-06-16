@@ -1,9 +1,15 @@
 import { model, Schema } from "mongoose"
 
-export type UserRole = "owner" | "waiter" | "kitchen"
+export type UserRole = "platform_admin" | "owner" | "waiter" | "kitchen"
 
 const userSchema = new Schema(
   {
+    restaurant: {
+      type: Schema.Types.ObjectId,
+      ref: "Restaurant",
+      required: false,
+      index: true,
+    },
     name: {
       type: String,
       required: true,
@@ -27,7 +33,7 @@ const userSchema = new Schema(
     },
     role: {
       type: String,
-      enum: ["owner", "waiter", "kitchen"],
+      enum: ["platform_admin", "owner", "waiter", "kitchen"],
       required: true,
     },
     active: {
@@ -39,5 +45,7 @@ const userSchema = new Schema(
     timestamps: true,
   }
 )
+
+userSchema.index({ restaurant: 1, role: 1 })
 
 export const User = model("User", userSchema)

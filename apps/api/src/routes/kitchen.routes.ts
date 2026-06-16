@@ -3,14 +3,24 @@ import { Types } from "mongoose"
 import { z } from "zod"
 
 import { asyncHandler } from "../middleware/async-handler"
-import { authenticate } from "../middleware/auth.middleware"
-import { requireRole } from "../middleware/role.middleware"
+import {
+  authenticate,
+  AuthenticatedRequest,
+} from "../middleware/auth.middleware"
+import {
+  requireRestaurantContext,
+  requireRole,
+} from "../middleware/role.middleware"
 import { Order } from "../models/order.model"
 import { getSocketServer } from "../lib/socket"
 
 export const kitchenRouter = Router()
 
-kitchenRouter.use(authenticate, requireRole("kitchen"))
+kitchenRouter.use(
+  authenticate,
+  requireRole("kitchen"),
+  requireRestaurantContext
+)
 
 const activeStatuses = ["submitted", "accepted", "preparing", "ready"] as const
 
@@ -26,8 +36,12 @@ const allowedTransitions: Record<string, string> = {
 
 kitchenRouter.get(
   "/orders",
-  asyncHandler(async (_request, response) => {
+  asyncHandler(async (request, response) => {
+    const authenticatedRequest = request as AuthenticatedRequest
+    const restaurantId = authenticatedRequest.user!.restaurantId!
+
     const orders = await Order.find({
+      restaurant: restaurantId,
       status: { $in: activeStatuses },
       paymentStatus: "paid",
     })
@@ -41,6 +55,9 @@ kitchenRouter.get(
 kitchenRouter.patch(
   "/orders/:id/status",
   asyncHandler(async (request, response) => {
+    const authenticatedRequest = request as AuthenticatedRequest
+    const restaurantId = authenticatedRequest.user!.restaurantId!
+
     if (!Types.ObjectId.isValid(request.params.id as string)) {
       response.status(400).json({
         message: "Invalid order ID",
@@ -58,7 +75,10 @@ kitchenRouter.patch(
       return
     }
 
-    const currentOrder = await Order.findById(request.params.id)
+    const currentOrder = await Order.findOne({
+      _id: request.params.id,
+      restaurant: restaurantId,
+    })
 
     if (!currentOrder) {
       response.status(404).json({
@@ -97,6 +117,7 @@ kitchenRouter.patch(
     const order = await Order.findOneAndUpdate(
       {
         _id: currentOrder._id,
+        restaurant: restaurantId,
         status: currentOrder.status,
         paymentStatus: "paid",
       },
@@ -121,8 +142,12 @@ kitchenRouter.patch(
     const orderPayload = order.toObject()
 
     getSocketServer().to(`user:${waiterId}`).emit("order:updated", orderPayload)
-    getSocketServer().to("role:kitchen").emit("order:updated", orderPayload)
-    getSocketServer().to("role:owner").emit("order:updated", orderPayload)
+    getSocketServer()
+      .to(`restaurant:${restaurantId}:role:kitchen`)
+      .emit("order:updated", orderPayload)
+    getSocketServer()
+      .to(`restaurant:${restaurantId}:role:owner`)
+      .emit("order:updated", orderPayload)
 
     response.json({
       message: `Order marked as ${result.data.status}`,

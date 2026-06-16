@@ -7,7 +7,9 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/server.js",
     "test": "vitest run",
-    "seed:owner": "tsx src/scripts/seed-owner.ts"
+    "seed:owner": "tsx src/scripts/seed-owner.ts",
+    "seed:platform-admin": "tsx src/scripts/seed-platform-admin.ts",
+    "migrate:existing-restaurant": "tsx src/scripts/migrate-existing-restaurant.ts"
   },
   "dependencies": {
     "axios": "^1.17.0",

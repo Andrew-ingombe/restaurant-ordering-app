@@ -61,10 +61,13 @@ authRouter.post("/login", async (request, response) => {
     expiresIn: env.jwtExpiresIn as SignOptions["expiresIn"],
   }
 
+  const restaurantId = user.restaurant?.toString()
+
   const token = jwt.sign(
     {
       id: user.id,
       role: user.role,
+      ...(restaurantId ? { restaurantId } : {}),
     },
     env.jwtSecret,
     options
@@ -100,6 +103,7 @@ authRouter.get(
         email: user.email,
         phone: user.phone,
         role: user.role,
+        restaurantId: user.restaurant?.toString(),
       },
     })
   }
