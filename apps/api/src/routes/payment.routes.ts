@@ -4,7 +4,6 @@ import { Router } from "express"
 import { Types } from "mongoose"
 import { z } from "zod"
 
-import { env } from "../config/env"
 import { asyncHandler } from "../middleware/async-handler"
 import {
   authenticate,
@@ -14,9 +13,11 @@ import {
   requireRestaurantContext,
   requireRole,
 } from "../middleware/role.middleware"
+import { decryptSecret } from "../lib/crypto"
+import { getSocketServer } from "../lib/socket"
 import { Order } from "../models/order.model"
 import { Payment } from "../models/payment.model"
-import { getSocketServer } from "../lib/socket"
+import { Restaurant } from "../models/restaurant.model"
 
 export const paymentRouter = Router()
 
@@ -41,6 +42,35 @@ const generatePaymentReference = () => {
   return `order-${Date.now()}-${randomUUID()}`
 }
 
+const getRestaurantPaymentSettings = async (restaurantId: string) => {
+  const restaurant = await Restaurant.findById(restaurantId).select(
+    "+paymentSettings.publicKey +paymentSettings.encryptedSecretKey"
+  )
+
+  if (!restaurant) {
+    throw new Error("Restaurant not found")
+  }
+
+  const settings = restaurant.paymentSettings
+
+  if (
+    !settings?.enabled ||
+    !settings.publicKey ||
+    !settings.encryptedSecretKey ||
+    !settings.baseUrl ||
+    !settings.checkoutScriptUrl
+  ) {
+    throw new Error("Restaurant payment settings are not configured")
+  }
+
+  return {
+    publicKey: settings.publicKey,
+    secretKey: decryptSecret(settings.encryptedSecretKey),
+    baseUrl: settings.baseUrl,
+    checkoutScriptUrl: settings.checkoutScriptUrl,
+  }
+}
+
 paymentRouter.post(
   "/orders/:orderId/initialize",
   asyncHandler(async (request, response) => {
@@ -60,6 +90,20 @@ paymentRouter.post(
       response.status(400).json({
         message: "Valid customer details are required",
         errors: result.error.flatten().fieldErrors,
+      })
+      return
+    }
+
+    let paymentSettings
+
+    try {
+      paymentSettings = await getRestaurantPaymentSettings(restaurantId)
+    } catch (error) {
+      response.status(400).json({
+        message:
+          error instanceof Error
+            ? error.message
+            : "Restaurant payment settings are not configured",
       })
       return
     }
@@ -142,6 +186,8 @@ paymentRouter.post(
         amount: order.total / 100,
         currency: order.currency,
         email: result.data.customer.email.toLowerCase(),
+        publicKey: paymentSettings.publicKey,
+        checkoutScriptUrl: paymentSettings.checkoutScriptUrl,
         customer: {
           firstName: nameParts[0] || "Guest",
           lastName: nameParts.slice(1).join(" ") || "Customer",
@@ -169,6 +215,20 @@ paymentRouter.post(
       response.status(400).json({
         message: "Invalid verification details",
         errors: result.error.flatten().fieldErrors,
+      })
+      return
+    }
+
+    let paymentSettings
+
+    try {
+      paymentSettings = await getRestaurantPaymentSettings(restaurantId)
+    } catch (error) {
+      response.status(400).json({
+        message:
+          error instanceof Error
+            ? error.message
+            : "Restaurant payment settings are not configured",
       })
       return
     }
@@ -209,12 +269,12 @@ paymentRouter.post(
     }
 
     const lencoResponse = await axios.get(
-      `${env.lencoBaseUrl}/collections/status/${encodeURIComponent(
+      `${paymentSettings.baseUrl}/collections/status/${encodeURIComponent(
         payment.reference
       )}`,
       {
         headers: {
-          Authorization: `Bearer ${env.lencoSecretKey}`,
+          Authorization: `Bearer ${paymentSettings.secretKey}`,
           Accept: "application/json",
         },
         timeout: 15000,

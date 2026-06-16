@@ -8,6 +8,8 @@ import { authenticate } from "../middleware/auth.middleware"
 import { requirePlatformAdmin } from "../middleware/role.middleware"
 import { Restaurant } from "../models/restaurant.model"
 import { User } from "../models/user.model"
+import { Types } from "mongoose"
+import { encryptSecret } from "../lib/crypto"
 
 export const platformRouter = Router()
 
@@ -48,6 +50,26 @@ const onboardingSchema = z.object({
       plan: "pilot",
     }),
 })
+
+const paymentSettingsSchema = z.object({
+  environment: z.enum(["sandbox", "production"]).default("sandbox"),
+  baseUrl: z.string().trim().url().optional(),
+  checkoutScriptUrl: z.string().trim().url().optional(),
+  publicKey: z.string().trim().min(1),
+  secretKey: z.string().trim().min(1),
+  enabled: z.boolean().optional().default(true),
+})
+
+const defaultPaymentUrls = {
+  sandbox: {
+    baseUrl: "https://sandbox.lenco.co/access/v2",
+    checkoutScriptUrl: "https://pay.sandbox.lenco.co/js/v1/inline.js",
+  },
+  production: {
+    baseUrl: "https://api.lenco.co/access/v2",
+    checkoutScriptUrl: "https://pay.lenco.co/js/v1/inline.js",
+  },
+}
 
 const createBaseSlug = (name: string) => {
   const slug = name
@@ -178,5 +200,120 @@ platformRouter.post(
 
       throw error
     }
+  })
+)
+
+platformRouter.get(
+  "/restaurants/:id/payment-settings",
+  asyncHandler(async (request, response) => {
+    if (!Types.ObjectId.isValid(request.params.id as string)) {
+      response.status(400).json({
+        message: "Invalid restaurant ID",
+      })
+      return
+    }
+
+    const restaurant = await Restaurant.findById(request.params.id)
+      .select("+paymentSettings.publicKey +paymentSettings.encryptedSecretKey")
+      .lean()
+
+    if (!restaurant) {
+      response.status(404).json({
+        message: "Restaurant not found",
+      })
+      return
+    }
+
+    response.json({
+      paymentSettings: {
+        provider: restaurant.paymentSettings?.provider || "lenco",
+        environment: restaurant.paymentSettings?.environment || "sandbox",
+        baseUrl:
+          restaurant.paymentSettings?.baseUrl ||
+          defaultPaymentUrls.sandbox.baseUrl,
+        checkoutScriptUrl:
+          restaurant.paymentSettings?.checkoutScriptUrl ||
+          defaultPaymentUrls.sandbox.checkoutScriptUrl,
+        publicKeyConfigured: Boolean(restaurant.paymentSettings?.publicKey),
+        secretKeyConfigured: Boolean(
+          restaurant.paymentSettings?.encryptedSecretKey
+        ),
+        enabled: Boolean(restaurant.paymentSettings?.enabled),
+      },
+    })
+  })
+)
+
+platformRouter.patch(
+  "/restaurants/:id/payment-settings",
+  asyncHandler(async (request, response) => {
+    if (!Types.ObjectId.isValid(request.params.id as string)) {
+      response.status(400).json({
+        message: "Invalid restaurant ID",
+      })
+      return
+    }
+
+    const result = paymentSettingsSchema.safeParse(request.body)
+
+    if (!result.success) {
+      response.status(400).json({
+        message: "Invalid payment settings",
+        errors: result.error.flatten().fieldErrors,
+      })
+      return
+    }
+
+    const urls = defaultPaymentUrls[result.data.environment]
+
+    const restaurant = await Restaurant.findByIdAndUpdate(
+      request.params.id,
+      {
+        $set: {
+          "paymentSettings.provider": "lenco",
+          "paymentSettings.environment": result.data.environment,
+          "paymentSettings.baseUrl": result.data.baseUrl || urls.baseUrl,
+          "paymentSettings.checkoutScriptUrl":
+            result.data.checkoutScriptUrl || urls.checkoutScriptUrl,
+          "paymentSettings.publicKey": result.data.publicKey,
+          "paymentSettings.encryptedSecretKey": encryptSecret(
+            result.data.secretKey
+          ),
+          "paymentSettings.enabled": result.data.enabled,
+        },
+      },
+      {
+        new: true,
+        runValidators: true,
+      }
+    )
+      .select("+paymentSettings.publicKey +paymentSettings.encryptedSecretKey")
+      .lean()
+
+    if (!restaurant) {
+      response.status(404).json({
+        message: "Restaurant not found",
+      })
+      return
+    }
+
+    response.json({
+      message: "Payment settings updated",
+      paymentSettings: {
+        provider: restaurant.paymentSettings?.provider || "lenco",
+        environment: restaurant.paymentSettings?.environment || "sandbox",
+        baseUrl:
+          restaurant.paymentSettings?.baseUrl ||
+          defaultPaymentUrls.sandbox.baseUrl,
+        checkoutScriptUrl:
+          restaurant.paymentSettings?.checkoutScriptUrl ||
+          defaultPaymentUrls.sandbox.checkoutScriptUrl,
+        publicKeyConfigured: Boolean(restaurant.paymentSettings?.publicKey),
+        secretKeyConfigured: Boolean(
+          restaurant.paymentSettings?.encryptedSecretKey
+        ),
+        enabled: Boolean(restaurant.paymentSettings?.enabled),
+      },
+    })
   })
 )

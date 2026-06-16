@@ -89,6 +89,16 @@ const restaurantSchema = new Schema(
         enum: ["sandbox", "production"],
         default: "sandbox",
       },
+      baseUrl: {
+        type: String,
+        trim: true,
+        default: "https://sandbox.lenco.co/access/v2",
+      },
+      checkoutScriptUrl: {
+        type: String,
+        trim: true,
+        default: "https://pay.sandbox.lenco.co/js/v1/inline.js",
+      },
       publicKey: {
         type: String,
         default: "",

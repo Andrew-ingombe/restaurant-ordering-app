@@ -243,20 +243,20 @@ export function WaiterOrderDetailPage() {
     setMessage("")
 
     try {
-      await loadLencoScript()
-
       const checkout = await initializePayment(id, {
         name: customerName.trim(),
         phone: customerPhone.trim(),
         email: customerEmail.trim(),
       })
 
+      await loadLencoScript(checkout.checkoutScriptUrl)
+
       if (!window.LencoPay) {
         throw new Error("Lenco checkout is unavailable")
       }
 
       window.LencoPay.getPaid({
-        key: import.meta.env.VITE_LENCO_PUBLIC_KEY,
+        key: checkout.publicKey,
         reference: checkout.reference,
         email: checkout.email,
         amount: checkout.amount,

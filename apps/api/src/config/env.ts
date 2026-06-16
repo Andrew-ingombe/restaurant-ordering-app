@@ -22,4 +22,7 @@ export const env = {
   restaurantTimezone: process.env.RESTAURANT_TIMEZONE || "Africa/Lusaka",
   tableTokenSecret: required("TABLE_TOKEN_SECRET"),
   defaultTrialDays: Number(process.env.DEFAULT_TRIAL_DAYS) || 30,
+  paymentCredentialsEncryptionKey: required(
+    "PAYMENT_CREDENTIALS_ENCRYPTION_KEY"
+  ),
 }

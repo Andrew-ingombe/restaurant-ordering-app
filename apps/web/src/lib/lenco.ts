@@ -23,28 +23,36 @@ declare global {
   }
 }
 
+let loadedScriptUrl = ""
 let scriptPromise: Promise<void> | null = null
 
-export const loadLencoScript = () => {
-  if (window.LencoPay) {
+export const loadLencoScript = (scriptUrl: string) => {
+  if (window.LencoPay && loadedScriptUrl === scriptUrl) {
     return Promise.resolve()
   }
 
-  if (scriptPromise) {
+  if (scriptPromise && loadedScriptUrl === scriptUrl) {
     return scriptPromise
   }
+
+  document
+    .querySelectorAll<HTMLScriptElement>("script[data-lenco-checkout='true']")
+    .forEach((script) => script.remove())
+
+  window.LencoPay = undefined
+  loadedScriptUrl = scriptUrl
 
   scriptPromise = new Promise((resolve, reject) => {
     const script = document.createElement("script")
 
-    script.src =
-      import.meta.env.VITE_LENCO_SCRIPT_URL ||
-      "https://pay.sandbox.lenco.co/js/v1/inline.js"
+    script.src = scriptUrl
     script.async = true
+    script.dataset.lencoCheckout = "true"
 
     script.onload = () => resolve()
     script.onerror = () => {
       scriptPromise = null
+      loadedScriptUrl = ""
       reject(new Error("Could not load Lenco checkout"))
     }
 

@@ -288,6 +288,8 @@ export type CheckoutDetails = {
   amount: number
   currency: string
   email: string
+  publicKey: string
+  checkoutScriptUrl: string
   customer: {
     firstName: string
     lastName: string
