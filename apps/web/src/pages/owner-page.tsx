@@ -4,12 +4,9 @@ import { useNavigate } from "react-router-dom"
 import {
   Check,
   ChefHat,
-  LayoutDashboard,
-  LogOut,
   Mail,
   Phone,
   Plus,
-  QrCode,
   ShieldCheck,
   UserRound,
   Users,
@@ -28,6 +25,7 @@ import {
   SelectValue,
 } from "@workspace/ui/components/select"
 
+import { OwnerShell } from "../components/owner-shell"
 import { createStaff, getStaff, updateStaffStatus } from "../lib/api"
 import type { AuthUser, StaffRole, StaffUser } from "../lib/api"
 
@@ -129,30 +127,6 @@ export function OwnerPage({ user, onLogout }: OwnerPageProps) {
     }
   }
 
-  const navigation = [
-    {
-      label: "Dashboard",
-      icon: LayoutDashboard,
-      action: () => navigate("/owner"),
-    },
-    {
-      label: "Menu",
-      icon: UtensilsCrossed,
-      action: () => navigate("/owner/menu"),
-    },
-    {
-      label: "Staff",
-      icon: Users,
-      active: true,
-      action: () => navigate("/owner/staff"),
-    },
-    {
-      label: "Tables & QR",
-      icon: QrCode,
-      action: () => navigate("/owner/tables"),
-    },
-  ]
-
   const activeStaff = staff.filter((member) => member.active).length
 
   const waiters = staff.filter((member) => member.role === "waiter").length
@@ -162,383 +136,284 @@ export function OwnerPage({ user, onLogout }: OwnerPageProps) {
   ).length
 
   return (
-    <main className="min-h-svh">
-      <div className="mx-auto flex min-h-[calc(100svh-24px)] max-w-[1600px] overflow-hidden rounded-[28px] bg-[#f5f5f6] md:min-h-[calc(100svh-40px)]">
-        <aside className="hidden w-64 shrink-0 flex-col border-r border-black/5 bg-white p-5 lg:flex">
-          <div className="flex items-center gap-3 px-2 py-3">
-            <div className="flex size-10 items-center justify-center rounded-xl bg-[#ef1428] text-white">
-              <UtensilsCrossed className="size-5" />
-            </div>
-
-            <div>
-              <p className="text-lg font-black tracking-tight">FOODLY</p>
-              <p className="text-xs text-neutral-400">Restaurant admin</p>
+    <OwnerShell
+      user={user}
+      onLogout={onLogout}
+      active="staff"
+      contentClassName="space-y-5"
+      headerContent={
+        <div>
+          <p className="text-xs font-semibold tracking-[0.2em] text-[#ef1428] uppercase">
+            Team management
+          </p>
+          <h1 className="mt-1 text-2xl font-black tracking-tight md:text-3xl">
+            Restaurant staff
+          </h1>
+          <p className="mt-1 text-sm text-neutral-400">
+            Create accounts and control staff access.
+          </p>
+        </div>
+      }
+      headerActions={
+        <Button
+          className="h-11 rounded-xl bg-[#ef1428] px-5 text-white hover:bg-[#d91023]"
+          onClick={() => navigate("/owner/menu")}
+        >
+          <UtensilsCrossed className="size-4" />
+          Manage menu
+        </Button>
+      }
+    >
+      <section className="grid gap-3 sm:grid-cols-3">
+        <div className="rounded-[22px] bg-[#ef1428] p-5 text-white">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-white/75">Active staff</p>
+            <div className="flex size-9 items-center justify-center rounded-full bg-white/15">
+              <ShieldCheck className="size-4" />
             </div>
           </div>
 
-          <nav className="mt-10 space-y-2">
-            {navigation.map((item) => {
-              const Icon = item.icon
+          <p className="mt-5 text-3xl font-black">{activeStaff}</p>
+        </div>
 
-              return (
-                <button
-                  key={item.label}
-                  type="button"
-                  onClick={item.action}
-                  className={`flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-medium transition ${
-                    item.active
-                      ? "bg-neutral-950 text-white"
-                      : "text-neutral-500 hover:bg-neutral-100 hover:text-neutral-950"
-                  }`}
-                >
-                  <Icon className="size-4" />
-                  {item.label}
-                </button>
-              )
-            })}
-          </nav>
+        <div className="rounded-[22px] bg-white p-5">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-neutral-500">Waiters</p>
+            <div className="flex size-9 items-center justify-center rounded-full bg-neutral-100">
+              <UserRound className="size-4" />
+            </div>
+          </div>
 
-          <div className="mt-auto rounded-2xl bg-neutral-100 p-4">
-            <div className="flex items-center gap-3">
-              <div className="flex size-10 items-center justify-center rounded-full bg-neutral-950 text-white">
-                {user.name.charAt(0).toUpperCase()}
-              </div>
+          <p className="mt-5 text-3xl font-black">{waiters}</p>
+        </div>
 
-              <div className="min-w-0">
-                <p className="truncate font-semibold">{user.name}</p>
-                <p className="text-xs text-neutral-400 capitalize">
-                  {user.role} account
-                </p>
-              </div>
+        <div className="rounded-[22px] bg-white p-5">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-neutral-500">Kitchen staff</p>
+            <div className="flex size-9 items-center justify-center rounded-full bg-neutral-100">
+              <ChefHat className="size-4" />
+            </div>
+          </div>
+
+          <p className="mt-5 text-3xl font-black">{kitchenStaff}</p>
+        </div>
+      </section>
+
+      {error && (
+        <p className="rounded-2xl bg-red-50 p-4 text-sm text-red-700">
+          {error}
+        </p>
+      )}
+
+      <div className="grid gap-5 xl:grid-cols-[380px_1fr]">
+        <section className="self-start rounded-[24px] bg-white p-5 xl:sticky xl:top-7">
+          <div className="flex size-11 items-center justify-center rounded-full bg-neutral-950 text-white">
+            <Plus className="size-5" />
+          </div>
+
+          <h2 className="mt-5 text-xl font-black">Add staff member</h2>
+          <p className="mt-1 text-sm leading-6 text-neutral-400">
+            Create login details for a waiter or kitchen team member.
+          </p>
+
+          <form className="mt-6 space-y-4" onSubmit={handleCreate}>
+            <div className="space-y-2">
+              <Label htmlFor="staff-name">Full name</Label>
+              <Input
+                id="staff-name"
+                className="h-12 rounded-xl border-0 bg-neutral-100 px-4 shadow-none"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                placeholder="Staff member's name"
+                required
+                minLength={2}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="staff-email">Email address</Label>
+              <Input
+                id="staff-email"
+                className="h-12 rounded-xl border-0 bg-neutral-100 px-4 shadow-none"
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                placeholder="name@restaurant.com"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="staff-phone">Phone number</Label>
+              <Input
+                id="staff-phone"
+                className="h-12 rounded-xl border-0 bg-neutral-100 px-4 shadow-none"
+                type="tel"
+                value={phone}
+                onChange={(event) => setPhone(event.target.value)}
+                placeholder="Optional"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="staff-password">Temporary password</Label>
+              <Input
+                id="staff-password"
+                className="h-12 rounded-xl border-0 bg-neutral-100 px-4 shadow-none"
+                type="password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                placeholder="Minimum 8 characters"
+                required
+                minLength={8}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Staff role</Label>
+              <Select
+                value={role}
+                onValueChange={(value) => setRole(value as StaffRole)}
+              >
+                <SelectTrigger className="h-12 w-full rounded-xl border-0 bg-neutral-100 px-4 shadow-none">
+                  <SelectValue />
+                </SelectTrigger>
+
+                <SelectContent>
+                  <SelectItem value="waiter">Waiter</SelectItem>
+                  <SelectItem value="kitchen">Kitchen staff</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <Button
-              className="mt-4 w-full rounded-xl"
-              variant="outline"
-              onClick={onLogout}
+              className="h-12 w-full rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
+              disabled={submitting}
             >
-              <LogOut className="size-4" />
-              Sign out
+              {submitting ? "Creating..." : "Create staff account"}
             </Button>
-          </div>
-        </aside>
+          </form>
+        </section>
 
-        <div className="min-w-0 flex-1">
-          <header className="border-b border-black/5 bg-white/80 px-4 py-4 backdrop-blur md:px-7">
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div>
-                <p className="text-xs font-semibold tracking-[0.2em] text-[#ef1428] uppercase">
-                  Team management
-                </p>
-                <h1 className="mt-1 text-2xl font-black tracking-tight md:text-3xl">
-                  Restaurant staff
-                </h1>
-                <p className="mt-1 text-sm text-neutral-400">
-                  Create accounts and control staff access.
-                </p>
-              </div>
-
-              <Button
-                className="h-11 rounded-xl bg-[#ef1428] px-5 text-white hover:bg-[#d91023]"
-                onClick={() => navigate("/owner/menu")}
-              >
-                <UtensilsCrossed className="size-4" />
-                Manage menu
-              </Button>
+        <section className="min-w-0 rounded-[24px] bg-white p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-black">Staff accounts</h2>
+              <p className="mt-1 text-sm text-neutral-400">
+                Manage access for the restaurant team.
+              </p>
             </div>
 
-            <div className="mt-4 flex gap-2 overflow-x-auto pb-1 lg:hidden">
-              {navigation.map((item) => {
-                const Icon = item.icon
+            <Badge variant="secondary" className="rounded-full px-3 py-1">
+              {staff.length} accounts
+            </Badge>
+          </div>
+
+          {loading ? (
+            <div className="mt-6 rounded-2xl bg-neutral-50 p-10 text-center text-sm text-neutral-400">
+              Loading staff...
+            </div>
+          ) : (
+            <div className="mt-6 grid gap-3 md:grid-cols-2">
+              {staff.map((staffMember) => {
+                const id = getStaffId(staffMember)
+                const isOwner = staffMember.role === "owner"
+                const RoleIcon =
+                  staffMember.role === "kitchen"
+                    ? ChefHat
+                    : staffMember.role === "owner"
+                      ? ShieldCheck
+                      : UserRound
 
                 return (
-                  <Button
-                    key={item.label}
-                    className="shrink-0 rounded-xl"
-                    variant={item.active ? "default" : "outline"}
-                    onClick={item.action}
+                  <article
+                    key={id}
+                    className="rounded-[20px] border border-neutral-100 p-4 transition hover:border-neutral-200 hover:bg-neutral-50"
                   >
-                    <Icon className="size-4" />
-                    {item.label}
-                  </Button>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex size-11 items-center justify-center rounded-full bg-neutral-950 text-white">
+                        <RoleIcon className="size-4" />
+                      </div>
+
+                      <Badge
+                        className={`rounded-full border-0 ${
+                          staffMember.active
+                            ? "bg-emerald-50 text-emerald-700"
+                            : "bg-neutral-100 text-neutral-500"
+                        }`}
+                      >
+                        {staffMember.active && <Check className="size-3" />}
+                        {staffMember.active ? "Active" : "Inactive"}
+                      </Badge>
+                    </div>
+
+                    <div className="mt-5">
+                      <h3 className="text-lg font-black">{staffMember.name}</h3>
+                      <p className="mt-1 text-xs font-semibold tracking-wider text-[#ef1428] uppercase">
+                        {staffMember.role === "kitchen"
+                          ? "Kitchen staff"
+                          : staffMember.role}
+                      </p>
+                    </div>
+
+                    <div className="mt-4 space-y-2 text-sm text-neutral-500">
+                      <div className="flex items-center gap-2">
+                        <Mail className="size-3.5 shrink-0" />
+                        <span className="truncate">{staffMember.email}</span>
+                      </div>
+
+                      {staffMember.phone && (
+                        <div className="flex items-center gap-2">
+                          <Phone className="size-3.5 shrink-0" />
+                          <span>{staffMember.phone}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="mt-5 border-t border-neutral-100 pt-4">
+                      {isOwner ? (
+                        <div className="rounded-xl bg-neutral-100 px-3 py-2 text-center text-xs font-medium text-neutral-500">
+                          Owner access cannot be deactivated
+                        </div>
+                      ) : (
+                        <Button
+                          className={`w-full rounded-xl ${
+                            !staffMember.active
+                              ? "bg-neutral-950 text-white hover:bg-neutral-800"
+                              : ""
+                          }`}
+                          size="sm"
+                          variant={staffMember.active ? "outline" : "default"}
+                          disabled={updatingId === id}
+                          onClick={() => void handleStatusChange(staffMember)}
+                        >
+                          {updatingId === id
+                            ? "Updating..."
+                            : staffMember.active
+                              ? "Deactivate account"
+                              : "Activate account"}
+                        </Button>
+                      )}
+                    </div>
+                  </article>
                 )
               })}
 
-              <Button
-                className="shrink-0 rounded-xl"
-                variant="outline"
-                onClick={onLogout}
-              >
-                <LogOut className="size-4" />
-                Sign out
-              </Button>
+              {staff.length === 0 && (
+                <div className="rounded-2xl border border-dashed border-neutral-200 p-12 text-center md:col-span-2">
+                  <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-neutral-100">
+                    <Users className="size-5 text-neutral-500" />
+                  </div>
+                  <p className="mt-4 font-bold">No staff accounts</p>
+                  <p className="mt-1 text-sm text-neutral-400">
+                    Add your first staff member using the form.
+                  </p>
+                </div>
+              )}
             </div>
-          </header>
-
-          <div className="space-y-5 p-4 md:p-7">
-            <section className="grid gap-3 sm:grid-cols-3">
-              <div className="rounded-[22px] bg-[#ef1428] p-5 text-white">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm text-white/75">Active staff</p>
-                  <div className="flex size-9 items-center justify-center rounded-full bg-white/15">
-                    <ShieldCheck className="size-4" />
-                  </div>
-                </div>
-
-                <p className="mt-5 text-3xl font-black">{activeStaff}</p>
-              </div>
-
-              <div className="rounded-[22px] bg-white p-5">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm text-neutral-500">Waiters</p>
-                  <div className="flex size-9 items-center justify-center rounded-full bg-neutral-100">
-                    <UserRound className="size-4" />
-                  </div>
-                </div>
-
-                <p className="mt-5 text-3xl font-black">{waiters}</p>
-              </div>
-
-              <div className="rounded-[22px] bg-white p-5">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm text-neutral-500">Kitchen staff</p>
-                  <div className="flex size-9 items-center justify-center rounded-full bg-neutral-100">
-                    <ChefHat className="size-4" />
-                  </div>
-                </div>
-
-                <p className="mt-5 text-3xl font-black">{kitchenStaff}</p>
-              </div>
-            </section>
-
-            {error && (
-              <p className="rounded-2xl bg-red-50 p-4 text-sm text-red-700">
-                {error}
-              </p>
-            )}
-
-            <div className="grid gap-5 xl:grid-cols-[380px_1fr]">
-              <section className="self-start rounded-[24px] bg-white p-5 xl:sticky xl:top-7">
-                <div className="flex size-11 items-center justify-center rounded-full bg-neutral-950 text-white">
-                  <Plus className="size-5" />
-                </div>
-
-                <h2 className="mt-5 text-xl font-black">Add staff member</h2>
-                <p className="mt-1 text-sm leading-6 text-neutral-400">
-                  Create login details for a waiter or kitchen team member.
-                </p>
-
-                <form className="mt-6 space-y-4" onSubmit={handleCreate}>
-                  <div className="space-y-2">
-                    <Label htmlFor="staff-name">Full name</Label>
-                    <Input
-                      id="staff-name"
-                      className="h-12 rounded-xl border-0 bg-neutral-100 px-4 shadow-none"
-                      value={name}
-                      onChange={(event) => setName(event.target.value)}
-                      placeholder="Staff member's name"
-                      required
-                      minLength={2}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="staff-email">Email address</Label>
-                    <Input
-                      id="staff-email"
-                      className="h-12 rounded-xl border-0 bg-neutral-100 px-4 shadow-none"
-                      type="email"
-                      value={email}
-                      onChange={(event) => setEmail(event.target.value)}
-                      placeholder="name@restaurant.com"
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="staff-phone">Phone number</Label>
-                    <Input
-                      id="staff-phone"
-                      className="h-12 rounded-xl border-0 bg-neutral-100 px-4 shadow-none"
-                      type="tel"
-                      value={phone}
-                      onChange={(event) => setPhone(event.target.value)}
-                      placeholder="Optional"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="staff-password">Temporary password</Label>
-                    <Input
-                      id="staff-password"
-                      className="h-12 rounded-xl border-0 bg-neutral-100 px-4 shadow-none"
-                      type="password"
-                      value={password}
-                      onChange={(event) => setPassword(event.target.value)}
-                      placeholder="Minimum 8 characters"
-                      required
-                      minLength={8}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Staff role</Label>
-                    <Select
-                      value={role}
-                      onValueChange={(value) => setRole(value as StaffRole)}
-                    >
-                      <SelectTrigger className="h-12 w-full rounded-xl border-0 bg-neutral-100 px-4 shadow-none">
-                        <SelectValue />
-                      </SelectTrigger>
-
-                      <SelectContent>
-                        <SelectItem value="waiter">Waiter</SelectItem>
-                        <SelectItem value="kitchen">Kitchen staff</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <Button
-                    className="h-12 w-full rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
-                    disabled={submitting}
-                  >
-                    {submitting ? "Creating..." : "Create staff account"}
-                  </Button>
-                </form>
-              </section>
-
-              <section className="min-w-0 rounded-[24px] bg-white p-5">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <h2 className="text-xl font-black">Staff accounts</h2>
-                    <p className="mt-1 text-sm text-neutral-400">
-                      Manage access for the restaurant team.
-                    </p>
-                  </div>
-
-                  <Badge variant="secondary" className="rounded-full px-3 py-1">
-                    {staff.length} accounts
-                  </Badge>
-                </div>
-
-                {loading ? (
-                  <div className="mt-6 rounded-2xl bg-neutral-50 p-10 text-center text-sm text-neutral-400">
-                    Loading staff...
-                  </div>
-                ) : (
-                  <div className="mt-6 grid gap-3 md:grid-cols-2">
-                    {staff.map((staffMember) => {
-                      const id = getStaffId(staffMember)
-                      const isOwner = staffMember.role === "owner"
-                      const RoleIcon =
-                        staffMember.role === "kitchen"
-                          ? ChefHat
-                          : staffMember.role === "owner"
-                            ? ShieldCheck
-                            : UserRound
-
-                      return (
-                        <article
-                          key={id}
-                          className="rounded-[20px] border border-neutral-100 p-4 transition hover:border-neutral-200 hover:bg-neutral-50"
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="flex size-11 items-center justify-center rounded-full bg-neutral-950 text-white">
-                              <RoleIcon className="size-4" />
-                            </div>
-
-                            <Badge
-                              className={`rounded-full border-0 ${
-                                staffMember.active
-                                  ? "bg-emerald-50 text-emerald-700"
-                                  : "bg-neutral-100 text-neutral-500"
-                              }`}
-                            >
-                              {staffMember.active && (
-                                <Check className="size-3" />
-                              )}
-                              {staffMember.active ? "Active" : "Inactive"}
-                            </Badge>
-                          </div>
-
-                          <div className="mt-5">
-                            <h3 className="text-lg font-black">
-                              {staffMember.name}
-                            </h3>
-                            <p className="mt-1 text-xs font-semibold tracking-wider text-[#ef1428] uppercase">
-                              {staffMember.role === "kitchen"
-                                ? "Kitchen staff"
-                                : staffMember.role}
-                            </p>
-                          </div>
-
-                          <div className="mt-4 space-y-2 text-sm text-neutral-500">
-                            <div className="flex items-center gap-2">
-                              <Mail className="size-3.5 shrink-0" />
-                              <span className="truncate">
-                                {staffMember.email}
-                              </span>
-                            </div>
-
-                            {staffMember.phone && (
-                              <div className="flex items-center gap-2">
-                                <Phone className="size-3.5 shrink-0" />
-                                <span>{staffMember.phone}</span>
-                              </div>
-                            )}
-                          </div>
-
-                          <div className="mt-5 border-t border-neutral-100 pt-4">
-                            {isOwner ? (
-                              <div className="rounded-xl bg-neutral-100 px-3 py-2 text-center text-xs font-medium text-neutral-500">
-                                Owner access cannot be deactivated
-                              </div>
-                            ) : (
-                              <Button
-                                className={`w-full rounded-xl ${
-                                  !staffMember.active
-                                    ? "bg-neutral-950 text-white hover:bg-neutral-800"
-                                    : ""
-                                }`}
-                                size="sm"
-                                variant={
-                                  staffMember.active ? "outline" : "default"
-                                }
-                                disabled={updatingId === id}
-                                onClick={() =>
-                                  void handleStatusChange(staffMember)
-                                }
-                              >
-                                {updatingId === id
-                                  ? "Updating..."
-                                  : staffMember.active
-                                    ? "Deactivate account"
-                                    : "Activate account"}
-                              </Button>
-                            )}
-                          </div>
-                        </article>
-                      )
-                    })}
-
-                    {staff.length === 0 && (
-                      <div className="rounded-2xl border border-dashed border-neutral-200 p-12 text-center md:col-span-2">
-                        <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-neutral-100">
-                          <Users className="size-5 text-neutral-500" />
-                        </div>
-                        <p className="mt-4 font-bold">No staff accounts</p>
-                        <p className="mt-1 text-sm text-neutral-400">
-                          Add your first staff member using the form.
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </section>
-            </div>
-          </div>
-        </div>
+          )}
+        </section>
       </div>
-    </main>
+    </OwnerShell>
   )
 }

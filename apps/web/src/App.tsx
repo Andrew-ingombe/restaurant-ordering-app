@@ -34,6 +34,7 @@ import { OwnerOrdersPage } from "./pages/owner-orders-page"
 import { OwnerOrderDetailPage } from "./pages/owner-order-detail-page"
 import { PlatformPage } from "./pages/platform-page"
 import { PlatformCreateRestaurantPage } from "./pages/platform-create-restaurant-page"
+import { OwnerSettingsPage } from "./pages/owner-settings-page"
 
 import {
   ArrowRight,
@@ -366,7 +367,7 @@ function AppRoutes() {
         path="/owner/menu"
         element={
           user?.role === "owner" ? (
-            <OwnerMenuPage />
+            <OwnerMenuPage user={user} onLogout={logout} />
           ) : (
             <Navigate to={user ? rolePath(user.role) : "/login"} replace />
           )
@@ -377,7 +378,7 @@ function AppRoutes() {
         path="/owner/menu/items"
         element={
           user?.role === "owner" ? (
-            <OwnerMenuItemsPage />
+            <OwnerMenuItemsPage user={user} onLogout={logout} />
           ) : (
             <Navigate to={user ? rolePath(user.role) : "/login"} replace />
           )
@@ -443,7 +444,18 @@ function AppRoutes() {
         path="/owner/tables"
         element={
           user?.role === "owner" ? (
-            <OwnerTablesPage />
+            <OwnerTablesPage user={user} onLogout={logout} />
+          ) : (
+            <Navigate to={user ? rolePath(user.role) : "/login"} replace />
+          )
+        }
+      />
+
+      <Route
+        path="/owner/settings"
+        element={
+          user?.role === "owner" ? (
+            <OwnerSettingsPage user={user} onLogout={logout} />
           ) : (
             <Navigate to={user ? rolePath(user.role) : "/login"} replace />
           )

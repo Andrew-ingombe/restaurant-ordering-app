@@ -774,3 +774,43 @@ export const updateRestaurantSubscription = async (
 
   return data.subscription
 }
+
+export type OwnerRestaurantSettings = {
+  id: string
+  name: string
+  slug: string
+  active: boolean
+  settings: {
+    currency: string
+    timezone: string
+    phone: string
+    email: string
+    address: string
+    receiptFooter: string
+  }
+}
+
+export const getRestaurantSettings =
+  async (): Promise<OwnerRestaurantSettings> => {
+    const data = await authenticatedRequest("/settings/restaurant")
+    return data.restaurant
+  }
+
+export const updateRestaurantSettings = async (
+  details: Partial<{
+    name: string
+    currency: string
+    timezone: string
+    phone: string
+    email: string
+    address: string
+    receiptFooter: string
+  }>
+): Promise<OwnerRestaurantSettings> => {
+  const data = await authenticatedRequest("/settings/restaurant", {
+    method: "PATCH",
+    body: JSON.stringify(details),
+  })
+
+  return data.restaurant
+}
