@@ -814,3 +814,51 @@ export const updateRestaurantSettings = async (
 
   return data.restaurant
 }
+
+export type CloudinaryUploadSignature = {
+  cloudName: string
+  apiKey: string
+  timestamp: number
+  folder: string
+  signature: string
+}
+
+export const getMenuItemUploadSignature =
+  async (): Promise<CloudinaryUploadSignature> => {
+    return authenticatedRequest("/menu/uploads/signature", {
+      method: "POST",
+    })
+  }
+
+export const uploadMenuItemImage = async (
+  file: File
+): Promise<{
+  secureUrl: string
+}> => {
+  const signature = await getMenuItemUploadSignature()
+  const formData = new FormData()
+
+  formData.append("file", file)
+  formData.append("api_key", signature.apiKey)
+  formData.append("timestamp", String(signature.timestamp))
+  formData.append("folder", signature.folder)
+  formData.append("signature", signature.signature)
+
+  const response = await fetch(
+    `https://api.cloudinary.com/v1_1/${signature.cloudName}/image/upload`,
+    {
+      method: "POST",
+      body: formData,
+    }
+  )
+
+  const data = await response.json()
+
+  if (!response.ok) {
+    throw new Error(data.error?.message || "Image upload failed")
+  }
+
+  return {
+    secureUrl: data.secure_url,
+  }
+}

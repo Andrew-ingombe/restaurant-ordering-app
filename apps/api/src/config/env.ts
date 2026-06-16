@@ -40,4 +40,9 @@ export const env = {
   publicRateWindowMs:
     Number(process.env.PUBLIC_RATE_WINDOW_MS) || 15 * 60 * 1000,
   publicRateMax: Number(process.env.PUBLIC_RATE_MAX) || 100,
+  cloudinaryCloudName: required("CLOUDINARY_CLOUD_NAME"),
+  cloudinaryApiKey: required("CLOUDINARY_API_KEY"),
+  cloudinaryApiSecret: required("CLOUDINARY_API_SECRET"),
+  cloudinaryUploadFolder:
+    process.env.CLOUDINARY_UPLOAD_FOLDER || "restaurant-ordering/menu-items",
 }

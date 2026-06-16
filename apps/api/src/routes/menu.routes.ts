@@ -1,7 +1,9 @@
+import { createHash } from "crypto"
 import { Router } from "express"
 import { Types } from "mongoose"
 import { z } from "zod"
 
+import { env } from "../config/env"
 import { asyncHandler } from "../middleware/async-handler"
 import {
   authenticate,
@@ -109,6 +111,29 @@ menuRouter.get(
     ])
 
     response.json({ categories, items })
+  })
+)
+
+menuRouter.post(
+  "/uploads/signature",
+  requireOwner,
+  asyncHandler(async (request, response) => {
+    const authenticatedRequest = request as AuthenticatedRequest
+    const restaurantId = authenticatedRequest.user!.restaurantId!
+
+    const timestamp = Math.floor(Date.now() / 1000)
+    const folder = `${env.cloudinaryUploadFolder}/${restaurantId}`
+
+    const signatureBase = `folder=${folder}&timestamp=${timestamp}${env.cloudinaryApiSecret}`
+    const signature = createHash("sha1").update(signatureBase).digest("hex")
+
+    response.json({
+      cloudName: env.cloudinaryCloudName,
+      apiKey: env.cloudinaryApiKey,
+      timestamp,
+      folder,
+      signature,
+    })
   })
 )
 

@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react"
-import type { FormEvent } from "react"
+import { useEffect, useRef, useState } from "react"
+import type { ChangeEvent, FormEvent } from "react"
 import { useNavigate } from "react-router-dom"
 import {
   Check,
@@ -7,7 +7,10 @@ import {
   ImageIcon,
   Pencil,
   Plus,
+  RefreshCw,
   Tags,
+  Trash2,
+  Upload,
   UtensilsCrossed,
 } from "lucide-react"
 
@@ -25,7 +28,12 @@ import {
 import { Textarea } from "@workspace/ui/components/textarea"
 
 import { OwnerShell } from "../components/owner-shell"
-import { createMenuItem, getManagedMenu, updateMenuItem } from "../lib/api"
+import {
+  createMenuItem,
+  getManagedMenu,
+  updateMenuItem,
+  uploadMenuItemImage,
+} from "../lib/api"
 import type { AuthUser, MenuCategory, MenuItem } from "../lib/api"
 
 type OwnerMenuItemsPageProps = {
@@ -44,6 +52,7 @@ export function OwnerMenuItemsPage({
   onLogout,
 }: OwnerMenuItemsPageProps) {
   const navigate = useNavigate()
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   const [categories, setCategories] = useState<MenuCategory[]>([])
   const [items, setItems] = useState<MenuItem[]>([])
@@ -54,6 +63,7 @@ export function OwnerMenuItemsPage({
   const [price, setPrice] = useState("")
   const [imageUrl, setImageUrl] = useState("")
   const [submitting, setSubmitting] = useState(false)
+  const [uploadingImage, setUploadingImage] = useState(false)
   const [updatingId, setUpdatingId] = useState("")
   const [error, setError] = useState("")
 
@@ -79,6 +89,10 @@ export function OwnerMenuItemsPage({
     setDescription("")
     setPrice("")
     setImageUrl("")
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ""
+    }
   }
 
   const handleSubmit = async (event: FormEvent) => {
@@ -159,6 +173,42 @@ export function OwnerMenuItemsPage({
       )
     } finally {
       setUpdatingId("")
+    }
+  }
+
+  const handleImageSelected = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+
+    if (!file) return
+
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp"]
+
+    if (!allowedTypes.includes(file.type)) {
+      setError("Please upload a JPG, PNG, or WebP image")
+      event.target.value = ""
+      return
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setError("Image must be 5MB or smaller")
+      event.target.value = ""
+      return
+    }
+
+    setUploadingImage(true)
+    setError("")
+
+    try {
+      const uploaded = await uploadMenuItemImage(file)
+      setImageUrl(uploaded.secureUrl)
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : "Could not upload image"
+      )
+    } finally {
+      setUploadingImage(false)
     }
   }
 
@@ -310,14 +360,71 @@ export function OwnerMenuItemsPage({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="item-image">Image URL (optional)</Label>
+              <Label>Dish image</Label>
+
+              <div className="rounded-2xl border border-dashed border-neutral-200 bg-neutral-50 p-4">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="hidden"
+                  onChange={(event) => void handleImageSelected(event)}
+                />
+
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    className="rounded-xl"
+                    type="button"
+                    variant="outline"
+                    disabled={uploadingImage}
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    {uploadingImage ? (
+                      <>
+                        <RefreshCw className="size-4 animate-spin" />
+                        Uploading...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="size-4" />
+                        Upload image
+                      </>
+                    )}
+                  </Button>
+
+                  {imageUrl && (
+                    <Button
+                      className="rounded-xl"
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setImageUrl("")
+                        if (fileInputRef.current) {
+                          fileInputRef.current.value = ""
+                        }
+                      }}
+                    >
+                      <Trash2 className="size-4" />
+                      Remove image
+                    </Button>
+                  )}
+                </div>
+
+                <p className="mt-3 text-xs text-neutral-500">
+                  JPG, PNG, or WebP. Maximum size 5MB.
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="item-image-url">Image URL</Label>
               <Input
-                id="item-image"
+                id="item-image-url"
                 className="h-12 rounded-xl border-0 bg-neutral-100 px-4 shadow-none"
                 type="url"
                 value={imageUrl}
                 onChange={(event) => setImageUrl(event.target.value)}
-                placeholder="https://..."
+                placeholder="Cloudinary image URL"
               />
             </div>
 
@@ -333,7 +440,7 @@ export function OwnerMenuItemsPage({
 
             <Button
               className="h-12 w-full rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
-              disabled={submitting || !category}
+              disabled={submitting || uploadingImage || !category}
             >
               {submitting
                 ? "Saving..."
