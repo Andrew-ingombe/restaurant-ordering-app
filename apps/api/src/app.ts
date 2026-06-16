@@ -1,25 +1,37 @@
 import cors from "cors"
-import express from "express"
+import express, { NextFunction, Request, Response } from "express"
 import mongoose from "mongoose"
+
 import { authRouter } from "./routes/auth.routes"
-import { userRouter } from "./routes/user.routes"
-import { NextFunction, Request, Response } from "express"
+import { customerMenuRouter } from "./routes/customer-menu.routes"
+import { customerOrderRouter } from "./routes/customer-order.routes"
+import { dashboardRouter } from "./routes/dashboard.routes"
+import { kitchenRouter } from "./routes/kitchen.routes"
 import { menuRouter } from "./routes/menu.routes"
 import { orderRouter } from "./routes/order.routes"
 import { paymentRouter } from "./routes/payment.routes"
-import { kitchenRouter } from "./routes/kitchen.routes"
-import { dashboardRouter } from "./routes/dashboard.routes"
-import { tableRouter } from "./routes/table.routes"
-import { customerMenuRouter } from "./routes/customer-menu.routes"
-import { customerOrderRouter } from "./routes/customer-order.routes"
 import { platformRouter } from "./routes/platform.routes"
 import { settingsRouter } from "./routes/settings.routes"
+import { tableRouter } from "./routes/table.routes"
+import { userRouter } from "./routes/user.routes"
+import { env } from "./config/env"
+import {
+  authRateLimiter,
+  corsOptions,
+  publicRateLimiter,
+  securityHeaders,
+} from "./lib/http-security"
 
 export const createApp = () => {
   const app = express()
 
-  app.use(cors())
-  app.use(express.json())
+  app.set("trust proxy", 1)
+  app.disable("x-powered-by")
+
+  app.use(securityHeaders)
+  app.use(cors(corsOptions))
+  app.use(express.json({ limit: env.apiJsonLimit }))
+  app.use(express.urlencoded({ extended: true, limit: env.apiJsonLimit }))
 
   app.get("/health", (_request, response) => {
     const databaseConnected = mongoose.connection.readyState === 1
@@ -30,6 +42,10 @@ export const createApp = () => {
       database: databaseConnected ? "connected" : "disconnected",
     })
   })
+
+  app.use("/auth/login", authRateLimiter)
+  app.use("/customer-menu", publicRateLimiter)
+  app.use("/customer-orders", publicRateLimiter)
 
   app.use("/auth", authRouter)
   app.use("/users", userRouter)

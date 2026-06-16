@@ -55,6 +55,23 @@ const paymentSchema = new Schema(
       required: false,
       index: true,
     },
+    lastWebhookEvent: {
+      type: String,
+      default: "",
+    },
+    lastWebhookPayload: {
+      type: Schema.Types.Mixed,
+    },
+    lastWebhookReceivedAt: {
+      type: Date,
+    },
+    lastReconciledAt: {
+      type: Date,
+    },
+    reconciliationCount: {
+      type: Number,
+      default: 0,
+    },
   },
   {
     timestamps: true,
@@ -63,5 +80,7 @@ const paymentSchema = new Schema(
 
 paymentSchema.index({ restaurant: 1, createdAt: -1 })
 paymentSchema.index({ restaurant: 1, status: 1 })
+paymentSchema.index({ restaurant: 1, reference: 1 })
+paymentSchema.index({ restaurant: 1, lastReconciledAt: 1 })
 
 export const Payment = model("Payment", paymentSchema)

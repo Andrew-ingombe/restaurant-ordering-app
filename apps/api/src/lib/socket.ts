@@ -1,5 +1,5 @@
-import { Server } from "socket.io"
 import jwt from "jsonwebtoken"
+import { Server } from "socket.io"
 import type { Server as HttpServer } from "http"
 
 import { env } from "../config/env"
@@ -16,7 +16,7 @@ let io: Server | null = null
 export const initializeSocket = (server: HttpServer) => {
   io = new Server(server, {
     cors: {
-      origin: env.frontendUrl,
+      origin: env.frontendUrls,
       methods: ["GET", "POST"],
     },
   })

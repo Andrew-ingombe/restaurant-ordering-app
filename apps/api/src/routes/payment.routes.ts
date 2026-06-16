@@ -21,8 +21,6 @@ import { Restaurant } from "../models/restaurant.model"
 
 export const paymentRouter = Router()
 
-paymentRouter.use(authenticate, requireRole("waiter"), requireRestaurantContext)
-
 const initializeSchema = z.object({
   customer: z.object({
     name: z.string().trim().min(2).max(100),
@@ -37,6 +35,21 @@ const verifySchema = z.object({
   }),
   reference: z.string().trim().min(1),
 })
+
+const webhookSchema = z
+  .object({
+    event: z.string().trim().optional(),
+    type: z.string().trim().optional(),
+    reference: z.string().trim().optional(),
+    data: z
+      .object({
+        reference: z.string().trim().optional(),
+        status: z.string().trim().optional(),
+      })
+      .passthrough()
+      .optional(),
+  })
+  .passthrough()
 
 const generatePaymentReference = () => {
   return `order-${Date.now()}-${randomUUID()}`
@@ -70,6 +83,306 @@ const getRestaurantPaymentSettings = async (restaurantId: string) => {
     checkoutScriptUrl: settings.checkoutScriptUrl,
   }
 }
+
+const fetchLencoCollectionStatus = async (
+  paymentSettings: {
+    secretKey: string
+    baseUrl: string
+  },
+  reference: string
+) => {
+  try {
+    const lencoResponse = await axios.get(
+      `${paymentSettings.baseUrl}/collections/status/${encodeURIComponent(
+        reference
+      )}`,
+      {
+        headers: {
+          Authorization: `Bearer ${paymentSettings.secretKey}`,
+          Accept: "application/json",
+        },
+        timeout: 15000,
+      }
+    )
+
+    return lencoResponse.data?.data || null
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const status = error.response?.status
+
+      if (status === 404) {
+        return null
+      }
+    }
+
+    throw error
+  }
+}
+
+const emitPaidOrderUpdates = async (
+  restaurantId: string,
+  orderId: string,
+  waiterId?: string
+) => {
+  const order = await Order.findById(orderId).populate("waiter", "name")
+
+  if (!order) return
+
+  const orderPayload = order.toObject()
+  const socketServer = getSocketServer()
+
+  if (waiterId) {
+    socketServer.to(`user:${waiterId}`).emit("order:updated", orderPayload)
+  }
+
+  socketServer
+    .to(`restaurant:${restaurantId}:role:kitchen`)
+    .emit("order:submitted", orderPayload)
+
+  socketServer
+    .to(`restaurant:${restaurantId}:role:kitchen`)
+    .emit("order:updated", orderPayload)
+
+  socketServer
+    .to(`restaurant:${restaurantId}:role:owner`)
+    .emit("order:updated", orderPayload)
+}
+
+const reconcilePaymentWithProvider = async ({
+  restaurantId,
+  paymentSettings,
+  payment,
+  order,
+  webhookEvent,
+  webhookPayload,
+}: {
+  restaurantId: string
+  paymentSettings: {
+    secretKey: string
+    baseUrl: string
+  }
+  payment: InstanceType<typeof Payment>
+  order: InstanceType<typeof Order>
+  webhookEvent?: string
+  webhookPayload?: unknown
+}) => {
+  const lencoPayment = await fetchLencoCollectionStatus(
+    paymentSettings,
+    payment.reference
+  )
+
+  payment.lastReconciledAt = new Date()
+  payment.reconciliationCount = (payment.reconciliationCount || 0) + 1
+
+  if (webhookEvent) {
+    payment.lastWebhookEvent = webhookEvent
+    payment.lastWebhookPayload = webhookPayload
+    payment.lastWebhookReceivedAt = new Date()
+  }
+
+  if (!lencoPayment) {
+    await payment.save()
+
+    return {
+      ok: false,
+      shouldRetry: true,
+      message: "Payment was not yet available for reconciliation",
+    }
+  }
+
+  const normalizedStatus = String(lencoPayment.status || "").toLowerCase()
+  const normalizedCurrency = String(lencoPayment.currency || "").toUpperCase()
+  const paidAmountInMinorUnits = Math.round(Number(lencoPayment.amount) * 100)
+
+  payment.providerResponse = lencoPayment
+
+  if (normalizedStatus === "failed" || normalizedStatus === "cancelled") {
+    payment.status = normalizedStatus === "cancelled" ? "cancelled" : "failed"
+
+    if (order.paymentStatus !== "paid") {
+      order.paymentStatus =
+        normalizedStatus === "cancelled" ? "failed" : "failed"
+    }
+
+    await Promise.all([payment.save(), order.save()])
+
+    return {
+      ok: false,
+      shouldRetry: false,
+      message: `Payment status is ${normalizedStatus}`,
+      payment,
+      order,
+    }
+  }
+
+  if (normalizedStatus !== "successful") {
+    payment.status = "pending"
+
+    if (order.paymentStatus !== "paid") {
+      order.paymentStatus = "pending"
+    }
+
+    await Promise.all([payment.save(), order.save()])
+
+    return {
+      ok: false,
+      shouldRetry: true,
+      message: `Payment status is ${normalizedStatus || "pending"}`,
+      payment,
+      order,
+    }
+  }
+
+  if (normalizedCurrency !== payment.currency) {
+    payment.status = "failed"
+
+    if (order.paymentStatus !== "paid") {
+      order.paymentStatus = "failed"
+    }
+
+    await Promise.all([payment.save(), order.save()])
+
+    return {
+      ok: false,
+      shouldRetry: false,
+      message: "Payment currency does not match the order",
+      payment,
+      order,
+    }
+  }
+
+  if (paidAmountInMinorUnits !== payment.amount) {
+    payment.status = "failed"
+
+    if (order.paymentStatus !== "paid") {
+      order.paymentStatus = "failed"
+    }
+
+    await Promise.all([payment.save(), order.save()])
+
+    return {
+      ok: false,
+      shouldRetry: false,
+      message: "Paid amount does not match the order total",
+      payment,
+      order,
+    }
+  }
+
+  const wasAlreadyPaid =
+    payment.status === "successful" && order.paymentStatus === "paid"
+
+  payment.status = "successful"
+  payment.providerTransactionId = String(
+    lencoPayment.id || lencoPayment.transactionId || ""
+  )
+  payment.verifiedAt = new Date()
+
+  order.paymentStatus = "paid"
+
+  if (["draft", "awaiting_payment"].includes(order.status)) {
+    order.status = "submitted"
+  }
+
+  await Promise.all([payment.save(), order.save()])
+
+  if (!wasAlreadyPaid) {
+    const waiterId = order.waiter?.toString()
+    await emitPaidOrderUpdates(restaurantId, order.id, waiterId)
+  }
+
+  return {
+    ok: true,
+    shouldRetry: false,
+    message: wasAlreadyPaid
+      ? "Payment already reconciled"
+      : "Payment verified successfully",
+    payment,
+    order,
+  }
+}
+
+paymentRouter.post(
+  "/webhook/lenco",
+  asyncHandler(async (request, response) => {
+    const result = webhookSchema.safeParse(request.body)
+
+    if (!result.success) {
+      response.status(400).json({
+        message: "Invalid webhook payload",
+      })
+      return
+    }
+
+    const reference = result.data.data?.reference || result.data.reference || ""
+
+    if (!reference) {
+      response.status(202).json({
+        message: "Webhook received without a reference",
+      })
+      return
+    }
+
+    const payment = await Payment.findOne({
+      reference,
+      provider: "lenco",
+    })
+
+    if (!payment) {
+      response.status(202).json({
+        message: "Webhook received for an unknown payment reference",
+      })
+      return
+    }
+
+    const restaurantId = payment.restaurant?.toString()
+
+    if (!restaurantId) {
+      response.status(202).json({
+        message: "Webhook received for a payment without restaurant context",
+      })
+      return
+    }
+
+    const order = await Order.findById(payment.order)
+
+    if (!order) {
+      response.status(202).json({
+        message: "Webhook received for a payment without an order",
+      })
+      return
+    }
+
+    let paymentSettings
+
+    try {
+      paymentSettings = await getRestaurantPaymentSettings(restaurantId)
+    } catch (error) {
+      response.status(202).json({
+        message:
+          error instanceof Error
+            ? error.message
+            : "Restaurant payment settings are not configured",
+      })
+      return
+    }
+
+    const reconciliation = await reconcilePaymentWithProvider({
+      restaurantId,
+      paymentSettings,
+      payment,
+      order,
+      webhookEvent: result.data.event || result.data.type || "webhook",
+      webhookPayload: result.data,
+    })
+
+    response.status(reconciliation.shouldRetry ? 202 : 200).json({
+      message: reconciliation.message,
+    })
+  })
+)
+
+paymentRouter.use(authenticate, requireRole("waiter"), requireRestaurantContext)
 
 paymentRouter.post(
   "/orders/:orderId/initialize",
@@ -260,104 +573,25 @@ paymentRouter.post(
       return
     }
 
-    if (payment.status === "successful" && order.paymentStatus === "paid") {
-      response.json({
-        message: "Payment already verified",
-        order,
+    const reconciliation = await reconcilePaymentWithProvider({
+      restaurantId,
+      paymentSettings,
+      payment,
+      order,
+    })
+
+    if (!reconciliation.ok) {
+      response.status(reconciliation.shouldRetry ? 202 : 400).json({
+        message: reconciliation.message,
+        paymentStatus:
+          reconciliation.order?.paymentStatus || order.paymentStatus,
       })
       return
     }
-
-    const lencoResponse = await axios.get(
-      `${paymentSettings.baseUrl}/collections/status/${encodeURIComponent(
-        payment.reference
-      )}`,
-      {
-        headers: {
-          Authorization: `Bearer ${paymentSettings.secretKey}`,
-          Accept: "application/json",
-        },
-        timeout: 15000,
-      }
-    )
-
-    const lencoPayment = lencoResponse.data?.data
-
-    if (!lencoPayment) {
-      response.status(404).json({
-        message: "Payment was not found at Lenco",
-      })
-      return
-    }
-
-    const status = String(lencoPayment.status).toLowerCase()
-    const currency = String(lencoPayment.currency).toUpperCase()
-    const paidAmountInMinorUnits = Math.round(Number(lencoPayment.amount) * 100)
-
-    payment.providerResponse = lencoPayment
-
-    if (status !== "successful") {
-      payment.status = status === "failed" ? "failed" : "pending"
-
-      order.paymentStatus = status === "failed" ? "failed" : "pending"
-
-      await Promise.all([payment.save(), order.save()])
-
-      response.status(400).json({
-        message: `Payment status is ${status}`,
-        paymentStatus: order.paymentStatus,
-      })
-      return
-    }
-
-    if (currency !== payment.currency) {
-      payment.status = "failed"
-      await payment.save()
-
-      response.status(400).json({
-        message: "Payment currency does not match the order",
-      })
-      return
-    }
-
-    if (paidAmountInMinorUnits !== payment.amount) {
-      payment.status = "failed"
-      await payment.save()
-
-      response.status(400).json({
-        message: "Paid amount does not match the order total",
-        expectedAmount: payment.amount / 100,
-        paidAmount: Number(lencoPayment.amount),
-      })
-      return
-    }
-
-    payment.status = "successful"
-    payment.providerTransactionId = String(
-      lencoPayment.id || lencoPayment.transactionId || ""
-    )
-    payment.verifiedAt = new Date()
-
-    order.paymentStatus = "paid"
-    order.status = "submitted"
-
-    await Promise.all([payment.save(), order.save()])
-
-    await order.populate("waiter", "name")
-
-    const orderPayload = order.toObject()
-
-    getSocketServer()
-      .to(`restaurant:${restaurantId}:role:kitchen`)
-      .emit("order:submitted", orderPayload)
-
-    getSocketServer()
-      .to(`restaurant:${restaurantId}:role:owner`)
-      .emit("order:updated", orderPayload)
 
     response.json({
-      message: "Payment verified successfully",
-      order,
+      message: reconciliation.message,
+      order: reconciliation.order || order,
     })
   })
 )

@@ -9,7 +9,8 @@
     "test": "vitest run",
     "seed:owner": "tsx src/scripts/seed-owner.ts",
     "seed:platform-admin": "tsx src/scripts/seed-platform-admin.ts",
-    "migrate:existing-restaurant": "tsx src/scripts/migrate-existing-restaurant.ts"
+    "migrate:existing-restaurant": "tsx src/scripts/migrate-existing-restaurant.ts",
+    "reconcile:payments": "tsx src/scripts/reconcile-pending-payments.ts"
   },
   "dependencies": {
     "axios": "^1.17.0",
@@ -17,6 +18,8 @@
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "express-rate-limit": "^8.5.2",
+    "helmet": "^8.2.0",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.7.0",
     "socket.io": "^4.8.3",
