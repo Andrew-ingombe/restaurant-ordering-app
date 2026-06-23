@@ -21,11 +21,14 @@ export const menuRouter = Router()
 
 menuRouter.use(authenticate, requireRestaurantContext)
 
+const preparationAreaSchema = z.enum(["kitchen", "bar", "none"])
+
 const createCategorySchema = z.object({
   name: z.string().trim().min(2),
   description: z.string().trim().optional().default(""),
   active: z.boolean().optional().default(true),
   sortOrder: z.number().int().optional().default(0),
+  preparationArea: preparationAreaSchema.optional().default("kitchen"),
 })
 
 const updateCategorySchema = z.object({
@@ -33,6 +36,7 @@ const updateCategorySchema = z.object({
   description: z.string().trim().optional(),
   active: z.boolean().optional(),
   sortOrder: z.number().int().optional(),
+  preparationArea: preparationAreaSchema.optional(),
 })
 
 const createItemSchema = z.object({
@@ -81,7 +85,7 @@ menuRouter.get(
         restaurant: restaurantId,
         available: true,
       })
-        .populate("category", "name")
+        .populate("category", "name preparationArea")
         .sort({ sortOrder: 1, name: 1 }),
     ])
 
@@ -106,7 +110,7 @@ menuRouter.get(
       MenuItem.find({
         restaurant: restaurantId,
       })
-        .populate("category", "name")
+        .populate("category", "name preparationArea")
         .sort({ sortOrder: 1, name: 1 }),
     ])
 
@@ -192,7 +196,7 @@ menuRouter.patch(
         $set: result.data,
       },
       {
-        new: true,
+        returnDocument: "after",
         runValidators: true,
       }
     )
@@ -241,7 +245,7 @@ menuRouter.post(
       restaurant: restaurantId,
     })
 
-    await item.populate("category", "name")
+    await item.populate("category", "name preparationArea")
 
     response.status(201).json({ item })
   })
@@ -293,10 +297,10 @@ menuRouter.patch(
         $set: result.data,
       },
       {
-        new: true,
+        returnDocument: "after",
         runValidators: true,
       }
-    ).populate("category", "name")
+    ).populate("category", "name preparationArea")
 
     if (!item) {
       response.status(404).json({

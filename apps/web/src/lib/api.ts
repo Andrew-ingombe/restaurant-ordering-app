@@ -1,6 +1,58 @@
 export const API_URL = import.meta.env.VITE_API_URL
 
+const API_AVAILABILITY_EVENT = "api:availability"
+
+const reportApiAvailability = (available: boolean, message = "") => {
+  window.dispatchEvent(
+    new CustomEvent(API_AVAILABILITY_EVENT, {
+      detail: {
+        available,
+        message,
+      },
+    })
+  )
+}
+
+const apiFetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+  try {
+    const response = await fetch(input, init)
+
+    if ([502, 503, 504].includes(response.status)) {
+      reportApiAvailability(
+        false,
+        "The restaurant service is temporarily unavailable."
+      )
+    } else {
+      reportApiAvailability(true)
+    }
+
+    return response
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw error
+    }
+
+    const message = navigator.onLine
+      ? "The restaurant service cannot be reached right now."
+      : "You appear to be offline. Check your internet connection."
+
+    reportApiAvailability(false, message)
+    throw new Error(message, {
+      cause: error,
+    })
+  }
+}
+
 export type UserRole = "platform_admin" | "owner" | "waiter" | "kitchen"
+export type MenuPreparationArea = "kitchen" | "bar" | "none"
+
+export type PaymentMethod =
+  | ""
+  | "cash"
+  | "card_pos"
+  | "manual_mobile_money"
+  | "lenco"
+export type ManualPaymentMethod = "cash" | "card_pos" | "manual_mobile_money"
 
 export type AuthUser = {
   id: string
@@ -9,6 +61,8 @@ export type AuthUser = {
   phone?: string
   role: UserRole
   restaurantId?: string
+  sharedHub?: boolean
+  mustChangePassword?: boolean
 }
 
 export type LoginResponse = {
@@ -20,7 +74,7 @@ export const login = async (
   email: string,
   password: string
 ): Promise<LoginResponse> => {
-  const response = await fetch(`${API_URL}/auth/login`, {
+  const response = await apiFetch(`${API_URL}/auth/login`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -47,6 +101,20 @@ export type StaffUser = {
   phone?: string
   role: UserRole
   active: boolean
+  sharedHub?: boolean
+  mustChangePassword?: boolean
+}
+
+export const resetStaffPassword = async (
+  id: string,
+  temporaryPassword: string
+): Promise<StaffUser> => {
+  const data = await authenticatedRequest(`/users/${id}/password`, {
+    method: "PATCH",
+    body: JSON.stringify({ temporaryPassword }),
+  })
+
+  return data.user
 }
 
 const authenticatedRequest = async (
@@ -55,7 +123,7 @@ const authenticatedRequest = async (
 ) => {
   const token = localStorage.getItem("auth_token")
 
-  const response = await fetch(`${API_URL}${path}`, {
+  const response = await apiFetch(`${API_URL}${path}`, {
     ...options,
     headers: {
       "Content-Type": "application/json",
@@ -84,12 +152,18 @@ export const getStaff = async (): Promise<StaffUser[]> => {
   return data.users
 }
 
+export const getActiveWaiters = async (): Promise<StaffUser[]> => {
+  const data = await authenticatedRequest("/orders/active-waiters")
+  return data.waiters
+}
+
 export const createStaff = async (details: {
   name: string
   email: string
   phone?: string
   password: string
   role: StaffRole
+  sharedHub?: boolean
 }): Promise<StaffUser> => {
   const data = await authenticatedRequest("/users", {
     method: "POST",
@@ -117,6 +191,7 @@ export type MenuCategory = {
   description: string
   active: boolean
   sortOrder: number
+  preparationArea: MenuPreparationArea
 }
 
 export const getManagedMenu = async (): Promise<{
@@ -127,6 +202,7 @@ export const getManagedMenu = async (): Promise<{
 export const createMenuCategory = async (details: {
   name: string
   description: string
+  preparationArea: MenuPreparationArea
 }): Promise<MenuCategory> => {
   const data = await authenticatedRequest("/menu/categories", {
     method: "POST",
@@ -143,6 +219,7 @@ export const updateMenuCategory = async (
     description: string
     active: boolean
     sortOrder: number
+    preparationArea: MenuPreparationArea
   }>
 ): Promise<MenuCategory> => {
   const data = await authenticatedRequest(`/menu/categories/${id}`, {
@@ -156,6 +233,7 @@ export const updateMenuCategory = async (
 export type MenuItemCategory = {
   _id: string
   name: string
+  preparationArea?: MenuPreparationArea
 }
 
 export type MenuItem = {
@@ -219,6 +297,7 @@ export type OrderItem = {
   quantity: number
   notes: string
   lineTotal: number
+  preparationArea?: MenuPreparationArea
 }
 
 export type DraftOrder = {
@@ -237,11 +316,19 @@ export type DraftOrder = {
   currency: string
   status: string
   paymentStatus: string
+  paymentMethod?: PaymentMethod
+  paidAt?: string
+  paymentRecordedBy?: string
   createdAt: string
   waiter?: {
     _id: string
     name: string
   }
+  createdBy?: {
+    _id: string
+    name: string
+  }
+  entryMode?: "personal" | "shared_hub" | "customer_qr"
   source?: "waiter" | "customer_qr"
   restaurantTable?: string
 }
@@ -254,6 +341,7 @@ export const getPublicMenu = async (): Promise<{
 }
 
 export const createDraftOrder = async (details: {
+  waiterId?: string
   orderType: "dine_in" | "takeaway"
   tableName: string
   customer: {
@@ -274,13 +362,60 @@ export const createDraftOrder = async (details: {
   return data.order
 }
 
-export const getMyOrders = async (): Promise<DraftOrder[]> => {
-  const data = await authenticatedRequest("/orders/mine")
-  return data.orders
+export type WaiterOrderHistoryStatus = "all" | "completed" | "cancelled"
+
+export type WaiterOrdersResponse = {
+  orders: DraftOrder[]
+  historyOrders: DraftOrder[]
+  historyPagination: {
+    page: number
+    limit: number
+    totalOrders: number
+    totalPages: number
+    hasPreviousPage: boolean
+    hasNextPage: boolean
+  }
+  historyStatus: WaiterOrderHistoryStatus
+}
+
+export const getMyOrders = async (
+  page = 1,
+  historyStatus: WaiterOrderHistoryStatus = "all",
+  limit = 9
+): Promise<WaiterOrdersResponse> => {
+  const query = new URLSearchParams({
+    page: page.toString(),
+    limit: limit.toString(),
+    historyStatus,
+  })
+
+  return authenticatedRequest(`/orders/mine?${query.toString()}`)
 }
 
 export const getMyOrder = async (id: string): Promise<DraftOrder> => {
   const data = await authenticatedRequest(`/orders/${id}`)
+  return data.order
+}
+
+export const submitWaiterOrder = async (
+  orderId: string
+): Promise<DraftOrder> => {
+  const data = await authenticatedRequest(`/orders/${orderId}/submit`, {
+    method: "PATCH",
+  })
+
+  return data.order
+}
+
+export const recordWaiterPayment = async (
+  orderId: string,
+  paymentMethod: ManualPaymentMethod
+): Promise<DraftOrder> => {
+  const data = await authenticatedRequest(`/orders/${orderId}/payment`, {
+    method: "PATCH",
+    body: JSON.stringify({ paymentMethod }),
+  })
+
   return data.order
 }
 
@@ -370,6 +505,30 @@ export type DashboardSummary = {
     activeOrders: number
     averageOrderValue: number
   }
+  attention: {
+    servedUnpaid: {
+      count: number
+      total: number
+    }
+    unclaimedQrRequests: {
+      count: number
+    }
+    delayedKitchenOrders: {
+      count: number
+      thresholdMinutes: number
+    }
+    pendingPayments: {
+      count: number
+    }
+    failedPayments: {
+      count: number
+    }
+  }
+  paymentBreakdown: {
+    method: "cash" | "card_pos" | "manual_mobile_money" | "lenco" | "unrecorded"
+    count: number
+    total: number
+  }[]
   statusBreakdown: {
     status: string
     count: number
@@ -427,6 +586,10 @@ export const updateTable = async (
 }
 
 export type CustomerTableMenu = {
+  restaurant: {
+    id: string
+    name: string
+  }
   table: {
     id: string
     name: string
@@ -449,7 +612,7 @@ export type CustomerOrderResponse = {
 export const getCustomerTableMenu = async (
   token: string
 ): Promise<CustomerTableMenu> => {
-  const response = await fetch(
+  const response = await apiFetch(
     `${API_URL}/customer-menu/table/${encodeURIComponent(token)}`
   )
   const data = await response.json()
@@ -459,6 +622,18 @@ export const getCustomerTableMenu = async (
   }
 
   return data
+}
+
+export type AvailableRestaurantTable = {
+  id: string
+  name: string
+}
+
+export const getAvailableTables = async (): Promise<
+  AvailableRestaurantTable[]
+> => {
+  const data = await authenticatedRequest("/tables/available")
+  return data.tables
 }
 
 export const submitCustomerOrder = async (details: {
@@ -473,7 +648,7 @@ export const submitCustomerOrder = async (details: {
     notes: string
   }[]
 }): Promise<CustomerOrderResponse> => {
-  const response = await fetch(`${API_URL}/customer-orders`, {
+  const response = await apiFetch(`${API_URL}/customer-orders`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -497,12 +672,14 @@ export const getCustomerOrderRequests = async (): Promise<DraftOrder[]> => {
 }
 
 export const claimCustomerOrderRequest = async (
-  orderId: string
+  orderId: string,
+  waiterId?: string
 ): Promise<DraftOrder> => {
   const data = await authenticatedRequest(
     `/orders/customer-requests/${orderId}/claim`,
     {
       method: "PATCH",
+      body: JSON.stringify(waiterId ? { waiterId } : {}),
     }
   )
 
@@ -512,6 +689,7 @@ export const claimCustomerOrderRequest = async (
 export const updateDraftOrder = async (
   orderId: string,
   details: {
+    waiterId?: string
     orderType: "dine_in" | "takeaway"
     tableName: string
     customer: {
@@ -861,4 +1039,51 @@ export const uploadMenuItemImage = async (
   return {
     secureUrl: data.secure_url,
   }
+}
+
+export const updateStaff = async (
+  id: string,
+  details: Partial<{
+    name: string
+    email: string
+    phone: string
+    role: StaffRole
+    sharedHub: boolean
+  }>
+): Promise<StaffUser> => {
+  const data = await authenticatedRequest(`/users/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(details),
+  })
+
+  return data.user
+}
+
+export type RestaurantPaymentOptions = {
+  manualMethods: ManualPaymentMethod[]
+  lenco: {
+    enabled: boolean
+    environment: "sandbox" | "production"
+  }
+}
+
+export const getRestaurantPaymentOptions =
+  async (): Promise<RestaurantPaymentOptions> => {
+    const data = await authenticatedRequest("/payments/options")
+    return data.paymentOptions
+  }
+
+export const resetRestaurantOwnerPassword = async (
+  restaurantId: string,
+  temporaryPassword: string
+): Promise<AuthUser> => {
+  const data = await authenticatedRequest(
+    `/platform/restaurants/${restaurantId}/owner-password`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({ temporaryPassword }),
+    }
+  )
+
+  return data.owner
 }

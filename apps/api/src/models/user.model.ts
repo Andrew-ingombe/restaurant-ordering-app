@@ -31,10 +31,19 @@ const userSchema = new Schema(
       required: true,
       select: false,
     },
+    mustChangePassword: {
+      type: Boolean,
+      default: false,
+    },
     role: {
       type: String,
       enum: ["platform_admin", "owner", "waiter", "kitchen"],
       required: true,
+    },
+    sharedHub: {
+      type: Boolean,
+      default: false,
+      index: true,
     },
     active: {
       type: Boolean,
@@ -47,5 +56,6 @@ const userSchema = new Schema(
 )
 
 userSchema.index({ restaurant: 1, role: 1 })
+userSchema.index({ restaurant: 1, role: 1, sharedHub: 1 })
 
 export const User = model("User", userSchema)

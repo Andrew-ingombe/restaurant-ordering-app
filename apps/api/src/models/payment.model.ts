@@ -22,7 +22,14 @@ const paymentSchema = new Schema(
     },
     provider: {
       type: String,
+      enum: ["manual", "lenco"],
       default: "lenco",
+    },
+    method: {
+      type: String,
+      enum: ["", "cash", "card_pos", "manual_mobile_money", "lenco"],
+      default: "",
+      index: true,
     },
     amount: {
       type: Number,
@@ -48,6 +55,10 @@ const paymentSchema = new Schema(
     },
     verifiedAt: {
       type: Date,
+    },
+    recordedBy: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
     },
     restaurant: {
       type: Schema.Types.ObjectId,
@@ -80,6 +91,7 @@ const paymentSchema = new Schema(
 
 paymentSchema.index({ restaurant: 1, createdAt: -1 })
 paymentSchema.index({ restaurant: 1, status: 1 })
+paymentSchema.index({ restaurant: 1, method: 1 })
 paymentSchema.index({ restaurant: 1, reference: 1 })
 paymentSchema.index({ restaurant: 1, lastReconciledAt: 1 })
 

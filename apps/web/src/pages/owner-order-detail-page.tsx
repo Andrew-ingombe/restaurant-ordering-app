@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom"
 import {
   ArrowLeft,
   Clock3,
+  CreditCard,
   Mail,
   Phone,
   QrCode,
@@ -18,6 +19,7 @@ import { Button } from "@workspace/ui/components/button"
 import { OwnerShell } from "../components/owner-shell"
 import { getOwnerOrder } from "../lib/api"
 import type { AuthUser, OwnerOrder } from "../lib/api"
+import { OwnerOrderDetailSkeleton } from "../components/page-skeletons"
 
 type OwnerOrderDetailPageProps = {
   user: AuthUser
@@ -45,6 +47,13 @@ const paymentStyles: Record<string, string> = {
   refunded: "bg-violet-50 text-violet-700",
 }
 
+const paymentMethodLabels: Record<string, string> = {
+  cash: "Cash",
+  card_pos: "Card POS",
+  manual_mobile_money: "Manual mobile money",
+  lenco: "Lenco",
+}
+
 const formatPrice = (amount: number) =>
   new Intl.NumberFormat("en-ZM", {
     style: "currency",
@@ -53,11 +62,17 @@ const formatPrice = (amount: number) =>
 
 const formatStatus = (status: string) => status.replaceAll("_", " ")
 
+const formatPaymentMethod = (method?: string) =>
+  method ? paymentMethodLabels[method] || formatStatus(method) : "Not recorded"
+
 const formatDate = (value: string) =>
   new Intl.DateTimeFormat("en-ZM", {
     dateStyle: "full",
     timeStyle: "short",
   }).format(new Date(value))
+
+const formatOptionalDate = (value?: string) =>
+  value ? formatDate(value) : "Not recorded"
 
 export function OwnerOrderDetailPage({
   user,
@@ -129,11 +144,7 @@ export function OwnerOrderDetailPage({
         </div>
       }
     >
-      {loading && (
-        <div className="flex min-h-96 items-center justify-center">
-          <p className="text-sm text-neutral-400">Loading order...</p>
-        </div>
-      )}
+      {loading && <OwnerOrderDetailSkeleton />}
 
       {error && (
         <div className="rounded-2xl bg-red-50 p-5 text-red-700">
@@ -160,7 +171,8 @@ export function OwnerOrderDetailPage({
                 <div className="flex flex-wrap gap-2">
                   <Badge
                     className={`border-0 capitalize ${
-                      statusStyles[order.status]
+                      statusStyles[order.status] ||
+                      "bg-neutral-100 text-neutral-700"
                     }`}
                   >
                     {formatStatus(order.status)}
@@ -171,6 +183,7 @@ export function OwnerOrderDetailPage({
                       paymentStyles[order.paymentStatus] || paymentStyles.unpaid
                     }`}
                   >
+                    <CreditCard className="size-3" />
                     {formatStatus(order.paymentStatus)}
                   </Badge>
                 </div>
@@ -242,6 +255,42 @@ export function OwnerOrderDetailPage({
                 <div className="flex justify-between">
                   <span className="text-white/55">Currency</span>
                   <span className="font-bold">{order.currency}</span>
+                </div>
+              </div>
+            </section>
+
+            <section className="rounded-[24px] bg-white p-5">
+              <h2 className="font-black">Payment trail</h2>
+
+              <div className="mt-5 space-y-4 text-sm">
+                <div className="flex items-start gap-3">
+                  <WalletCards className="mt-0.5 size-4 text-neutral-400" />
+                  <div>
+                    <p className="text-neutral-400">Payment status</p>
+                    <p className="font-bold capitalize">
+                      {formatStatus(order.paymentStatus)}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <CreditCard className="mt-0.5 size-4 text-neutral-400" />
+                  <div>
+                    <p className="text-neutral-400">Payment method</p>
+                    <p className="font-bold">
+                      {formatPaymentMethod(order.paymentMethod)}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <Clock3 className="mt-0.5 size-4 text-neutral-400" />
+                  <div>
+                    <p className="text-neutral-400">Paid at</p>
+                    <p className="font-bold">
+                      {formatOptionalDate(order.paidAt)}
+                    </p>
+                  </div>
                 </div>
               </div>
             </section>
@@ -325,16 +374,6 @@ export function OwnerOrderDetailPage({
                     <p className="text-neutral-400">Email</p>
                     <p className="font-bold break-all">
                       {order.customer?.email || "Not provided"}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3">
-                  <WalletCards className="mt-0.5 size-4 text-neutral-400" />
-                  <div>
-                    <p className="text-neutral-400">Payment</p>
-                    <p className="font-bold capitalize">
-                      {formatStatus(order.paymentStatus)}
                     </p>
                   </div>
                 </div>

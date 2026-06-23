@@ -7,6 +7,7 @@ import { env } from "../config/env"
 import { asyncHandler } from "../middleware/async-handler"
 import { MenuCategory } from "../models/menu-category.model"
 import { MenuItem } from "../models/menu-item.model"
+import { Restaurant } from "../models/restaurant.model"
 import { RestaurantTable } from "../models/restaurant-table.model"
 
 export const customerMenuRouter = Router()
@@ -70,6 +71,20 @@ customerMenuRouter.get(
 
     const restaurantId = table.restaurant
 
+    const restaurant = await Restaurant.findOne({
+      _id: restaurantId,
+      active: true,
+    })
+      .select("name")
+      .lean()
+
+    if (!restaurant) {
+      response.status(404).json({
+        message: "This restaurant is unavailable",
+      })
+      return
+    }
+
     const categories = await MenuCategory.find({
       restaurant: restaurantId,
       active: true,
@@ -89,6 +104,10 @@ customerMenuRouter.get(
       .lean()
 
     response.json({
+      restaurant: {
+        id: restaurant._id,
+        name: restaurant.name,
+      },
       table: {
         id: table._id,
         name: table.name,

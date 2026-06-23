@@ -4,8 +4,10 @@ import { Types } from "mongoose"
 import { z } from "zod"
 
 import { env } from "../config/env"
-import { asyncHandler } from "../middleware/async-handler"
+import { normalizePreparationArea } from "../lib/kitchen-order"
 import { getSocketServer } from "../lib/socket"
+import { asyncHandler } from "../middleware/async-handler"
+import { MenuCategory } from "../models/menu-category.model"
 import { MenuItem } from "../models/menu-item.model"
 import { Order } from "../models/order.model"
 import { RestaurantTable } from "../models/restaurant-table.model"
@@ -110,6 +112,24 @@ customerOrderRouter.post(
       return
     }
 
+    const categoryIds = Array.from(
+      new Set(menuItems.map((item) => item.category.toString()))
+    )
+
+    const categories = await MenuCategory.find({
+      restaurant: restaurantId,
+      _id: { $in: categoryIds },
+    })
+      .select("preparationArea")
+      .lean()
+
+    const preparationAreaByCategoryId = new Map(
+      categories.map((category) => [
+        category._id.toString(),
+        normalizePreparationArea(category.preparationArea),
+      ])
+    )
+
     const menuItemMap = new Map(menuItems.map((item) => [item.id, item]))
 
     const items = result.data.items.map((requestedItem) => {
@@ -126,6 +146,9 @@ customerOrderRouter.post(
         quantity: requestedItem.quantity,
         notes: requestedItem.notes,
         lineTotal: menuItem.price * requestedItem.quantity,
+        preparationArea:
+          preparationAreaByCategoryId.get(menuItem.category.toString()) ||
+          "kitchen",
       }
     })
 

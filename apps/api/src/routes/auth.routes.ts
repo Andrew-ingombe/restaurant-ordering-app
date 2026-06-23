@@ -97,6 +97,7 @@ authRouter.post("/login", async (request, response) => {
   }
 
   const restaurantId = user.restaurant?.toString()
+
   if (user.role !== "platform_admin") {
     const accessStatus = await getRestaurantAccessStatus(restaurantId)
 
@@ -126,6 +127,9 @@ authRouter.post("/login", async (request, response) => {
       email: user.email,
       phone: user.phone,
       role: user.role,
+      restaurantId,
+      sharedHub: Boolean(user.sharedHub),
+      mustChangePassword: Boolean(user.mustChangePassword),
     },
   })
 })
@@ -162,6 +166,8 @@ authRouter.get(
         phone: user.phone,
         role: user.role,
         restaurantId,
+        sharedHub: Boolean(user.sharedHub),
+        mustChangePassword: Boolean(user.mustChangePassword),
       },
     })
   }
@@ -213,6 +219,7 @@ authRouter.patch(
     }
 
     user.passwordHash = await bcrypt.hash(result.data.newPassword, 12)
+    user.mustChangePassword = false
 
     await user.save()
 

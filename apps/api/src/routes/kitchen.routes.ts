@@ -2,6 +2,11 @@ import { Router } from "express"
 import { Types } from "mongoose"
 import { z } from "zod"
 
+import {
+  createKitchenOrderPayload,
+  hasKitchenItems,
+} from "../lib/kitchen-order"
+import { getSocketServer } from "../lib/socket"
 import { asyncHandler } from "../middleware/async-handler"
 import {
   authenticate,
@@ -12,7 +17,6 @@ import {
   requireRole,
 } from "../middleware/role.middleware"
 import { Order } from "../models/order.model"
-import { getSocketServer } from "../lib/socket"
 
 export const kitchenRouter = Router()
 
@@ -43,12 +47,16 @@ kitchenRouter.get(
     const orders = await Order.find({
       restaurant: restaurantId,
       status: { $in: activeStatuses },
-      paymentStatus: "paid",
+      paymentStatus: { $ne: "failed" },
     })
       .populate("waiter", "name")
       .sort({ createdAt: 1 })
 
-    response.json({ orders })
+    const kitchenOrders = orders
+      .map(createKitchenOrderPayload)
+      .filter((order) => order.items.length > 0)
+
+    response.json({ orders: kitchenOrders })
   })
 )
 
@@ -87,9 +95,9 @@ kitchenRouter.patch(
       return
     }
 
-    if (currentOrder.paymentStatus !== "paid") {
+    if (!hasKitchenItems(Array.from(currentOrder.items))) {
       response.status(409).json({
-        message: "Only paid orders can be processed",
+        message: "This order has no kitchen items",
       })
       return
     }
@@ -119,7 +127,6 @@ kitchenRouter.patch(
         _id: currentOrder._id,
         restaurant: restaurantId,
         status: currentOrder.status,
-        paymentStatus: "paid",
       },
       {
         $set: {
@@ -127,7 +134,7 @@ kitchenRouter.patch(
         },
       },
       {
-        new: true,
+        returnDocument: "after",
         runValidators: true,
       }
     ).populate("waiter", "name")
@@ -140,18 +147,21 @@ kitchenRouter.patch(
     }
 
     const orderPayload = order.toObject()
+    const kitchenPayload = createKitchenOrderPayload(order)
 
     getSocketServer().to(`user:${waiterId}`).emit("order:updated", orderPayload)
+
     getSocketServer()
       .to(`restaurant:${restaurantId}:role:kitchen`)
-      .emit("order:updated", orderPayload)
+      .emit("order:updated", kitchenPayload)
+
     getSocketServer()
       .to(`restaurant:${restaurantId}:role:owner`)
       .emit("order:updated", orderPayload)
 
     response.json({
       message: `Order marked as ${result.data.status}`,
-      order,
+      order: kitchenPayload,
     })
   })
 )

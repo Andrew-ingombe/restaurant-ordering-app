@@ -5,6 +5,7 @@ import {
   CalendarDays,
   ChevronLeft,
   ChevronRight,
+  CreditCard,
   Eye,
   ReceiptText,
   Search,
@@ -39,6 +40,8 @@ import {
 import { OwnerShell } from "../components/owner-shell"
 import { getOwnerOrders } from "../lib/api"
 import type { AuthUser, OwnerOrderHistory, OwnerOrderStatus } from "../lib/api"
+
+import { OwnerOrdersTableSkeleton } from "../components/page-skeletons"
 
 type OwnerOrdersPageProps = {
   user: AuthUser
@@ -89,6 +92,13 @@ const paymentStyles: Record<string, string> = {
   refunded: "bg-violet-50 text-violet-700",
 }
 
+const paymentMethodLabels: Record<string, string> = {
+  cash: "Cash",
+  card_pos: "Card POS",
+  manual_mobile_money: "Manual mobile money",
+  lenco: "Lenco",
+}
+
 const formatPrice = (amount: number) =>
   new Intl.NumberFormat("en-ZM", {
     style: "currency",
@@ -96,6 +106,9 @@ const formatPrice = (amount: number) =>
   }).format(amount / 100)
 
 const formatStatus = (status: string) => status.replaceAll("_", " ")
+
+const formatPaymentMethod = (method?: string) =>
+  method ? paymentMethodLabels[method] || formatStatus(method) : "Not recorded"
 
 const formatDateTime = (value: string) =>
   new Intl.DateTimeFormat("en-ZM", {
@@ -356,15 +369,17 @@ export function OwnerOrdersPage({ user, onLogout }: OwnerOrdersPageProps) {
             </p>
           </div>
 
-          <Badge className="rounded-full border-0 bg-neutral-100 text-neutral-700">
-            {history?.pagination.totalOrders ?? 0} orders
-          </Badge>
+          {loading ? (
+            <span className="h-6 w-20 animate-pulse rounded-full bg-neutral-200" />
+          ) : (
+            <Badge className="rounded-full border-0 bg-neutral-100 text-neutral-700">
+              {history?.pagination.totalOrders ?? 0} orders
+            </Badge>
+          )}
         </div>
 
         {loading ? (
-          <div className="flex min-h-72 items-center justify-center">
-            <p className="text-sm text-neutral-400">Loading order history...</p>
-          </div>
+          <OwnerOrdersTableSkeleton />
         ) : history && history.orders.length > 0 ? (
           <>
             <div className="hidden overflow-x-auto px-3 pb-3 md:block">
@@ -413,7 +428,8 @@ export function OwnerOrdersPage({ user, onLogout }: OwnerOrdersPageProps) {
                       <TableCell>
                         <Badge
                           className={`border-0 capitalize ${
-                            statusStyles[order.status]
+                            statusStyles[order.status] ||
+                            "bg-neutral-100 text-neutral-700"
                           }`}
                         >
                           {formatStatus(order.status)}
@@ -421,14 +437,23 @@ export function OwnerOrdersPage({ user, onLogout }: OwnerOrdersPageProps) {
                       </TableCell>
 
                       <TableCell>
-                        <Badge
-                          className={`border-0 capitalize ${
-                            paymentStyles[order.paymentStatus] ||
-                            paymentStyles.unpaid
-                          }`}
-                        >
-                          {formatStatus(order.paymentStatus)}
-                        </Badge>
+                        <div className="flex flex-col gap-1">
+                          <Badge
+                            className={`w-fit border-0 capitalize ${
+                              paymentStyles[order.paymentStatus] ||
+                              paymentStyles.unpaid
+                            }`}
+                          >
+                            <CreditCard className="size-3" />
+                            {formatStatus(order.paymentStatus)}
+                          </Badge>
+
+                          {order.paymentStatus === "paid" && (
+                            <span className="text-xs text-neutral-400">
+                              {formatPaymentMethod(order.paymentMethod)}
+                            </span>
+                          )}
+                        </div>
                       </TableCell>
 
                       <TableCell className="text-right font-bold">
@@ -479,7 +504,8 @@ export function OwnerOrdersPage({ user, onLogout }: OwnerOrdersPageProps) {
                   <div className="mt-4 flex flex-wrap gap-2">
                     <Badge
                       className={`border-0 capitalize ${
-                        statusStyles[order.status]
+                        statusStyles[order.status] ||
+                        "bg-neutral-100 text-neutral-700"
                       }`}
                     >
                       {formatStatus(order.status)}
@@ -491,9 +517,16 @@ export function OwnerOrdersPage({ user, onLogout }: OwnerOrdersPageProps) {
                         paymentStyles.unpaid
                       }`}
                     >
+                      <CreditCard className="size-3" />
                       {formatStatus(order.paymentStatus)}
                     </Badge>
                   </div>
+
+                  {order.paymentStatus === "paid" && (
+                    <p className="mt-3 text-xs font-medium text-neutral-400">
+                      Paid via {formatPaymentMethod(order.paymentMethod)}
+                    </p>
+                  )}
 
                   <div className="mt-4 flex justify-between text-sm">
                     <span className="text-neutral-400">

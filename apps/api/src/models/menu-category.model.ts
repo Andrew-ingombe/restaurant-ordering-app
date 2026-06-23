@@ -26,6 +26,12 @@ const menuCategorySchema = new Schema(
       required: false,
       index: true,
     },
+    preparationArea: {
+      type: String,
+      enum: ["kitchen", "bar", "none"],
+      default: "kitchen",
+      index: true,
+    },
   },
   {
     timestamps: true,

@@ -6,6 +6,7 @@ import {
   Route,
   Routes,
   useNavigate,
+  useLocation,
 } from "react-router-dom"
 
 import { Button } from "@workspace/ui/components/button"
@@ -35,6 +36,9 @@ import { OwnerOrderDetailPage } from "./pages/owner-order-detail-page"
 import { PlatformPage } from "./pages/platform-page"
 import { PlatformCreateRestaurantPage } from "./pages/platform-create-restaurant-page"
 import { OwnerSettingsPage } from "./pages/owner-settings-page"
+import { Toaster } from "@workspace/ui/components/sonner"
+import { AppLoadingSkeleton } from "./components/page-skeletons"
+import { NetworkStatusBanner } from "./components/network-status-banner"
 
 import {
   ArrowRight,
@@ -44,6 +48,10 @@ import {
   RefreshCw,
   ShieldCheck,
   UtensilsCrossed,
+  CheckCircle2,
+  CircleX,
+  Info,
+  TriangleAlert,
 } from "lucide-react"
 
 const getStoredUser = (): AuthUser | null => {
@@ -82,7 +90,12 @@ function LoginPage({ onLogin }: { onLogin: (user: AuthUser) => void }) {
       localStorage.setItem("auth_user", JSON.stringify(result.user))
 
       onLogin(result.user)
-      navigate(rolePath(result.user.role), { replace: true })
+      navigate(
+        result.user.mustChangePassword
+          ? "/account/password"
+          : rolePath(result.user.role),
+        { replace: true }
+      )
     } catch (requestError) {
       setError(
         requestError instanceof Error
@@ -266,6 +279,9 @@ function LoginPage({ onLogin }: { onLogin: (user: AuthUser) => void }) {
 }
 
 function AppRoutes() {
+  const location = useLocation()
+
+  const isPublicCustomerMenu = location.pathname.startsWith("/menu/table/")
   const [user, setUser] = useState<AuthUser | null>(getStoredUser)
 
   const [checkingSession, setCheckingSession] = useState(
@@ -277,6 +293,21 @@ function AppRoutes() {
     localStorage.removeItem("auth_token")
     localStorage.removeItem("auth_user")
     setUser(null)
+  }
+
+  const completeRequiredPasswordChange = () => {
+    setUser((currentUser) => {
+      if (!currentUser) return null
+
+      const updatedUser = {
+        ...currentUser,
+        mustChangePassword: false,
+      }
+
+      localStorage.setItem("auth_user", JSON.stringify(updatedUser))
+
+      return updatedUser
+    })
   }
 
   useEffect(() => {
@@ -314,22 +345,16 @@ function AppRoutes() {
     }
   }, [])
 
-  if (checkingSession) {
-    return (
-      <main className="flex min-h-svh items-center justify-center bg-[#f7f7f8] p-6">
-        <div className="text-center">
-          <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-[#ef1428] text-white">
-            <UtensilsCrossed className="size-6" />
-          </div>
+  if (checkingSession && !isPublicCustomerMenu) {
+    return <AppLoadingSkeleton />
+  }
 
-          <RefreshCw className="mx-auto mt-6 size-5 animate-spin text-[#ef1428]" />
-
-          <p className="mt-3 text-sm font-medium text-neutral-500">
-            Checking your session...
-          </p>
-        </div>
-      </main>
-    )
+  if (
+    user?.mustChangePassword &&
+    !isPublicCustomerMenu &&
+    location.pathname !== "/account/password"
+  ) {
+    return <Navigate to="/account/password" replace />
   }
 
   return (
@@ -338,7 +363,14 @@ function AppRoutes() {
         path="/login"
         element={
           user ? (
-            <Navigate to={rolePath(user.role)} replace />
+            <Navigate
+              to={
+                user.mustChangePassword
+                  ? "/account/password"
+                  : rolePath(user.role)
+              }
+              replace
+            />
           ) : (
             <LoginPage onLogin={setUser} />
           )
@@ -411,7 +443,7 @@ function AppRoutes() {
         path="/waiter/orders"
         element={
           user?.role === "waiter" ? (
-            <WaiterOrdersPage />
+            <WaiterOrdersPage user={user} onLogout={logout} />
           ) : (
             <Navigate to={user ? rolePath(user.role) : "/login"} replace />
           )
@@ -422,7 +454,7 @@ function AppRoutes() {
         path="/waiter/orders/:id"
         element={
           user?.role === "waiter" ? (
-            <WaiterOrderDetailPage />
+            <WaiterOrderDetailPage user={user} onLogout={logout} />
           ) : (
             <Navigate to={user ? rolePath(user.role) : "/login"} replace />
           )
@@ -468,7 +500,7 @@ function AppRoutes() {
         path="/waiter/requests"
         element={
           user?.role === "waiter" ? (
-            <WaiterRequestsPage />
+            <WaiterRequestsPage user={user} onLogout={logout} />
           ) : (
             <Navigate to={user ? rolePath(user.role) : "/login"} replace />
           )
@@ -479,7 +511,7 @@ function AppRoutes() {
         path="/waiter/orders/:id/edit"
         element={
           user?.role === "waiter" ? (
-            <WaiterEditOrderPage />
+            <WaiterEditOrderPage user={user} onLogout={logout} />
           ) : (
             <Navigate to={user ? rolePath(user.role) : "/login"} replace />
           )
@@ -490,7 +522,10 @@ function AppRoutes() {
         path="/account/password"
         element={
           user ? (
-            <ChangePasswordPage user={user} />
+            <ChangePasswordPage
+              user={user}
+              onPasswordChanged={completeRequiredPasswordChange}
+            />
           ) : (
             <Navigate to="/login" replace />
           )
@@ -532,7 +567,40 @@ function AppRoutes() {
 export default function App() {
   return (
     <BrowserRouter>
+      <NetworkStatusBanner />
       <AppRoutes />
+
+      <Toaster
+        theme="light"
+        position="top-right"
+        closeButton
+        duration={4000}
+        icons={{
+          success: <CheckCircle2 className="size-5 text-emerald-700" />,
+          error: <CircleX className="size-5 text-red-700" />,
+          warning: <TriangleAlert className="size-5 text-amber-700" />,
+          info: <Info className="size-5 text-blue-700" />,
+          loading: (
+            <RefreshCw className="size-5 animate-spin text-neutral-600" />
+          ),
+        }}
+        toastOptions={{
+          classNames: {
+            toast: "!min-h-16 !w-full !rounded-xl !border !px-4 !py-3",
+            content: "!gap-0.5",
+            title: "!font-bold !text-neutral-950",
+            description: "!text-sm !leading-5 !text-neutral-600",
+
+            success: "!border-emerald-200 !bg-emerald-50",
+            error: "!border-red-200 !bg-red-50",
+            warning: "!border-amber-200 !bg-amber-50",
+            info: "!border-blue-200 !bg-blue-50",
+
+            closeButton:
+              "!border-neutral-200 !bg-white !text-neutral-600 !shadow-sm hover:!bg-neutral-100",
+          },
+        }}
+      />
     </BrowserRouter>
   )
 }

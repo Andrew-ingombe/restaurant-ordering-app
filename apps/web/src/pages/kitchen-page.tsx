@@ -1,4 +1,6 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState, useRef } from "react"
+import { toast } from "sonner"
+import { useNavigate } from "react-router-dom"
 import {
   BellRing,
   Check,
@@ -18,7 +20,8 @@ import { Button } from "@workspace/ui/components/button"
 import { getKitchenOrders, updateKitchenOrderStatus } from "../lib/api"
 import type { AuthUser, DraftOrder, KitchenStatus } from "../lib/api"
 import { getSocket } from "../lib/socket"
-import { useNavigate } from "react-router-dom"
+
+import { KitchenColumnsSkeleton } from "../components/page-skeletons"
 
 type KitchenPageProps = {
   user: AuthUser
@@ -38,7 +41,7 @@ const columns: {
   {
     status: "submitted",
     title: "New",
-    description: "Waiting to be accepted",
+    description: "Accept incoming orders",
     nextStatus: "accepted",
     action: "Accept order",
     icon: BellRing,
@@ -48,7 +51,7 @@ const columns: {
   {
     status: "accepted",
     title: "Accepted",
-    description: "Queued for preparation",
+    description: "Queued for prep",
     nextStatus: "preparing",
     action: "Start preparing",
     icon: Check,
@@ -58,7 +61,7 @@ const columns: {
   {
     status: "preparing",
     title: "Preparing",
-    description: "Currently being prepared",
+    description: "Being cooked now",
     nextStatus: "ready",
     action: "Mark ready",
     icon: CookingPot,
@@ -68,19 +71,29 @@ const columns: {
   {
     status: "ready",
     title: "Ready",
-    description: "Waiting for the waiter",
+    description: "Waiting for pickup",
     icon: PackageCheck,
     accent: "bg-emerald-500",
     badge: "bg-emerald-50 text-emerald-700",
   },
 ]
 
-const getOrderAge = (createdAt: string) => {
-  const minutes = Math.max(
+const activeStatuses = ["submitted", "accepted", "preparing", "ready"]
+const statusLabels: Record<string, string> = {
+  submitted: "new",
+  accepted: "accepted",
+  preparing: "preparing",
+  ready: "ready",
+}
+
+const getOrderAgeInMinutes = (createdAt: string) => {
+  return Math.max(
     0,
     Math.floor((Date.now() - new Date(createdAt).getTime()) / 60000)
   )
+}
 
+const formatOrderAge = (minutes: number) => {
   if (minutes < 1) return "Just now"
   if (minutes === 1) return "1 min"
   if (minutes < 60) return `${minutes} mins`
@@ -90,11 +103,12 @@ const getOrderAge = (createdAt: string) => {
   return `${hours}h ${minutes % 60}m`
 }
 
+const getOrderAge = (createdAt: string) => {
+  return formatOrderAge(getOrderAgeInMinutes(createdAt))
+}
+
 const getAgeStyle = (createdAt: string) => {
-  const minutes = Math.max(
-    0,
-    Math.floor((Date.now() - new Date(createdAt).getTime()) / 60000)
-  )
+  const minutes = getOrderAgeInMinutes(createdAt)
 
   if (minutes >= 30) {
     return "bg-red-50 text-red-700"
@@ -105,6 +119,10 @@ const getAgeStyle = (createdAt: string) => {
   }
 
   return "bg-neutral-100 text-neutral-600"
+}
+
+const shouldShowKitchenOrder = (order: DraftOrder) => {
+  return activeStatuses.includes(order.status) && order.items.length > 0
 }
 
 function KitchenOrderCard({
@@ -222,6 +240,7 @@ export function KitchenPage({ user, onLogout }: KitchenPageProps) {
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState("")
   const [, setClock] = useState(Date.now())
+  const orderStatusesRef = useRef(new Map<string, string>())
 
   const navigate = useNavigate()
 
@@ -232,7 +251,19 @@ export function KitchenPage({ user, onLogout }: KitchenPageProps) {
 
     try {
       setError("")
-      setOrders(await getKitchenOrders())
+      const kitchenOrders = (await getKitchenOrders()).filter(
+        shouldShowKitchenOrder
+      )
+
+      setOrders(kitchenOrders)
+
+      orderStatusesRef.current = new Map(
+        kitchenOrders.map((order) => [order._id, order.status])
+      )
+
+      if (showRefreshing) {
+        toast.success("Kitchen board refreshed")
+      }
     } catch (requestError) {
       setError(
         requestError instanceof Error
@@ -267,11 +298,21 @@ export function KitchenPage({ user, onLogout }: KitchenPageProps) {
 
     if (!socket) return
 
-    const upsertOrder = (updatedOrder: DraftOrder) => {
-      setOrders((current) => {
-        const activeStatuses = ["submitted", "accepted", "preparing", "ready"]
+    const upsertOrder = (
+      updatedOrder: DraftOrder,
+      announceNewOrder = false
+    ) => {
+      const previousStatus = orderStatusesRef.current.get(updatedOrder._id)
+      const shouldShow = shouldShowKitchenOrder(updatedOrder)
 
-        if (!activeStatuses.includes(updatedOrder.status)) {
+      if (shouldShow) {
+        orderStatusesRef.current.set(updatedOrder._id, updatedOrder.status)
+      } else {
+        orderStatusesRef.current.delete(updatedOrder._id)
+      }
+
+      setOrders((current) => {
+        if (!shouldShow) {
           return current.filter((order) => order._id !== updatedOrder._id)
         }
 
@@ -285,18 +326,45 @@ export function KitchenPage({ user, onLogout }: KitchenPageProps) {
 
         return [...current, updatedOrder]
       })
+
+      if (announceNewOrder && !previousStatus && shouldShow) {
+        toast.info(`New kitchen order: ${updatedOrder.orderNumber}`, {
+          description: updatedOrder.tableName || "Takeaway order",
+        })
+        return
+      }
+
+      if (
+        previousStatus &&
+        previousStatus !== updatedOrder.status &&
+        shouldShow
+      ) {
+        toast.info(`${updatedOrder.orderNumber} updated`, {
+          description: `Moved to ${
+            statusLabels[updatedOrder.status] || updatedOrder.status
+          }.`,
+        })
+      }
     }
 
-    socket.on("order:submitted", upsertOrder)
-    socket.on("order:updated", upsertOrder)
+    const handleSubmitted = (order: DraftOrder) => {
+      upsertOrder(order, true)
+    }
+
+    const handleUpdated = (order: DraftOrder) => {
+      upsertOrder(order)
+    }
+
+    socket.on("order:submitted", handleSubmitted)
+    socket.on("order:updated", handleUpdated)
 
     socket.on("connect_error", (socketError) => {
       console.error("Kitchen socket error:", socketError.message)
     })
 
     return () => {
-      socket.off("order:submitted", upsertOrder)
-      socket.off("order:updated", upsertOrder)
+      socket.off("order:submitted", handleSubmitted)
+      socket.off("order:updated", handleUpdated)
       socket.off("connect_error")
     }
   }, [])
@@ -312,25 +380,72 @@ export function KitchenPage({ user, onLogout }: KitchenPageProps) {
     [orders]
   )
 
+  const totalItems = orders.reduce(
+    (total, order) =>
+      total +
+      order.items.reduce((itemTotal, item) => itemTotal + item.quantity, 0),
+    0
+  )
+
+  const oldestOrderMinutes =
+    orders.length > 0
+      ? Math.max(
+          ...orders.map((order) => getOrderAgeInMinutes(order.createdAt))
+        )
+      : 0
+
   const handleAdvance = async (
     orderId: string,
     status: Exclude<KitchenStatus, "submitted">
   ) => {
+    if (updatingId) return
+
+    const previousStatus = orderStatusesRef.current.get(orderId)
+
     setUpdatingId(orderId)
     setError("")
+
+    // Prevent the matching socket event from producing a duplicate toast.
+    orderStatusesRef.current.set(orderId, status)
 
     try {
       const updatedOrder = await updateKitchenOrderStatus(orderId, status)
 
-      setOrders((current) =>
-        current.map((order) => (order._id === orderId ? updatedOrder : order))
-      )
+      if (shouldShowKitchenOrder(updatedOrder)) {
+        orderStatusesRef.current.set(updatedOrder._id, updatedOrder.status)
+      } else {
+        orderStatusesRef.current.delete(updatedOrder._id)
+      }
+
+      setOrders((current) => {
+        if (!shouldShowKitchenOrder(updatedOrder)) {
+          return current.filter((order) => order._id !== orderId)
+        }
+
+        return current.map((order) =>
+          order._id === orderId ? updatedOrder : order
+        )
+      })
+
+      toast.success(`${updatedOrder.orderNumber} updated`, {
+        description: `Order is now ${
+          statusLabels[updatedOrder.status] || updatedOrder.status
+        }.`,
+      })
     } catch (requestError) {
-      setError(
+      if (previousStatus) {
+        orderStatusesRef.current.set(orderId, previousStatus)
+      } else {
+        orderStatusesRef.current.delete(orderId)
+      }
+
+      const message =
         requestError instanceof Error
           ? requestError.message
           : "Could not update order"
-      )
+
+      setError(message)
+      toast.error(message)
 
       await loadOrders()
     } finally {
@@ -361,12 +476,7 @@ export function KitchenPage({ user, onLogout }: KitchenPageProps) {
               </div>
             </div>
 
-            <div className="flex gap-2">
-              <div className="hidden items-center gap-2 rounded-xl bg-emerald-50 px-4 text-sm font-semibold text-emerald-700 sm:flex">
-                <span className="size-2 rounded-full bg-emerald-500" />
-                Live updates
-              </div>
-
+            <div className="flex flex-wrap gap-2">
               <Button
                 className="h-11 rounded-xl"
                 variant="outline"
@@ -400,33 +510,59 @@ export function KitchenPage({ user, onLogout }: KitchenPageProps) {
         </header>
 
         <div className="p-4 md:p-6">
-          <section className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4">
-            {columns.map((column) => {
-              const Icon = column.icon
-              const count = groupedOrders[column.status]?.length || 0
+          <section className="mb-5 rounded-[24px] bg-white p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge className="flex h-9 min-w-32 items-center justify-center rounded-xl border-0 bg-[#ef1428] px-4 py-2 text-sm font-semibold text-white">
+                  {loading ? (
+                    <span className="animate-pulse">Loading...</span>
+                  ) : (
+                    `${orders.length} active orders`
+                  )}
+                </Badge>
 
-              return (
-                <div
-                  key={column.status}
-                  className="rounded-[20px] bg-white p-4"
+                <Badge
+                  variant="secondary"
+                  className="flex h-9 min-w-36 items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold"
                 >
-                  <div className="flex items-center justify-between">
-                    <div
-                      className={`flex size-9 items-center justify-center rounded-full text-white ${column.accent}`}
-                    >
-                      <Icon className="size-4" />
-                    </div>
+                  {loading ? (
+                    <span className="animate-pulse">Loading...</span>
+                  ) : (
+                    `${totalItems} kitchen items`
+                  )}
+                </Badge>
 
-                    <p className="text-2xl font-black">{count}</p>
-                  </div>
+                <Badge
+                  className={`flex h-9 min-w-32 items-center justify-center rounded-xl border-0 px-4 py-2 text-sm font-semibold ${
+                    !loading && oldestOrderMinutes >= 30
+                      ? "bg-red-50 text-red-700"
+                      : !loading && oldestOrderMinutes >= 15
+                        ? "bg-amber-50 text-amber-700"
+                        : "bg-neutral-100 text-neutral-600"
+                  }`}
+                >
+                  {loading ? (
+                    <span className="animate-pulse">Loading...</span>
+                  ) : (
+                    <>
+                      Oldest:{" "}
+                      {orders.length
+                        ? formatOrderAge(oldestOrderMinutes)
+                        : "None"}
+                    </>
+                  )}
+                </Badge>
+              </div>
 
-                  <p className="mt-4 font-bold">{column.title}</p>
-                  <p className="mt-1 text-xs text-neutral-400">
-                    {column.description}
-                  </p>
-                </div>
-              )
-            })}
+              <div className="flex h-9 min-w-28 items-center justify-center gap-2 rounded-xl bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700">
+                <span
+                  className={`size-2 rounded-full bg-emerald-500 ${
+                    loading ? "animate-pulse" : ""
+                  }`}
+                />
+                Live updates
+              </div>
+            </div>
           </section>
 
           {error && (
@@ -436,14 +572,7 @@ export function KitchenPage({ user, onLogout }: KitchenPageProps) {
           )}
 
           {loading ? (
-            <div className="flex min-h-96 items-center justify-center">
-              <div className="text-center">
-                <RefreshCw className="mx-auto size-6 animate-spin text-[#ef1428]" />
-                <p className="mt-3 text-sm text-neutral-400">
-                  Loading kitchen orders...
-                </p>
-              </div>
-            </div>
+            <KitchenColumnsSkeleton />
           ) : (
             <div className="flex gap-4 overflow-x-auto pb-4">
               {columns.map((column) => {
@@ -455,27 +584,29 @@ export function KitchenPage({ user, onLogout }: KitchenPageProps) {
                     key={column.status}
                     className="w-[340px] min-w-[340px] rounded-[24px] bg-[#ececee] p-3 xl:w-[calc((100%_-_48px)/4)] xl:min-w-0"
                   >
-                    <div className="sticky top-0 z-10 flex items-center justify-between rounded-2xl bg-[#ececee] px-2 py-2">
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={`flex size-9 items-center justify-center rounded-full text-white ${column.accent}`}
+                    <div className="sticky top-0 z-10 rounded-2xl bg-[#ececee] px-2 py-2">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`flex size-9 items-center justify-center rounded-full text-white ${column.accent}`}
+                          >
+                            <Icon className="size-4" />
+                          </div>
+
+                          <div>
+                            <h2 className="font-black">{column.title}</h2>
+                            <p className="text-xs text-neutral-400">
+                              {column.description}
+                            </p>
+                          </div>
+                        </div>
+
+                        <Badge
+                          className={`rounded-full border-0 ${column.badge}`}
                         >
-                          <Icon className="size-4" />
-                        </div>
-
-                        <div>
-                          <h2 className="font-black">{column.title}</h2>
-                          <p className="text-xs text-neutral-400">
-                            {column.description}
-                          </p>
-                        </div>
+                          {columnOrders.length}
+                        </Badge>
                       </div>
-
-                      <Badge
-                        className={`rounded-full border-0 ${column.badge}`}
-                      >
-                        {columnOrders.length}
-                      </Badge>
                     </div>
 
                     <div className="mt-2 max-h-[calc(100svh-290px)] space-y-3 overflow-y-auto pr-1">

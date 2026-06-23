@@ -32,7 +32,7 @@ const seedOwner = async () => {
     },
     {
       upsert: true,
-      new: true,
+      returnDocument: "after",
     }
   )
 

@@ -4,6 +4,8 @@ import { Router } from "express"
 import { Types } from "mongoose"
 import { z } from "zod"
 
+import { decryptSecret } from "../lib/crypto"
+import { getSocketServer } from "../lib/socket"
 import { asyncHandler } from "../middleware/async-handler"
 import {
   authenticate,
@@ -13,8 +15,6 @@ import {
   requireRestaurantContext,
   requireRole,
 } from "../middleware/role.middleware"
-import { decryptSecret } from "../lib/crypto"
-import { getSocketServer } from "../lib/socket"
 import { Order } from "../models/order.model"
 import { Payment } from "../models/payment.model"
 import { Restaurant } from "../models/restaurant.model"
@@ -136,14 +136,6 @@ const emitPaidOrderUpdates = async (
   }
 
   socketServer
-    .to(`restaurant:${restaurantId}:role:kitchen`)
-    .emit("order:submitted", orderPayload)
-
-  socketServer
-    .to(`restaurant:${restaurantId}:role:kitchen`)
-    .emit("order:updated", orderPayload)
-
-  socketServer
     .to(`restaurant:${restaurantId}:role:owner`)
     .emit("order:updated", orderPayload)
 }
@@ -200,8 +192,7 @@ const reconcilePaymentWithProvider = async ({
     payment.status = normalizedStatus === "cancelled" ? "cancelled" : "failed"
 
     if (order.paymentStatus !== "paid") {
-      order.paymentStatus =
-        normalizedStatus === "cancelled" ? "failed" : "failed"
+      order.paymentStatus = "failed"
     }
 
     await Promise.all([payment.save(), order.save()])
@@ -273,15 +264,18 @@ const reconcilePaymentWithProvider = async ({
     payment.status === "successful" && order.paymentStatus === "paid"
 
   payment.status = "successful"
+  payment.method = "lenco"
   payment.providerTransactionId = String(
     lencoPayment.id || lencoPayment.transactionId || ""
   )
   payment.verifiedAt = new Date()
 
   order.paymentStatus = "paid"
+  order.paymentMethod = "lenco"
+  order.paidAt = new Date()
 
-  if (["draft", "awaiting_payment"].includes(order.status)) {
-    order.status = "submitted"
+  if (payment.waiter) {
+    order.paymentRecordedBy = payment.waiter
   }
 
   await Promise.all([payment.save(), order.save()])
@@ -384,6 +378,48 @@ paymentRouter.post(
 
 paymentRouter.use(authenticate, requireRole("waiter"), requireRestaurantContext)
 
+paymentRouter.get(
+  "/options",
+  asyncHandler(async (request, response) => {
+    const authenticatedRequest = request as AuthenticatedRequest
+    const restaurantId = authenticatedRequest.user!.restaurantId!
+
+    const restaurant = await Restaurant.findOne({
+      _id: restaurantId,
+      active: true,
+    })
+      .select("+paymentSettings.publicKey +paymentSettings.encryptedSecretKey")
+      .lean()
+
+    if (!restaurant) {
+      response.status(404).json({
+        message: "Restaurant not found",
+      })
+      return
+    }
+
+    const settings = restaurant.paymentSettings
+
+    const lencoEnabled = Boolean(
+      settings?.enabled &&
+      settings.publicKey &&
+      settings.encryptedSecretKey &&
+      settings.baseUrl &&
+      settings.checkoutScriptUrl
+    )
+
+    response.json({
+      paymentOptions: {
+        manualMethods: ["cash", "card_pos", "manual_mobile_money"],
+        lenco: {
+          enabled: lencoEnabled,
+          environment: settings?.environment || "sandbox",
+        },
+      },
+    })
+  })
+)
+
 paymentRouter.post(
   "/orders/:orderId/initialize",
   asyncHandler(async (request, response) => {
@@ -434,9 +470,9 @@ paymentRouter.post(
       return
     }
 
-    if (!["draft", "awaiting_payment"].includes(order.status)) {
+    if (order.status !== "served") {
       response.status(400).json({
-        message: "This order cannot accept payment",
+        message: "Lenco payment can only be started after the order is served",
       })
       return
     }
@@ -474,7 +510,10 @@ paymentRouter.post(
       restaurant: restaurantId,
       order: order._id,
       waiter: authenticatedRequest.user?.id,
+      recordedBy: authenticatedRequest.user?.id,
       reference,
+      provider: "lenco",
+      method: "lenco",
       amount: order.total,
       currency: order.currency,
       status: "pending",
@@ -487,7 +526,7 @@ paymentRouter.post(
     }
 
     order.paymentStatus = "pending"
-    order.status = "awaiting_payment"
+    order.paymentMethod = "lenco"
 
     await order.save()
 
@@ -512,6 +551,7 @@ paymentRouter.post(
         orderNumber: order.orderNumber,
         status: order.status,
         paymentStatus: order.paymentStatus,
+        paymentMethod: order.paymentMethod,
       },
     })
   })

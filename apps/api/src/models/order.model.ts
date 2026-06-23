@@ -31,6 +31,11 @@ const orderItemSchema = new Schema(
       required: true,
       min: 0,
     },
+    preparationArea: {
+      type: String,
+      enum: ["kitchen", "bar", "none"],
+      default: "kitchen",
+    },
   },
   {
     _id: false,
@@ -49,6 +54,18 @@ const orderSchema = new Schema(
       type: Schema.Types.ObjectId,
       ref: "User",
       required: false,
+      index: true,
+    },
+    createdBy: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: false,
+      index: true,
+    },
+    entryMode: {
+      type: String,
+      enum: ["personal", "shared_hub", "customer_qr"],
+      default: "personal",
       index: true,
     },
     orderType: {
@@ -130,6 +147,18 @@ const orderSchema = new Schema(
       enum: ["unpaid", "pending", "paid", "failed", "refunded"],
       default: "unpaid",
     },
+    paymentMethod: {
+      type: String,
+      enum: ["", "cash", "card_pos", "manual_mobile_money", "lenco"],
+      default: "",
+    },
+    paidAt: {
+      type: Date,
+    },
+    paymentRecordedBy: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+    },
     restaurant: {
       type: Schema.Types.ObjectId,
       ref: "Restaurant",
@@ -144,5 +173,8 @@ const orderSchema = new Schema(
 
 orderSchema.index({ restaurant: 1, createdAt: -1 })
 orderSchema.index({ restaurant: 1, status: 1, createdAt: -1 })
+orderSchema.index({ restaurant: 1, paymentStatus: 1, createdAt: -1 })
+orderSchema.index({ restaurant: 1, entryMode: 1, createdAt: -1 })
+orderSchema.index({ restaurant: 1, createdBy: 1, createdAt: -1 })
 
 export const Order = model("Order", orderSchema)

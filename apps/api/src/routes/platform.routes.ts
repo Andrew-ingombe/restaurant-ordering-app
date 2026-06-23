@@ -10,6 +10,7 @@ import { Restaurant } from "../models/restaurant.model"
 import { User } from "../models/user.model"
 import { Types } from "mongoose"
 import { encryptSecret } from "../lib/crypto"
+import { disconnectUserSockets } from "../lib/socket"
 
 export const platformRouter = Router()
 
@@ -96,6 +97,10 @@ const defaultPaymentUrls = {
     checkoutScriptUrl: "https://pay.lenco.co/js/v1/inline.js",
   },
 }
+
+const resetOwnerPasswordSchema = z.object({
+  temporaryPassword: z.string().min(8).max(128),
+})
 
 const createBaseSlug = (name: string) => {
   const slug = name
@@ -394,6 +399,82 @@ platformRouter.get(
 )
 
 platformRouter.patch(
+  "/restaurants/:id/owner-password",
+  asyncHandler(async (request, response) => {
+    const restaurantId = request.params.id as string
+
+    if (!Types.ObjectId.isValid(restaurantId)) {
+      response.status(400).json({
+        message: "Invalid restaurant ID",
+      })
+      return
+    }
+
+    const result = resetOwnerPasswordSchema.safeParse(request.body)
+
+    if (!result.success) {
+      response.status(400).json({
+        message: "Temporary password must be at least 8 characters",
+        errors: result.error.flatten().fieldErrors,
+      })
+      return
+    }
+
+    const restaurantExists = await Restaurant.exists({
+      _id: restaurantId,
+    })
+
+    if (!restaurantExists) {
+      response.status(404).json({
+        message: "Restaurant not found",
+      })
+      return
+    }
+
+    const passwordHash = await bcrypt.hash(result.data.temporaryPassword, 12)
+
+    const owner = await User.findOneAndUpdate(
+      {
+        restaurant: restaurantId,
+        role: "owner",
+      },
+      {
+        $set: {
+          passwordHash,
+          mustChangePassword: true,
+        },
+      },
+      {
+        returnDocument: "after",
+        runValidators: true,
+      }
+    ).select("name email phone role active mustChangePassword")
+
+    if (!owner) {
+      response.status(404).json({
+        message: "Restaurant owner not found",
+      })
+      return
+    }
+
+    disconnectUserSockets(owner.id)
+
+    response.json({
+      message: "Owner temporary password created",
+      owner: {
+        id: owner.id,
+        name: owner.name,
+        email: owner.email,
+        phone: owner.phone,
+        role: owner.role,
+        active: owner.active,
+        mustChangePassword: Boolean(owner.mustChangePassword),
+      },
+    })
+  })
+)
+
+platformRouter.patch(
   "/restaurants/:id/subscription",
   asyncHandler(async (request, response) => {
     if (!Types.ObjectId.isValid(request.params.id as string)) {
@@ -454,7 +535,7 @@ platformRouter.patch(
         $set: update,
       },
       {
-        new: true,
+        returnDocument: "after",
         runValidators: true,
       }
     ).lean()

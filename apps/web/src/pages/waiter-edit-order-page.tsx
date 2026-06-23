@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
+import { toast } from "sonner"
 import { useNavigate, useParams } from "react-router-dom"
 import {
   ArrowLeft,
@@ -6,8 +7,10 @@ import {
   ImageIcon,
   Minus,
   Plus,
+  ReceiptText,
   RefreshCw,
   ShoppingBag,
+  Store,
   UserRound,
 } from "lucide-react"
 
@@ -22,10 +25,35 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@workspace/ui/components/select"
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@workspace/ui/components/sheet"
 import { Textarea } from "@workspace/ui/components/textarea"
+import { EditOrderSkeleton } from "../components/page-skeletons"
 
-import { getMyOrder, getPublicMenu, updateDraftOrder } from "../lib/api"
-import type { MenuCategory, PublicMenuItem } from "../lib/api"
+import { WaiterShell } from "../components/waiter-shell"
+import {
+  getAvailableTables,
+  getMyOrder,
+  getPublicMenu,
+  updateDraftOrder,
+} from "../lib/api"
+import type {
+  AuthUser,
+  AvailableRestaurantTable,
+  MenuCategory,
+  PublicMenuItem,
+} from "../lib/api"
+
+type WaiterEditOrderPageProps = {
+  user: AuthUser
+  onLogout: () => void
+}
 
 type CartItem = {
   item: PublicMenuItem
@@ -39,12 +67,18 @@ const formatPrice = (price: number) =>
     currency: "ZMW",
   }).format(price / 100)
 
-export function WaiterEditOrderPage() {
+export function WaiterEditOrderPage({
+  user,
+  onLogout,
+}: WaiterEditOrderPageProps) {
   const { id } = useParams()
   const navigate = useNavigate()
 
   const [categories, setCategories] = useState<MenuCategory[]>([])
   const [items, setItems] = useState<PublicMenuItem[]>([])
+  const [availableTables, setAvailableTables] = useState<
+    AvailableRestaurantTable[]
+  >([])
   const [cart, setCart] = useState<Record<string, CartItem>>({})
   const [selectedCategory, setSelectedCategory] = useState("all")
   const [orderType, setOrderType] = useState<"dine_in" | "takeaway">("dine_in")
@@ -54,24 +88,31 @@ export function WaiterEditOrderPage() {
   const [customerEmail, setCustomerEmail] = useState("")
   const [orderNumber, setOrderNumber] = useState("")
   const [loading, setLoading] = useState(true)
+  const [loadingTables, setLoadingTables] = useState(true)
   const [submitting, setSubmitting] = useState(false)
+  const [summaryOpen, setSummaryOpen] = useState(false)
   const [error, setError] = useState("")
 
   useEffect(() => {
     if (!id) {
-      setError("Invalid order")
+      const message = "Invalid order"
+
+      setError(message)
       setLoading(false)
+      setLoadingTables(false)
+      toast.error(message)
       return
     }
 
-    void Promise.all([getMyOrder(id), getPublicMenu()])
-      .then(([order, menu]) => {
+    void Promise.all([getMyOrder(id), getPublicMenu(), getAvailableTables()])
+      .then(([order, menu, tables]) => {
         if (order.status !== "draft") {
           throw new Error("Only unpaid draft orders can be edited")
         }
 
         setCategories(menu.categories)
         setItems(menu.items)
+        setAvailableTables(tables)
         setOrderNumber(order.orderNumber)
         setOrderType(order.orderType)
         setTableName(order.tableName || "")
@@ -80,7 +121,6 @@ export function WaiterEditOrderPage() {
         setCustomerEmail(order.customer.email || "")
 
         const menuMap = new Map(menu.items.map((item) => [item._id, item]))
-
         const initialCart: Record<string, CartItem> = {}
 
         for (const orderItem of order.items) {
@@ -98,13 +138,20 @@ export function WaiterEditOrderPage() {
         setCart(initialCart)
       })
       .catch((requestError) => {
-        setError(
+        const message =
           requestError instanceof Error
             ? requestError.message
             : "Could not load draft order"
-        )
+
+        setError(message)
+        toast.error(message, {
+          id: `draft-${id}-load-error`,
+        })
       })
-      .finally(() => setLoading(false))
+      .finally(() => {
+        setLoading(false)
+        setLoadingTables(false)
+      })
   }, [id])
 
   const visibleItems = useMemo(() => {
@@ -122,7 +169,13 @@ export function WaiterEditOrderPage() {
     0
   )
 
+  const currentTableIsAvailable = availableTables.some(
+    (table) => table.name === tableName
+  )
+
   const changeQuantity = (item: PublicMenuItem, amount: number) => {
+    setError("")
+
     setCart((current) => {
       const existing = current[item._id]
       const quantity = (existing?.quantity || 0) + amount
@@ -161,15 +214,19 @@ export function WaiterEditOrderPage() {
   }
 
   const saveChanges = async () => {
-    if (!id) return
+    if (!id || submitting) return
 
     if (cartItems.length === 0) {
-      setError("The order must contain at least one item")
+      const message = "The order must contain at least one item"
+      setError(message)
+      toast.error(message)
       return
     }
 
     if (orderType === "dine_in" && !tableName.trim()) {
-      setError("Enter the table name or number")
+      const message = "Select a table"
+      setError(message)
+      toast.error(message)
       return
     }
 
@@ -192,33 +249,311 @@ export function WaiterEditOrderPage() {
         })),
       })
 
-      navigate(`/waiter/orders/${id}`, { replace: true })
+      setSummaryOpen(false)
+
+      toast.success("Draft changes saved", {
+        id: `draft-${id}-updated`,
+        description: orderNumber,
+      })
+
+      navigate(`/waiter/orders/${id}`, {
+        replace: true,
+      })
     } catch (requestError) {
-      setError(
+      const message =
         requestError instanceof Error
           ? requestError.message
           : "Could not update draft order"
-      )
+
+      setError(message)
+      toast.error(message)
     } finally {
       setSubmitting(false)
     }
   }
 
+  const renderOrderSummary = (
+    idPrefix: "desktop" | "mobile",
+    desktop = false
+  ) => (
+    <div
+      className={`space-y-5 rounded-[24px] bg-white p-5 ${
+        desktop ? "max-h-full overflow-y-auto" : ""
+      }`}
+    >
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-xs font-semibold tracking-[0.18em] text-[#ef1428] uppercase">
+            Draft summary
+          </p>
+
+          <h2 className="mt-1 text-xl font-black">Edit order</h2>
+        </div>
+
+        <div className="flex size-11 items-center justify-center rounded-full bg-neutral-950 text-white">
+          <ShoppingBag className="size-5" />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div className="rounded-2xl bg-neutral-100 p-4">
+          <p className="text-xs text-neutral-400">Items</p>
+          <p className="mt-1 text-2xl font-black">{totalItems}</p>
+        </div>
+
+        <div className="min-w-0 rounded-2xl bg-[#fff0f1] p-4">
+          <p className="text-xs text-[#ef1428]/70">Total</p>
+
+          <p className="mt-1 text-xl font-black break-words text-[#ef1428]">
+            {formatPrice(total)}
+          </p>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor={`${idPrefix}-order-type`}>Order type</Label>
+
+        <Select
+          value={orderType}
+          onValueChange={(value) => {
+            const nextOrderType = value as "dine_in" | "takeaway"
+
+            setOrderType(nextOrderType)
+            setError("")
+
+            if (nextOrderType === "takeaway") {
+              setTableName("")
+            }
+          }}
+        >
+          <SelectTrigger
+            id={`${idPrefix}-order-type`}
+            className="h-12 w-full rounded-xl border-0 bg-neutral-100 px-4 shadow-none"
+          >
+            <SelectValue />
+          </SelectTrigger>
+
+          <SelectContent>
+            <SelectItem value="dine_in">Dine in</SelectItem>
+            <SelectItem value="takeaway">Takeaway</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {orderType === "dine_in" && (
+        <div className="space-y-2">
+          <Label htmlFor={`${idPrefix}-table`}>Table name or number</Label>
+
+          <Select
+            value={tableName}
+            onValueChange={(value) => {
+              setTableName(value)
+              setError("")
+            }}
+            disabled={loadingTables}
+          >
+            <SelectTrigger
+              id={`${idPrefix}-table`}
+              className="h-12 w-full rounded-xl border-0 bg-neutral-100 px-4 shadow-none"
+            >
+              <SelectValue
+                placeholder={
+                  loadingTables
+                    ? "Loading tables..."
+                    : availableTables.length === 0
+                      ? "No active tables available"
+                      : "Select a table"
+                }
+              />
+            </SelectTrigger>
+
+            <SelectContent>
+              {tableName && !currentTableIsAvailable && (
+                <SelectItem value={tableName}>{tableName}</SelectItem>
+              )}
+
+              {availableTables.map((table) => (
+                <SelectItem key={table.id} value={table.name}>
+                  {table.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {!loadingTables && availableTables.length === 0 && (
+            <p className="text-xs leading-5 text-amber-700">
+              Ask the restaurant owner to create or activate a table.
+            </p>
+          )}
+        </div>
+      )}
+
+      <div className="space-y-3">
+        {cartItems.map((cartItem) => (
+          <div
+            key={cartItem.item._id}
+            className="rounded-2xl border border-neutral-100 p-3"
+          >
+            <div className="flex items-start gap-3">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-neutral-950 font-black text-white">
+                {cartItem.quantity}
+              </div>
+
+              <div className="min-w-0 flex-1">
+                <div className="flex items-start justify-between gap-3">
+                  <p className="min-w-0 font-bold break-words">
+                    {cartItem.item.name}
+                  </p>
+
+                  <p className="shrink-0 font-bold text-[#ef1428]">
+                    {formatPrice(cartItem.item.price * cartItem.quantity)}
+                  </p>
+                </div>
+
+                <Textarea
+                  className="mt-3 min-h-16 resize-none rounded-xl border-0 bg-neutral-100 shadow-none"
+                  value={cartItem.notes}
+                  placeholder="Kitchen notes"
+                  onChange={(event) =>
+                    updateNotes(cartItem.item._id, event.target.value)
+                  }
+                />
+              </div>
+            </div>
+          </div>
+        ))}
+
+        {cartItems.length === 0 && (
+          <div className="rounded-2xl border border-dashed border-neutral-200 p-8 text-center">
+            <ReceiptText className="mx-auto size-7 text-neutral-300" />
+
+            <p className="mt-3 font-medium text-neutral-500">
+              No items selected
+            </p>
+
+            <p className="mt-1 text-xs text-neutral-400">
+              Choose items from the menu to continue.
+            </p>
+          </div>
+        )}
+      </div>
+
+      <div className="border-t border-neutral-100 pt-5">
+        <div className="flex items-center gap-2">
+          <UserRound className="size-4 text-neutral-400" />
+          <h3 className="font-bold">Customer details</h3>
+        </div>
+
+        <div className="mt-4 space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor={`${idPrefix}-customer-name`}>Customer name</Label>
+
+            <Input
+              id={`${idPrefix}-customer-name`}
+              className="h-12 rounded-xl border-0 bg-neutral-100 px-4 shadow-none"
+              value={customerName}
+              onChange={(event) => setCustomerName(event.target.value)}
+              placeholder="Optional"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor={`${idPrefix}-customer-phone`}>Customer phone</Label>
+
+            <Input
+              id={`${idPrefix}-customer-phone`}
+              className="h-12 rounded-xl border-0 bg-neutral-100 px-4 shadow-none"
+              type="tel"
+              value={customerPhone}
+              onChange={(event) => setCustomerPhone(event.target.value)}
+              placeholder="Optional"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor={`${idPrefix}-customer-email`}>Customer email</Label>
+
+            <Input
+              id={`${idPrefix}-customer-email`}
+              className="h-12 rounded-xl border-0 bg-neutral-100 px-4 shadow-none"
+              type="email"
+              value={customerEmail}
+              onChange={(event) => setCustomerEmail(event.target.value)}
+              placeholder="Optional"
+            />
+          </div>
+        </div>
+      </div>
+
+      {error && (
+        <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>
+      )}
+
+      <div className="flex items-center justify-between gap-3 border-t border-neutral-100 pt-5">
+        <span className="font-bold">Order total</span>
+
+        <span className="text-right text-2xl font-black break-words text-[#ef1428]">
+          {formatPrice(total)}
+        </span>
+      </div>
+
+      <Button
+        className="h-13 w-full rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
+        disabled={submitting || cartItems.length === 0}
+        onClick={saveChanges}
+      >
+        {submitting ? (
+          <>
+            <RefreshCw className="size-4 animate-spin" />
+            Saving...
+          </>
+        ) : (
+          <>
+            <CheckCircle2 className="size-4" />
+            Save draft changes
+          </>
+        )}
+      </Button>
+
+      <Button
+        className="h-12 w-full rounded-xl"
+        variant="outline"
+        disabled={submitting}
+        onClick={() => navigate(`/waiter/orders/${id}`)}
+      >
+        Cancel editing
+      </Button>
+    </div>
+  )
+
   if (loading) {
     return (
-      <main className="flex min-h-svh items-center justify-center bg-[#252323] text-white">
-        <div className="text-center">
-          <RefreshCw className="mx-auto size-6 animate-spin text-[#ef1428]" />
-          <p className="mt-3 text-sm text-white/60">Loading draft order...</p>
-        </div>
-      </main>
+      <WaiterShell
+        user={user}
+        onLogout={onLogout}
+        active="orders"
+        title="Edit draft order"
+        description="Loading order details..."
+        icon={<ReceiptText className="size-6" />}
+        contentScrollable={false}
+        contentClassName="flex min-h-0 flex-col pb-24 md:pb-24 xl:pb-6"
+      >
+        <EditOrderSkeleton />
+      </WaiterShell>
     )
   }
 
   if (error && !orderNumber) {
     return (
-      <main className="flex min-h-svh items-center justify-center bg-[#252323] p-4">
-        <div className="w-full max-w-md rounded-[24px] bg-white p-8 text-center">
+      <WaiterShell
+        user={user}
+        onLogout={onLogout}
+        active="orders"
+        title="Edit draft order"
+        description="Could not load this draft."
+        icon={<ReceiptText className="size-6" />}
+      >
+        <div className="mx-auto w-full max-w-md rounded-[24px] bg-white p-8 text-center shadow-sm">
           <p className="text-red-700">{error}</p>
 
           <Button
@@ -230,282 +565,219 @@ export function WaiterEditOrderPage() {
             Back to orders
           </Button>
         </div>
-      </main>
+      </WaiterShell>
     )
   }
 
   return (
-    <main className="min-h-svh">
-      <div className="mx-auto min-h-[calc(100svh-24px)] max-w-[1800px] overflow-hidden rounded-[28px] bg-[#f5f5f6] md:min-h-[calc(100svh-40px)]">
-        <header className="border-b border-black/5 bg-white/90 px-4 py-4 md:px-7">
-          <div className="flex items-center gap-4">
-            <Button
-              className="size-11 rounded-xl"
-              size="icon"
-              variant="outline"
-              onClick={() => navigate(`/waiter/orders/${id}`)}
-            >
-              <ArrowLeft className="size-4" />
-            </Button>
+    <WaiterShell
+      user={user}
+      onLogout={onLogout}
+      active="orders"
+      title="Edit draft order"
+      description={orderNumber}
+      icon={<ReceiptText className="size-6" />}
+      contentScrollable={false}
+      contentClassName="flex min-h-0 flex-col gap-4 pb-24 md:pb-24 xl:pb-6"
+    >
+      <section className="shrink-0 rounded-[18px] bg-white p-2.5">
+        <div className="flex min-w-0 items-center gap-2">
+          <Button
+            className="size-10 shrink-0 rounded-xl p-0 sm:w-auto sm:px-3"
+            variant="outline"
+            onClick={() => navigate(`/waiter/orders/${id}`)}
+          >
+            <ArrowLeft className="size-4" />
+            <span className="hidden sm:inline">Order</span>
+          </Button>
 
-            <div>
-              <p className="text-xs font-semibold tracking-[0.2em] text-[#ef1428] uppercase">
-                Edit unpaid draft
-              </p>
-              <h1 className="text-2xl font-black">{orderNumber}</h1>
-            </div>
-          </div>
-        </header>
+          <Badge className="hidden h-10 shrink-0 rounded-xl border-0 bg-neutral-950 px-4 text-white sm:flex">
+            Draft
+          </Badge>
 
-        <div className="grid gap-5 p-4 md:p-6 xl:grid-cols-[minmax(0,1fr)_400px]">
-          <section className="min-w-0 space-y-5">
-            <div className="rounded-[24px] bg-white p-5">
-              <h2 className="text-xl font-black">Menu items</h2>
-              <p className="mt-1 text-sm text-neutral-400">
-                Adjust quantities or add more items.
-              </p>
+          <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+            <SelectTrigger className="h-10 min-w-0 flex-1 rounded-xl border-0 bg-neutral-100 px-3 shadow-none sm:max-w-56 sm:flex-none">
+              <SelectValue placeholder="Select category" />
+            </SelectTrigger>
 
-              <div className="mt-5 flex gap-2 overflow-x-auto pb-2">
-                <Button
-                  className="shrink-0 rounded-full"
-                  variant={selectedCategory === "all" ? "default" : "outline"}
-                  onClick={() => setSelectedCategory("all")}
-                >
-                  All items
-                </Button>
+            <SelectContent>
+              <SelectItem value="all">All items ({items.length})</SelectItem>
 
-                {categories.map((category) => (
-                  <Button
-                    key={category._id}
-                    className="shrink-0 rounded-full"
-                    variant={
-                      selectedCategory === category._id ? "default" : "outline"
-                    }
-                    onClick={() => setSelectedCategory(category._id)}
-                  >
-                    {category.name}
-                  </Button>
-                ))}
-              </div>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
-              {visibleItems.map((item) => {
-                const quantity = cart[item._id]?.quantity || 0
+              {categories.map((category) => {
+                const categoryItems = items.filter(
+                  (item) => item.category._id === category._id
+                ).length
 
                 return (
-                  <article
-                    key={item._id}
-                    className={`overflow-hidden rounded-[24px] bg-white ${
-                      quantity > 0 ? "ring-2 ring-[#ef1428]" : ""
-                    }`}
-                  >
-                    <div className="relative h-40 bg-neutral-100">
-                      {item.imageUrl ? (
-                        <img
-                          src={item.imageUrl}
-                          alt={item.name}
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-full items-center justify-center">
-                          <ImageIcon className="size-8 text-neutral-300" />
-                        </div>
-                      )}
-
-                      <Badge className="absolute top-3 right-3 rounded-full border-0 bg-white font-bold text-[#ef1428]">
-                        {formatPrice(item.price)}
-                      </Badge>
-                    </div>
-
-                    <div className="p-4">
-                      <h3 className="font-black">{item.name}</h3>
-                      <p className="mt-2 min-h-10 text-sm text-neutral-400">
-                        {item.description}
-                      </p>
-
-                      <div className="mt-4 flex items-center justify-between rounded-2xl bg-neutral-100 p-2">
-                        <Button
-                          className="size-10 rounded-full"
-                          size="icon"
-                          variant="outline"
-                          disabled={quantity === 0}
-                          onClick={() => changeQuantity(item, -1)}
-                        >
-                          <Minus className="size-4" />
-                        </Button>
-
-                        <span className="text-lg font-black">{quantity}</span>
-
-                        <Button
-                          className="size-10 rounded-full bg-neutral-950 text-white"
-                          size="icon"
-                          onClick={() => changeQuantity(item, 1)}
-                        >
-                          <Plus className="size-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </article>
+                  <SelectItem key={category._id} value={category._id}>
+                    {category.name} ({categoryItems})
+                  </SelectItem>
                 )
               })}
-            </div>
-          </section>
+            </SelectContent>
+          </Select>
 
-          <aside>
-            <div className="space-y-5 rounded-[24px] bg-white p-5 xl:sticky xl:top-6 xl:max-h-[calc(100svh-88px)] xl:overflow-y-auto">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-semibold tracking-[0.18em] text-[#ef1428] uppercase">
-                    Draft summary
-                  </p>
-                  <h2 className="text-xl font-black">Edit order</h2>
-                </div>
+          <div className="ml-auto flex shrink-0 items-center gap-3">
+            <span className="hidden text-sm font-semibold text-neutral-500 md:inline">
+              {totalItems} {totalItems === 1 ? "item" : "items"}
+            </span>
 
-                <div className="flex size-11 items-center justify-center rounded-full bg-neutral-950 text-white">
-                  <ShoppingBag className="size-5" />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-2xl bg-neutral-100 p-4">
-                  <p className="text-xs text-neutral-400">Items</p>
-                  <p className="mt-1 text-2xl font-black">{totalItems}</p>
-                </div>
-
-                <div className="rounded-2xl bg-[#fff0f1] p-4">
-                  <p className="text-xs text-[#ef1428]/70">Total</p>
-                  <p className="mt-1 text-xl font-black text-[#ef1428]">
-                    {formatPrice(total)}
-                  </p>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Order type</Label>
-                <Select
-                  value={orderType}
-                  onValueChange={(value) =>
-                    setOrderType(value as "dine_in" | "takeaway")
-                  }
-                >
-                  <SelectTrigger className="h-12 w-full rounded-xl border-0 bg-neutral-100">
-                    <SelectValue />
-                  </SelectTrigger>
-
-                  <SelectContent>
-                    <SelectItem value="dine_in">Dine in</SelectItem>
-                    <SelectItem value="takeaway">Takeaway</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {orderType === "dine_in" && (
-                <div className="space-y-2">
-                  <Label htmlFor="edit-table">Table</Label>
-                  <Input
-                    id="edit-table"
-                    className="h-12 rounded-xl border-0 bg-neutral-100"
-                    value={tableName}
-                    onChange={(event) => setTableName(event.target.value)}
-                  />
-                </div>
-              )}
-
-              <div className="space-y-3">
-                {cartItems.map((cartItem) => (
-                  <div
-                    key={cartItem.item._id}
-                    className="rounded-2xl border border-neutral-100 p-3"
-                  >
-                    <div className="flex justify-between gap-3">
-                      <span className="font-bold">
-                        {cartItem.quantity} × {cartItem.item.name}
-                      </span>
-                      <span className="font-bold text-[#ef1428]">
-                        {formatPrice(cartItem.item.price * cartItem.quantity)}
-                      </span>
-                    </div>
-
-                    <Textarea
-                      className="mt-3 min-h-16 resize-none rounded-xl border-0 bg-neutral-100"
-                      value={cartItem.notes}
-                      placeholder="Kitchen notes"
-                      onChange={(event) =>
-                        updateNotes(cartItem.item._id, event.target.value)
-                      }
-                    />
-                  </div>
-                ))}
-              </div>
-
-              <div className="border-t border-neutral-100 pt-5">
-                <div className="flex items-center gap-2">
-                  <UserRound className="size-4 text-neutral-400" />
-                  <h3 className="font-bold">Customer details</h3>
-                </div>
-
-                <div className="mt-4 space-y-4">
-                  <Input
-                    className="h-12 rounded-xl border-0 bg-neutral-100"
-                    value={customerName}
-                    onChange={(event) => setCustomerName(event.target.value)}
-                    placeholder="Customer name"
-                  />
-
-                  <Input
-                    className="h-12 rounded-xl border-0 bg-neutral-100"
-                    type="tel"
-                    value={customerPhone}
-                    onChange={(event) => setCustomerPhone(event.target.value)}
-                    placeholder="Customer phone"
-                  />
-
-                  <Input
-                    className="h-12 rounded-xl border-0 bg-neutral-100"
-                    type="email"
-                    value={customerEmail}
-                    onChange={(event) => setCustomerEmail(event.target.value)}
-                    placeholder="Customer email"
-                  />
-                </div>
-              </div>
-
-              {error && (
-                <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700">
-                  {error}
-                </p>
-              )}
-
-              <Button
-                className="h-12 w-full rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
-                disabled={submitting || cartItems.length === 0}
-                onClick={saveChanges}
-              >
-                {submitting ? (
-                  <>
-                    <RefreshCw className="size-4 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 className="size-4" />
-                    Save draft changes
-                  </>
-                )}
-              </Button>
-
-              <Button
-                className="h-12 w-full rounded-xl"
-                variant="outline"
-                onClick={() => navigate(`/waiter/orders/${id}`)}
-              >
-                Cancel editing
-              </Button>
-            </div>
-          </aside>
+            <span className="text-base font-black whitespace-nowrap text-[#ef1428] sm:text-lg">
+              {formatPrice(total)}
+            </span>
+          </div>
         </div>
+      </section>
+
+      <div className="grid min-h-0 flex-1 gap-5 overflow-y-auto overscroll-contain pr-1 xl:grid-cols-[minmax(0,1fr)_400px]">
+        <section className="min-w-0">
+          <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
+            {visibleItems.map((item) => {
+              const quantity = cart[item._id]?.quantity || 0
+
+              return (
+                <article
+                  key={item._id}
+                  className={`overflow-hidden rounded-[24px] bg-white transition ${
+                    quantity > 0
+                      ? "ring-2 ring-[#ef1428]"
+                      : "hover:-translate-y-0.5 hover:shadow-lg"
+                  }`}
+                >
+                  <div className="relative h-44 bg-neutral-100">
+                    {item.imageUrl ? (
+                      <img
+                        src={item.imageUrl}
+                        alt={item.name}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full items-center justify-center">
+                        <ImageIcon className="size-9 text-neutral-300" />
+                      </div>
+                    )}
+
+                    <Badge className="absolute top-3 right-3 rounded-full border-0 bg-white font-bold text-[#ef1428] shadow-sm">
+                      {formatPrice(item.price)}
+                    </Badge>
+
+                    {quantity > 0 && (
+                      <div className="absolute top-3 left-3 flex size-9 items-center justify-center rounded-full bg-[#ef1428] font-black text-white shadow-sm">
+                        {quantity}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="p-4">
+                    <Badge variant="secondary" className="rounded-full">
+                      {item.category.name}
+                    </Badge>
+
+                    <h3 className="mt-3 text-lg font-black">{item.name}</h3>
+
+                    <p className="mt-2 min-h-10 text-sm leading-5 text-neutral-400">
+                      {item.description || "No description available."}
+                    </p>
+
+                    <div className="mt-5 flex items-center justify-between rounded-2xl bg-neutral-100 p-2">
+                      <Button
+                        className="size-10 rounded-full"
+                        size="icon"
+                        variant="outline"
+                        disabled={quantity === 0}
+                        onClick={() => changeQuantity(item, -1)}
+                      >
+                        <Minus className="size-4" />
+                      </Button>
+
+                      <div className="text-center">
+                        <p className="text-lg font-black">{quantity}</p>
+
+                        <p className="text-[10px] tracking-wide text-neutral-400 uppercase">
+                          Selected
+                        </p>
+                      </div>
+
+                      <Button
+                        className="size-10 rounded-full bg-neutral-950 text-white hover:bg-neutral-800"
+                        size="icon"
+                        onClick={() => changeQuantity(item, 1)}
+                      >
+                        <Plus className="size-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </article>
+              )
+            })}
+
+            {visibleItems.length === 0 && (
+              <div className="rounded-[24px] border border-dashed border-neutral-300 bg-white p-12 text-center sm:col-span-2 2xl:col-span-3">
+                <Store className="mx-auto size-8 text-neutral-300" />
+
+                <p className="mt-4 font-bold">No menu items available</p>
+
+                <p className="mt-1 text-sm text-neutral-400">
+                  This category currently has no available items.
+                </p>
+              </div>
+            )}
+          </div>
+        </section>
+
+        <aside className="hidden min-h-0 min-w-0 xl:block">
+          {renderOrderSummary("desktop", true)}
+        </aside>
       </div>
-    </main>
+
+      {cartItems.length > 0 && (
+        <Sheet open={summaryOpen} onOpenChange={setSummaryOpen}>
+          <SheetTrigger asChild>
+            <div className="fixed right-4 bottom-4 left-4 z-40 xl:hidden">
+              <Button className="h-16 w-full justify-between rounded-2xl bg-neutral-950 px-5 text-white shadow-2xl hover:bg-neutral-800">
+                <span className="flex items-center gap-3">
+                  <span className="relative flex size-10 items-center justify-center rounded-full bg-white/10">
+                    <ShoppingBag className="size-5" />
+
+                    <span className="absolute -top-1 -right-1 flex size-5 items-center justify-center rounded-full bg-[#ef1428] text-[10px] font-black">
+                      {totalItems}
+                    </span>
+                  </span>
+
+                  <span className="text-left">
+                    <span className="block text-xs text-white/50">
+                      Review changes
+                    </span>
+
+                    <span className="block font-black">
+                      {totalItems} {totalItems === 1 ? "item" : "items"}
+                    </span>
+                  </span>
+                </span>
+
+                <span className="text-lg font-black">{formatPrice(total)}</span>
+              </Button>
+            </div>
+          </SheetTrigger>
+
+          <SheetContent
+            side="bottom"
+            className="max-h-[92svh] overflow-y-auto rounded-t-[28px] border-0 bg-white p-0"
+          >
+            <SheetHeader className="sr-only">
+              <SheetTitle>Edit order summary</SheetTitle>
+
+              <SheetDescription>
+                Review the draft order and save your changes.
+              </SheetDescription>
+            </SheetHeader>
+
+            <div className="mx-auto w-full max-w-2xl">
+              {renderOrderSummary("mobile")}
+            </div>
+          </SheetContent>
+        </Sheet>
+      )}
+    </WaiterShell>
   )
 }

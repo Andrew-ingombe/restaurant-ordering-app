@@ -2,19 +2,31 @@ import { useEffect, useState } from "react"
 import type { FormEvent } from "react"
 import { useNavigate } from "react-router-dom"
 import {
+  AlertTriangle,
   Check,
   ChefHat,
   Mail,
+  Pencil,
   Phone,
   Plus,
   ShieldCheck,
   UserRound,
   Users,
   UtensilsCrossed,
+  KeyRound,
+  MonitorSmartphone,
 } from "lucide-react"
+import { toast } from "sonner"
 
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@workspace/ui/components/dialog"
 import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
 import {
@@ -24,9 +36,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@workspace/ui/components/select"
+import { Switch } from "@workspace/ui/components/switch"
 
 import { OwnerShell } from "../components/owner-shell"
-import { createStaff, getStaff, updateStaffStatus } from "../lib/api"
+import { StaffCardsSkeleton } from "../components/page-skeletons"
+import {
+  createStaff,
+  getStaff,
+  updateStaff,
+  updateStaffStatus,
+  resetStaffPassword,
+} from "../lib/api"
 import type { AuthUser, StaffRole, StaffUser } from "../lib/api"
 
 type OwnerPageProps = {
@@ -40,6 +60,10 @@ export function OwnerPage({ user, onLogout }: OwnerPageProps) {
   const navigate = useNavigate()
 
   const [staff, setStaff] = useState<StaffUser[]>([])
+  const [staffDialogOpen, setStaffDialogOpen] = useState(false)
+  const [editingStaff, setEditingStaff] = useState<StaffUser | null>(null)
+  const [statusTarget, setStatusTarget] = useState<StaffUser | null>(null)
+
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [updatingId, setUpdatingId] = useState("")
@@ -50,17 +74,25 @@ export function OwnerPage({ user, onLogout }: OwnerPageProps) {
   const [phone, setPhone] = useState("")
   const [password, setPassword] = useState("")
   const [role, setRole] = useState<StaffRole>("waiter")
+  const [sharedHub, setSharedHub] = useState(false)
+
+  const [passwordTarget, setPasswordTarget] = useState<StaffUser | null>(null)
+  const [temporaryPassword, setTemporaryPassword] = useState("")
+  const [confirmTemporaryPassword, setConfirmTemporaryPassword] = useState("")
+  const [resettingPassword, setResettingPassword] = useState(false)
 
   const loadStaff = async () => {
     try {
       setError("")
       setStaff(await getStaff())
     } catch (requestError) {
-      setError(
+      const message =
         requestError instanceof Error
           ? requestError.message
           : "Could not load staff"
-      )
+
+      setError(message)
+      toast.error(message)
     } finally {
       setLoading(false)
     }
@@ -70,70 +102,246 @@ export function OwnerPage({ user, onLogout }: OwnerPageProps) {
     void loadStaff()
   }, [])
 
-  const handleCreate = async (event: FormEvent) => {
+  const resetForm = () => {
+    setEditingStaff(null)
+    setName("")
+    setEmail("")
+    setPhone("")
+    setPassword("")
+    setRole("waiter")
+    setSharedHub(false)
+  }
+
+  const openCreateDialog = () => {
+    setError("")
+    resetForm()
+    setStaffDialogOpen(true)
+  }
+
+  const openEditDialog = (staffMember: StaffUser) => {
+    if (staffMember.role !== "waiter" && staffMember.role !== "kitchen") {
+      return
+    }
+
+    setError("")
+    setEditingStaff(staffMember)
+    setName(staffMember.name)
+    setEmail(staffMember.email)
+    setPhone(staffMember.phone || "")
+    setPassword("")
+    setRole(staffMember.role)
+    setSharedHub(Boolean(staffMember.sharedHub))
+    setStaffDialogOpen(true)
+  }
+
+  const closeStaffDialog = () => {
+    if (submitting) return
+
+    setStaffDialogOpen(false)
+    resetForm()
+  }
+
+  const openPasswordResetDialog = (staffMember: StaffUser) => {
+    setError("")
+    setTemporaryPassword("")
+    setConfirmTemporaryPassword("")
+    setPasswordTarget(staffMember)
+  }
+
+  const closePasswordResetDialog = () => {
+    if (resettingPassword) return
+
+    setPasswordTarget(null)
+    setTemporaryPassword("")
+    setConfirmTemporaryPassword("")
+  }
+
+  const handlePasswordReset = async (event: FormEvent) => {
+    event.preventDefault()
+
+    if (!passwordTarget || resettingPassword) return
+
+    if (temporaryPassword !== confirmTemporaryPassword) {
+      const message = "Temporary passwords do not match"
+      setError(message)
+      toast.error(message)
+      return
+    }
+
+    const id = getStaffId(passwordTarget)
+
+    if (!id) {
+      const message = "Staff member ID is unavailable"
+      setError(message)
+      toast.error(message)
+      return
+    }
+
+    setResettingPassword(true)
+    setError("")
+
+    try {
+      const updatedStaff = await resetStaffPassword(id, temporaryPassword)
+
+      setStaff((current) =>
+        current.map((staffMember) =>
+          getStaffId(staffMember) === id ? updatedStaff : staffMember
+        )
+      )
+
+      toast.success("Temporary password created", {
+        description: `${updatedStaff.name} must change it after signing in.`,
+      })
+
+      closePasswordResetDialog()
+      setPasswordTarget(null)
+      setTemporaryPassword("")
+      setConfirmTemporaryPassword("")
+    } catch (requestError) {
+      const message =
+        requestError instanceof Error
+          ? requestError.message
+          : "Could not reset staff password"
+
+      setError(message)
+      toast.error(message)
+    } finally {
+      setResettingPassword(false)
+    }
+  }
+
+  const handleStaffDialogChange = (open: boolean) => {
+    if (open) {
+      setStaffDialogOpen(true)
+      return
+    }
+
+    closeStaffDialog()
+  }
+
+  const handleRoleChange = (value: string) => {
+    const nextRole = value as StaffRole
+
+    setRole(nextRole)
+
+    if (nextRole !== "waiter") {
+      setSharedHub(false)
+    }
+  }
+
+  const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
     setSubmitting(true)
     setError("")
 
     try {
-      const newStaff = await createStaff({
-        name,
-        email,
-        phone: phone || undefined,
-        password,
-        role,
-      })
+      const normalizedSharedHub = role === "waiter" ? sharedHub : false
 
-      setStaff((current) => [newStaff, ...current])
-      setName("")
-      setEmail("")
-      setPhone("")
-      setPassword("")
-      setRole("waiter")
+      if (editingStaff) {
+        const id = getStaffId(editingStaff)
+
+        if (!id) {
+          throw new Error("Staff member ID is unavailable")
+        }
+
+        const updated = await updateStaff(id, {
+          name,
+          email,
+          phone: phone || undefined,
+          role,
+          sharedHub: normalizedSharedHub,
+        })
+
+        setStaff((current) =>
+          current.map((item) => (getStaffId(item) === id ? updated : item))
+        )
+
+        toast.success("Staff details updated")
+      } else {
+        const newStaff = await createStaff({
+          name,
+          email,
+          phone: phone || undefined,
+          password,
+          role,
+          sharedHub: normalizedSharedHub,
+        })
+
+        setStaff((current) => [newStaff, ...current])
+        toast.success("Staff account created")
+      }
+
+      setStaffDialogOpen(false)
+      resetForm()
     } catch (requestError) {
-      setError(
+      const message =
         requestError instanceof Error
           ? requestError.message
-          : "Could not create staff member"
-      )
+          : editingStaff
+            ? "Could not update staff member"
+            : "Could not create staff member"
+
+      setError(message)
+      toast.error(message)
     } finally {
       setSubmitting(false)
     }
   }
 
-  const handleStatusChange = async (staffMember: StaffUser) => {
+  const applyStatusChange = async (staffMember: StaffUser) => {
     const id = getStaffId(staffMember)
 
-    if (!id) return
+    if (!id || updatingId) return
 
     setUpdatingId(id)
+    setError("")
 
     try {
-      setError("")
-
       const updatedStaff = await updateStaffStatus(id, !staffMember.active)
 
       setStaff((current) =>
         current.map((item) => (getStaffId(item) === id ? updatedStaff : item))
       )
+
+      toast.success(
+        updatedStaff.active
+          ? `${updatedStaff.name} can now sign in`
+          : `${updatedStaff.name} has been deactivated`
+      )
+
+      setStatusTarget(null)
     } catch (requestError) {
-      setError(
+      const message =
         requestError instanceof Error
           ? requestError.message
           : "Could not update staff member"
-      )
+
+      setError(message)
+      toast.error(message)
     } finally {
       setUpdatingId("")
     }
   }
 
+  const requestStatusChange = (staffMember: StaffUser) => {
+    if (staffMember.active) {
+      setStatusTarget(staffMember)
+      return
+    }
+
+    void applyStatusChange(staffMember)
+  }
+
   const activeStaff = staff.filter((member) => member.active).length
-
   const waiters = staff.filter((member) => member.role === "waiter").length
-
   const kitchenStaff = staff.filter(
     (member) => member.role === "kitchen"
   ).length
+  const sharedHubAccounts = staff.filter(
+    (member) => member.role === "waiter" && member.sharedHub
+  ).length
+
+  const statusTargetId = statusTarget ? getStaffId(statusTarget) : ""
 
   return (
     <OwnerShell
@@ -146,194 +354,470 @@ export function OwnerPage({ user, onLogout }: OwnerPageProps) {
           <p className="text-xs font-semibold tracking-[0.2em] text-[#ef1428] uppercase">
             Team management
           </p>
+
           <h1 className="mt-1 text-2xl font-black tracking-tight md:text-3xl">
             Restaurant staff
           </h1>
+
           <p className="mt-1 text-sm text-neutral-400">
             Create accounts and control staff access.
           </p>
         </div>
       }
       headerActions={
-        <Button
-          className="h-11 rounded-xl bg-[#ef1428] px-5 text-white hover:bg-[#d91023]"
-          onClick={() => navigate("/owner/menu")}
-        >
-          <UtensilsCrossed className="size-4" />
-          Manage menu
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            className="h-11 rounded-xl bg-[#ef1428] px-5 text-white hover:bg-[#d91023]"
+            onClick={openCreateDialog}
+          >
+            <Plus className="size-4" />
+            Add staff
+          </Button>
+
+          <Button
+            className="h-11 rounded-xl"
+            variant="outline"
+            onClick={() => navigate("/owner/menu")}
+          >
+            <UtensilsCrossed className="size-4" />
+            Manage menu
+          </Button>
+        </div>
       }
     >
-      <section className="grid gap-3 sm:grid-cols-3">
-        <div className="rounded-[22px] bg-[#ef1428] p-5 text-white">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-white/75">Active staff</p>
-            <div className="flex size-9 items-center justify-center rounded-full bg-white/15">
-              <ShieldCheck className="size-4" />
-            </div>
-          </div>
+      <Dialog open={staffDialogOpen} onOpenChange={handleStaffDialogChange}>
+        <DialogContent className="max-h-[90svh] overflow-y-auto rounded-[28px] border-0 p-0 sm:max-w-xl">
+          <div className="bg-white p-5 md:p-6">
+            <DialogHeader>
+              <div className="mb-4 flex size-11 items-center justify-center rounded-full bg-neutral-950 text-white">
+                {editingStaff ? (
+                  <Pencil className="size-4" />
+                ) : (
+                  <Plus className="size-5" />
+                )}
+              </div>
 
-          <p className="mt-5 text-3xl font-black">{activeStaff}</p>
-        </div>
+              <DialogTitle className="text-2xl font-black tracking-tight">
+                {editingStaff ? "Edit staff member" : "Add staff member"}
+              </DialogTitle>
 
-        <div className="rounded-[22px] bg-white p-5">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-neutral-500">Waiters</p>
-            <div className="flex size-9 items-center justify-center rounded-full bg-neutral-100">
-              <UserRound className="size-4" />
-            </div>
-          </div>
+              <DialogDescription className="text-sm leading-6 text-neutral-400">
+                {editingStaff
+                  ? "Update this staff member's contact details, role, and hub access."
+                  : "Create login details for a waiter, kitchen member, or shared ordering hub."}
+              </DialogDescription>
+            </DialogHeader>
 
-          <p className="mt-5 text-3xl font-black">{waiters}</p>
-        </div>
+            <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
+              <div className="space-y-2">
+                <Label htmlFor="staff-name">Full name</Label>
+                <Input
+                  id="staff-name"
+                  className="h-12 rounded-xl border-0 bg-neutral-100 px-4 shadow-none"
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                  placeholder="Staff member's name"
+                  required
+                  minLength={2}
+                  disabled={submitting}
+                />
+              </div>
 
-        <div className="rounded-[22px] bg-white p-5">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-neutral-500">Kitchen staff</p>
-            <div className="flex size-9 items-center justify-center rounded-full bg-neutral-100">
-              <ChefHat className="size-4" />
-            </div>
-          </div>
+              <div className="space-y-2">
+                <Label htmlFor="staff-email">Email address</Label>
+                <Input
+                  id="staff-email"
+                  className="h-12 rounded-xl border-0 bg-neutral-100 px-4 shadow-none"
+                  type="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  placeholder="name@restaurant.com"
+                  required
+                  disabled={submitting}
+                />
+              </div>
 
-          <p className="mt-5 text-3xl font-black">{kitchenStaff}</p>
-        </div>
-      </section>
+              <div className="space-y-2">
+                <Label htmlFor="staff-phone">Phone number</Label>
+                <Input
+                  id="staff-phone"
+                  className="h-12 rounded-xl border-0 bg-neutral-100 px-4 shadow-none"
+                  type="tel"
+                  value={phone}
+                  onChange={(event) => setPhone(event.target.value)}
+                  placeholder="Optional"
+                  disabled={submitting}
+                />
+              </div>
 
-      {error && (
-        <p className="rounded-2xl bg-red-50 p-4 text-sm text-red-700">
-          {error}
-        </p>
-      )}
+              {!editingStaff && (
+                <div className="space-y-2">
+                  <Label htmlFor="staff-password">Temporary password</Label>
+                  <Input
+                    id="staff-password"
+                    className="h-12 rounded-xl border-0 bg-neutral-100 px-4 shadow-none"
+                    type="password"
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    placeholder="Minimum 8 characters"
+                    required
+                    minLength={8}
+                    disabled={submitting}
+                  />
+                </div>
+              )}
 
-      <div className="grid gap-5 xl:grid-cols-[380px_1fr]">
-        <section className="self-start rounded-[24px] bg-white p-5 xl:sticky xl:top-7">
-          <div className="flex size-11 items-center justify-center rounded-full bg-neutral-950 text-white">
-            <Plus className="size-5" />
-          </div>
+              <div className="space-y-2">
+                <Label>Staff role</Label>
+                <Select
+                  value={role}
+                  disabled={submitting}
+                  onValueChange={handleRoleChange}
+                >
+                  <SelectTrigger className="h-12 w-full rounded-xl border-0 bg-neutral-100 px-4 shadow-none">
+                    <SelectValue />
+                  </SelectTrigger>
 
-          <h2 className="mt-5 text-xl font-black">Add staff member</h2>
-          <p className="mt-1 text-sm leading-6 text-neutral-400">
-            Create login details for a waiter or kitchen team member.
-          </p>
+                  <SelectContent>
+                    <SelectItem value="waiter">Waiter</SelectItem>
+                    <SelectItem value="kitchen">Kitchen staff</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-          <form className="mt-6 space-y-4" onSubmit={handleCreate}>
-            <div className="space-y-2">
-              <Label htmlFor="staff-name">Full name</Label>
-              <Input
-                id="staff-name"
-                className="h-12 rounded-xl border-0 bg-neutral-100 px-4 shadow-none"
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                placeholder="Staff member's name"
-                required
-                minLength={2}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="staff-email">Email address</Label>
-              <Input
-                id="staff-email"
-                className="h-12 rounded-xl border-0 bg-neutral-100 px-4 shadow-none"
-                type="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="name@restaurant.com"
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="staff-phone">Phone number</Label>
-              <Input
-                id="staff-phone"
-                className="h-12 rounded-xl border-0 bg-neutral-100 px-4 shadow-none"
-                type="tel"
-                value={phone}
-                onChange={(event) => setPhone(event.target.value)}
-                placeholder="Optional"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="staff-password">Temporary password</Label>
-              <Input
-                id="staff-password"
-                className="h-12 rounded-xl border-0 bg-neutral-100 px-4 shadow-none"
-                type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder="Minimum 8 characters"
-                required
-                minLength={8}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Staff role</Label>
-              <Select
-                value={role}
-                onValueChange={(value) => setRole(value as StaffRole)}
+              <div
+                className={`rounded-2xl border p-4 ${
+                  role === "waiter"
+                    ? "border-neutral-200 bg-neutral-50"
+                    : "border-neutral-100 bg-neutral-50 opacity-60"
+                }`}
               >
-                <SelectTrigger className="h-12 w-full rounded-xl border-0 bg-neutral-100 px-4 shadow-none">
-                  <SelectValue />
-                </SelectTrigger>
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex gap-3">
+                    <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-neutral-950 text-white">
+                      <MonitorSmartphone className="size-4" />
+                    </div>
 
-                <SelectContent>
-                  <SelectItem value="waiter">Waiter</SelectItem>
-                  <SelectItem value="kitchen">Kitchen staff</SelectItem>
-                </SelectContent>
-              </Select>
+                    <div>
+                      <Label
+                        htmlFor="shared-hub"
+                        className="text-base font-black"
+                      >
+                        Shared ordering hub
+                      </Label>
+
+                      <p className="mt-1 text-sm leading-6 text-neutral-500">
+                        Use this for a stationed waiter device. The hub stays
+                        logged in, but each order is assigned to the actual
+                        waiter serving the table.
+                      </p>
+                    </div>
+                  </div>
+
+                  <Switch
+                    id="shared-hub"
+                    checked={sharedHub}
+                    disabled={submitting || role !== "waiter"}
+                    onCheckedChange={setSharedHub}
+                  />
+                </div>
+
+                {role !== "waiter" && (
+                  <p className="mt-3 text-xs text-neutral-400">
+                    Shared hubs are only available for waiter accounts.
+                  </p>
+                )}
+              </div>
+
+              {error && staffDialogOpen && (
+                <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700">
+                  {error}
+                </p>
+              )}
+
+              <div className="grid gap-2 pt-2 sm:grid-cols-2">
+                <Button
+                  className="h-12 rounded-xl"
+                  type="button"
+                  variant="outline"
+                  disabled={submitting}
+                  onClick={closeStaffDialog}
+                >
+                  Cancel
+                </Button>
+
+                <Button
+                  className="h-12 rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
+                  disabled={submitting}
+                >
+                  {submitting
+                    ? "Saving..."
+                    : editingStaff
+                      ? "Save changes"
+                      : "Create staff account"}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(statusTarget)}
+        onOpenChange={(open) => {
+          if (!open && !updatingId) {
+            setStatusTarget(null)
+          }
+        }}
+      >
+        <DialogContent className="rounded-[28px] border-0 p-0 sm:max-w-md">
+          <div className="p-5 md:p-6">
+            <DialogHeader>
+              <div className="mb-4 flex size-12 items-center justify-center rounded-full bg-red-50 text-[#ef1428]">
+                <AlertTriangle className="size-5" />
+              </div>
+
+              <DialogTitle className="text-2xl font-black tracking-tight">
+                Deactivate staff account?
+              </DialogTitle>
+
+              <DialogDescription className="text-sm leading-6 text-neutral-500">
+                {statusTarget?.name} will immediately lose access to the
+                restaurant workspace. Their previous orders and activity will
+                remain available.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="mt-6 grid gap-2 sm:grid-cols-2">
+              <Button
+                className="h-12 rounded-xl"
+                variant="outline"
+                disabled={Boolean(updatingId)}
+                onClick={() => setStatusTarget(null)}
+              >
+                Keep active
+              </Button>
+
+              <Button
+                className="h-12 rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
+                disabled={Boolean(updatingId)}
+                onClick={() => {
+                  if (statusTarget) {
+                    void applyStatusChange(statusTarget)
+                  }
+                }}
+              >
+                {updatingId === statusTargetId
+                  ? "Deactivating..."
+                  : "Deactivate account"}
+              </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
-            <Button
-              className="h-12 w-full rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
-              disabled={submitting}
-            >
-              {submitting ? "Creating..." : "Create staff account"}
-            </Button>
-          </form>
-        </section>
+      <Dialog
+        open={Boolean(passwordTarget)}
+        onOpenChange={(open) => {
+          if (!open) {
+            closePasswordResetDialog()
+          }
+        }}
+      >
+        <DialogContent className="rounded-[28px] border-0 p-0 sm:max-w-md">
+          <div className="p-5 md:p-6">
+            <DialogHeader>
+              <div className="mb-4 flex size-12 items-center justify-center rounded-full bg-[#fff0f1] text-[#ef1428]">
+                <KeyRound className="size-5" />
+              </div>
 
-        <section className="min-w-0 rounded-[24px] bg-white p-5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 className="text-xl font-black">Staff accounts</h2>
-              <p className="mt-1 text-sm text-neutral-400">
-                Manage access for the restaurant team.
-              </p>
-            </div>
+              <DialogTitle className="text-2xl font-black tracking-tight">
+                Reset staff password
+              </DialogTitle>
 
-            <Badge variant="secondary" className="rounded-full px-3 py-1">
-              {staff.length} accounts
-            </Badge>
+              <DialogDescription className="text-sm leading-6 text-neutral-500">
+                Create a temporary password for{" "}
+                <strong className="text-neutral-900">
+                  {passwordTarget?.name}
+                </strong>
+                . They will be required to replace it after signing in.
+              </DialogDescription>
+            </DialogHeader>
+
+            <form className="mt-6 space-y-4" onSubmit={handlePasswordReset}>
+              <div className="space-y-2">
+                <Label htmlFor="temporary-password">Temporary password</Label>
+
+                <Input
+                  id="temporary-password"
+                  className="h-12 rounded-xl border-0 bg-neutral-100 px-4 shadow-none"
+                  type="password"
+                  value={temporaryPassword}
+                  onChange={(event) => setTemporaryPassword(event.target.value)}
+                  minLength={8}
+                  required
+                  disabled={resettingPassword}
+                  autoComplete="new-password"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="confirm-temporary-password">
+                  Confirm temporary password
+                </Label>
+
+                <Input
+                  id="confirm-temporary-password"
+                  className="h-12 rounded-xl border-0 bg-neutral-100 px-4 shadow-none"
+                  type="password"
+                  value={confirmTemporaryPassword}
+                  onChange={(event) =>
+                    setConfirmTemporaryPassword(event.target.value)
+                  }
+                  minLength={8}
+                  required
+                  disabled={resettingPassword}
+                  autoComplete="new-password"
+                />
+              </div>
+
+              {error && passwordTarget && (
+                <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700">
+                  {error}
+                </p>
+              )}
+
+              <div className="grid gap-2 pt-2 sm:grid-cols-2">
+                <Button
+                  className="h-12 rounded-xl"
+                  type="button"
+                  variant="outline"
+                  disabled={resettingPassword}
+                  onClick={closePasswordResetDialog}
+                >
+                  Cancel
+                </Button>
+
+                <Button
+                  className="h-12 rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
+                  disabled={resettingPassword}
+                >
+                  {resettingPassword
+                    ? "Resetting..."
+                    : "Create temporary password"}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <section className="min-w-0 rounded-[24px] bg-white p-5">
+        <div>
+          <h2 className="text-xl font-black">Staff accounts</h2>
+          <p className="mt-1 text-sm text-neutral-400">
+            Manage access for the restaurant team.
+          </p>
+        </div>
+
+        <div className="mt-5 grid gap-2 sm:grid-cols-5">
+          <div className="rounded-2xl bg-[#fff0f1] px-4 py-3">
+            <p className="text-xs font-semibold text-[#ef1428]">Active staff</p>
+            <p className="mt-1 text-2xl font-black">
+              {loading ? (
+                <span className="block h-7 w-10 animate-pulse rounded-lg bg-neutral-200" />
+              ) : (
+                activeStaff
+              )}
+            </p>
           </div>
 
-          {loading ? (
-            <div className="mt-6 rounded-2xl bg-neutral-50 p-10 text-center text-sm text-neutral-400">
-              Loading staff...
-            </div>
-          ) : (
-            <div className="mt-6 grid gap-3 md:grid-cols-2">
-              {staff.map((staffMember) => {
-                const id = getStaffId(staffMember)
-                const isOwner = staffMember.role === "owner"
-                const RoleIcon =
-                  staffMember.role === "kitchen"
-                    ? ChefHat
-                    : staffMember.role === "owner"
-                      ? ShieldCheck
+          <div className="rounded-2xl bg-neutral-100 px-4 py-3">
+            <p className="text-xs font-semibold text-neutral-500">Waiters</p>
+            <p className="mt-1 text-2xl font-black">
+              {loading ? (
+                <span className="block h-7 w-10 animate-pulse rounded-lg bg-neutral-200" />
+              ) : (
+                waiters
+              )}
+            </p>
+          </div>
+
+          <div className="rounded-2xl bg-neutral-100 px-4 py-3">
+            <p className="text-xs font-semibold text-neutral-500">
+              Kitchen staff
+            </p>
+            <p className="mt-1 text-2xl font-black">
+              {loading ? (
+                <span className="block h-7 w-10 animate-pulse rounded-lg bg-neutral-200" />
+              ) : (
+                kitchenStaff
+              )}
+            </p>
+          </div>
+
+          <div className="rounded-2xl bg-neutral-100 px-4 py-3">
+            <p className="text-xs font-semibold text-neutral-500">Hub logins</p>
+            <p className="mt-1 text-2xl font-black">
+              {loading ? (
+                <span className="block h-7 w-10 animate-pulse rounded-lg bg-neutral-200" />
+              ) : (
+                sharedHubAccounts
+              )}
+            </p>
+          </div>
+
+          <div className="rounded-2xl bg-neutral-950 px-4 py-3 text-white">
+            <p className="text-xs font-semibold text-white/60">
+              Total accounts
+            </p>
+            <p className="mt-1 text-2xl font-black">
+              {loading ? (
+                <span className="block h-7 w-10 animate-pulse rounded-lg bg-white/20" />
+              ) : (
+                staff.length
+              )}
+            </p>
+          </div>
+        </div>
+
+        {error && !staffDialogOpen && !passwordTarget && (
+          <p className="mt-5 rounded-2xl bg-red-50 p-4 text-sm text-red-700">
+            {error}
+          </p>
+        )}
+
+        {loading ? (
+          <StaffCardsSkeleton />
+        ) : (
+          <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {staff.map((staffMember) => {
+              const id = getStaffId(staffMember)
+              const RoleIcon =
+                staffMember.role === "kitchen"
+                  ? ChefHat
+                  : staffMember.role === "owner"
+                    ? ShieldCheck
+                    : staffMember.sharedHub
+                      ? MonitorSmartphone
                       : UserRound
 
-                return (
-                  <article
-                    key={id}
-                    className="rounded-[20px] border border-neutral-100 p-4 transition hover:border-neutral-200 hover:bg-neutral-50"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex size-11 items-center justify-center rounded-full bg-neutral-950 text-white">
-                        <RoleIcon className="size-4" />
-                      </div>
+              return (
+                <article
+                  key={id}
+                  className="rounded-[20px] border border-neutral-100 p-4 transition hover:border-neutral-200 hover:bg-neutral-50"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex size-11 items-center justify-center rounded-full bg-neutral-950 text-white">
+                      <RoleIcon className="size-4" />
+                    </div>
+
+                    <div className="flex flex-wrap justify-end gap-2">
+                      {staffMember.sharedHub && (
+                        <Badge className="rounded-full border-0 bg-blue-50 text-blue-700">
+                          Hub
+                        </Badge>
+                      )}
 
                       <Badge
                         className={`rounded-full border-0 ${
@@ -346,74 +830,102 @@ export function OwnerPage({ user, onLogout }: OwnerPageProps) {
                         {staffMember.active ? "Active" : "Inactive"}
                       </Badge>
                     </div>
+                  </div>
 
-                    <div className="mt-5">
-                      <h3 className="text-lg font-black">{staffMember.name}</h3>
-                      <p className="mt-1 text-xs font-semibold tracking-wider text-[#ef1428] uppercase">
-                        {staffMember.role === "kitchen"
+                  <div className="mt-5">
+                    <h3 className="text-lg font-black">{staffMember.name}</h3>
+                    <p className="mt-1 text-xs font-semibold tracking-wider text-[#ef1428] uppercase">
+                      {staffMember.sharedHub
+                        ? "Shared ordering hub"
+                        : staffMember.role === "kitchen"
                           ? "Kitchen staff"
                           : staffMember.role}
-                      </p>
-                    </div>
-
-                    <div className="mt-4 space-y-2 text-sm text-neutral-500">
-                      <div className="flex items-center gap-2">
-                        <Mail className="size-3.5 shrink-0" />
-                        <span className="truncate">{staffMember.email}</span>
-                      </div>
-
-                      {staffMember.phone && (
-                        <div className="flex items-center gap-2">
-                          <Phone className="size-3.5 shrink-0" />
-                          <span>{staffMember.phone}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="mt-5 border-t border-neutral-100 pt-4">
-                      {isOwner ? (
-                        <div className="rounded-xl bg-neutral-100 px-3 py-2 text-center text-xs font-medium text-neutral-500">
-                          Owner access cannot be deactivated
-                        </div>
-                      ) : (
-                        <Button
-                          className={`w-full rounded-xl ${
-                            !staffMember.active
-                              ? "bg-neutral-950 text-white hover:bg-neutral-800"
-                              : ""
-                          }`}
-                          size="sm"
-                          variant={staffMember.active ? "outline" : "default"}
-                          disabled={updatingId === id}
-                          onClick={() => void handleStatusChange(staffMember)}
-                        >
-                          {updatingId === id
-                            ? "Updating..."
-                            : staffMember.active
-                              ? "Deactivate account"
-                              : "Activate account"}
-                        </Button>
-                      )}
-                    </div>
-                  </article>
-                )
-              })}
-
-              {staff.length === 0 && (
-                <div className="rounded-2xl border border-dashed border-neutral-200 p-12 text-center md:col-span-2">
-                  <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-neutral-100">
-                    <Users className="size-5 text-neutral-500" />
+                    </p>
                   </div>
-                  <p className="mt-4 font-bold">No staff accounts</p>
-                  <p className="mt-1 text-sm text-neutral-400">
-                    Add your first staff member using the form.
-                  </p>
+
+                  <div className="mt-4 space-y-2 text-sm text-neutral-500">
+                    <div className="flex items-center gap-2">
+                      <Mail className="size-3.5 shrink-0" />
+                      <span className="truncate">{staffMember.email}</span>
+                    </div>
+
+                    {staffMember.phone && (
+                      <div className="flex items-center gap-2">
+                        <Phone className="size-3.5 shrink-0" />
+                        <span>{staffMember.phone}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mt-5 grid grid-cols-2 gap-2 border-t border-neutral-100 pt-4">
+                    <Button
+                      className="rounded-xl"
+                      size="sm"
+                      variant="outline"
+                      disabled={updatingId === id || resettingPassword}
+                      onClick={() => openEditDialog(staffMember)}
+                    >
+                      <Pencil className="size-3.5" />
+                      Edit
+                    </Button>
+
+                    <Button
+                      className={`rounded-xl ${
+                        !staffMember.active
+                          ? "bg-neutral-950 text-white hover:bg-neutral-800"
+                          : ""
+                      }`}
+                      size="sm"
+                      variant={staffMember.active ? "outline" : "default"}
+                      disabled={updatingId === id || resettingPassword}
+                      onClick={() => requestStatusChange(staffMember)}
+                    >
+                      {updatingId === id
+                        ? "Updating..."
+                        : staffMember.active
+                          ? "Deactivate"
+                          : "Activate"}
+                    </Button>
+
+                    <Button
+                      className="col-span-2 rounded-xl"
+                      size="sm"
+                      variant="outline"
+                      disabled={updatingId === id || resettingPassword}
+                      onClick={() => openPasswordResetDialog(staffMember)}
+                    >
+                      <KeyRound className="size-3.5" />
+                      Reset password
+                    </Button>
+                  </div>
+                </article>
+              )
+            })}
+
+            {staff.length === 0 && (
+              <div className="rounded-2xl border border-dashed border-neutral-200 p-12 text-center md:col-span-2 xl:col-span-3">
+                <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-neutral-100">
+                  <Users className="size-5 text-neutral-500" />
                 </div>
-              )}
-            </div>
-          )}
-        </section>
-      </div>
+
+                <p className="mt-4 font-bold">No staff accounts</p>
+
+                <p className="mt-1 text-sm text-neutral-400">
+                  Add your first staff member using the button above.
+                </p>
+
+                <Button
+                  className="mt-5 rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
+                  onClick={openCreateDialog}
+                >
+                  <Plus className="size-4" />
+                  Add staff
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+      </section>
     </OwnerShell>
   )
 }

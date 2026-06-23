@@ -12,12 +12,11 @@ import {
 import {
   requireOwner,
   requireRestaurantContext,
+  requireRole,
 } from "../middleware/role.middleware"
 import { RestaurantTable } from "../models/restaurant-table.model"
 
 export const tableRouter = Router()
-
-tableRouter.use(authenticate, requireOwner, requireRestaurantContext)
 
 const createTableSchema = z.object({
   name: z.string().trim().min(1).max(50),
@@ -58,21 +57,51 @@ const serializeTable = (
     menuUrl: `${env.frontendUrl}/menu/table/${token}`,
   }
 }
+
+tableRouter.get(
+  "/available",
+  authenticate,
+  requireRole("waiter"),
+  requireRestaurantContext,
+  asyncHandler(async (request, response) => {
+    const authenticatedRequest = request as AuthenticatedRequest
+    const restaurantId = authenticatedRequest.user!.restaurantId!
+
+    const tables = await RestaurantTable.find({
+      restaurant: restaurantId,
+      active: true,
+    })
+      .select("name")
+      .sort({
+        name: 1,
+      })
+      .lean()
+
+    response.json({
+      tables: tables.map((table) => ({
+        id: table._id.toString(),
+        name: table.name,
+      })),
+    })
+  })
+)
+
+tableRouter.use(authenticate, requireOwner, requireRestaurantContext)
+
 tableRouter.get(
   "/",
   asyncHandler(async (request, response) => {
     const authenticatedRequest = request as AuthenticatedRequest
+    const restaurantId = authenticatedRequest.user!.restaurantId!
 
     const tables = await RestaurantTable.find({
-      restaurant: authenticatedRequest.user!.restaurantId,
+      restaurant: restaurantId,
     }).sort({
       name: 1,
     })
 
     response.json({
-      tables: tables.map((table) =>
-        serializeTable(table, authenticatedRequest.user!.restaurantId!)
-      ),
+      tables: tables.map((table) => serializeTable(table, restaurantId)),
     })
   })
 )
@@ -144,7 +173,9 @@ tableRouter.patch(
 
     if (result.data.name) {
       const duplicate = await RestaurantTable.exists({
-        _id: { $ne: request.params.id },
+        _id: {
+          $ne: request.params.id,
+        },
         restaurant: restaurantId,
         name: {
           $regex: `^${escapeRegex(result.data.name)}$`,
@@ -169,7 +200,7 @@ tableRouter.patch(
         $set: result.data,
       },
       {
-        new: true,
+        returnDocument: "after",
         runValidators: true,
       }
     )

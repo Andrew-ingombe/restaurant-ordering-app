@@ -2,12 +2,12 @@ import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import {
   ArrowLeft,
-  CheckCircle2,
   KeyRound,
   LockKeyhole,
   RefreshCw,
   ShieldCheck,
 } from "lucide-react"
+import { toast } from "sonner"
 
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
@@ -16,27 +16,45 @@ import { Label } from "@workspace/ui/components/label"
 import { changePassword } from "../lib/api"
 import type { AuthUser } from "../lib/api"
 
-export function ChangePasswordPage({ user }: { user: AuthUser }) {
+type ChangePasswordPageProps = {
+  user: AuthUser
+  onPasswordChanged: () => void
+}
+
+const getRolePath = (user: AuthUser) =>
+  user.role === "platform_admin" ? "/platform" : `/${user.role}`
+
+export function ChangePasswordPage({
+  user,
+  onPasswordChanged,
+}: ChangePasswordPageProps) {
   const navigate = useNavigate()
   const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState("")
-  const [success, setSuccess] = useState("")
+
+  const requiredChange = Boolean(user.mustChangePassword)
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+
+    if (submitting) return
+
     setError("")
-    setSuccess("")
 
     if (newPassword !== confirmPassword) {
-      setError("New passwords do not match")
+      const message = "New passwords do not match"
+      setError(message)
+      toast.error(message)
       return
     }
 
     if (newPassword === currentPassword) {
-      setError("New password must be different")
+      const message = "New password must be different"
+      setError(message)
+      toast.error(message)
       return
     }
 
@@ -48,16 +66,21 @@ export function ChangePasswordPage({ user }: { user: AuthUser }) {
         newPassword,
       })
 
-      setCurrentPassword("")
-      setNewPassword("")
-      setConfirmPassword("")
-      setSuccess(result.message)
+      toast.success(result.message)
+
+      onPasswordChanged()
+
+      navigate(getRolePath(user), {
+        replace: true,
+      })
     } catch (requestError) {
-      setError(
+      const message =
         requestError instanceof Error
           ? requestError.message
           : "Could not change password"
-      )
+
+      setError(message)
+      toast.error(message)
     } finally {
       setSubmitting(false)
     }
@@ -67,20 +90,25 @@ export function ChangePasswordPage({ user }: { user: AuthUser }) {
     <main className="min-h-svh bg-[#f5f5f6]">
       <header className="border-b border-black/5 bg-white px-4 py-4 md:px-7">
         <div className="mx-auto flex max-w-5xl items-center gap-4">
-          <Button
-            className="size-11 rounded-xl"
-            size="icon"
-            variant="outline"
-            onClick={() => navigate(`/${user.role}`)}
-          >
-            <ArrowLeft className="size-4" />
-          </Button>
+          {!requiredChange && (
+            <Button
+              className="size-11 rounded-xl"
+              size="icon"
+              variant="outline"
+              onClick={() => navigate(getRolePath(user))}
+            >
+              <ArrowLeft className="size-4" />
+            </Button>
+          )}
 
           <div>
             <p className="text-xs font-semibold tracking-[0.2em] text-[#ef1428] uppercase">
               Account security
             </p>
-            <h1 className="text-2xl font-black">Change password</h1>
+
+            <h1 className="text-2xl font-black">
+              {requiredChange ? "Create a new password" : "Change password"}
+            </h1>
           </div>
         </div>
       </header>
@@ -91,17 +119,22 @@ export function ChangePasswordPage({ user }: { user: AuthUser }) {
             <ShieldCheck className="size-5" />
           </div>
 
-          <h2 className="mt-6 text-3xl font-black">Keep your account secure</h2>
+          <h2 className="mt-6 text-3xl font-black">
+            {requiredChange
+              ? "Secure your account"
+              : "Keep your account secure"}
+          </h2>
 
           <p className="mt-3 max-w-md leading-7 text-white/60">
-            Choose a password that is unique to this restaurant account and
-            difficult for others to guess.
+            {requiredChange
+              ? "You signed in using a temporary password. Create your own password before continuing."
+              : "Choose a password that is unique to this restaurant account and difficult for others to guess."}
           </p>
 
           <div className="mt-8 space-y-3 text-sm text-white/70">
             <p>Use at least 8 characters.</p>
             <p>Avoid reusing passwords from other accounts.</p>
-            <p>Do not share your staff password.</p>
+            <p>Do not share your password with anyone.</p>
           </div>
         </section>
 
@@ -110,7 +143,11 @@ export function ChangePasswordPage({ user }: { user: AuthUser }) {
             <KeyRound className="size-5" />
           </div>
 
-          <h2 className="mt-5 text-xl font-black">Update your password</h2>
+          <h2 className="mt-5 text-xl font-black">
+            {requiredChange
+              ? "Replace temporary password"
+              : "Update your password"}
+          </h2>
 
           <p className="mt-1 text-sm text-neutral-400">
             Signed in as {user.email}
@@ -120,7 +157,9 @@ export function ChangePasswordPage({ user }: { user: AuthUser }) {
             {[
               {
                 id: "current-password",
-                label: "Current password",
+                label: requiredChange
+                  ? "Temporary password"
+                  : "Current password",
                 value: currentPassword,
                 setter: setCurrentPassword,
               },
@@ -156,6 +195,7 @@ export function ChangePasswordPage({ user }: { user: AuthUser }) {
                     onChange={(event) => field.setter(event.target.value)}
                     minLength={8}
                     required
+                    disabled={submitting}
                   />
                 </div>
               </div>
@@ -164,13 +204,6 @@ export function ChangePasswordPage({ user }: { user: AuthUser }) {
             {error && (
               <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700">
                 {error}
-              </p>
-            )}
-
-            {success && (
-              <p className="flex items-center gap-2 rounded-xl bg-emerald-50 p-3 text-sm text-emerald-700">
-                <CheckCircle2 className="size-4" />
-                {success}
               </p>
             )}
 
@@ -183,6 +216,8 @@ export function ChangePasswordPage({ user }: { user: AuthUser }) {
                   <RefreshCw className="size-4 animate-spin" />
                   Updating...
                 </>
+              ) : requiredChange ? (
+                "Set new password"
               ) : (
                 "Change password"
               )}

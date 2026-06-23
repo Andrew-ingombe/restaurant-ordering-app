@@ -137,7 +137,7 @@ settingsRouter.patch(
         $set: update,
       },
       {
-        new: true,
+        returnDocument: "after",
         runValidators: true,
       }
     ).lean()

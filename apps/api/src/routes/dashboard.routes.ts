@@ -13,10 +13,13 @@ import {
   requireRestaurantContext,
 } from "../middleware/role.middleware"
 import { Order } from "../models/order.model"
+import { Payment } from "../models/payment.model"
 
 export const dashboardRouter = Router()
 
 dashboardRouter.use(authenticate, requireOwner, requireRestaurantContext)
+
+const DELAYED_KITCHEN_MINUTES = 30
 
 const orderStatuses = [
   "draft",
@@ -29,6 +32,26 @@ const orderStatuses = [
   "served",
   "completed",
   "cancelled",
+] as const
+
+const activeOrderStatuses = [
+  "awaiting_waiter",
+  "awaiting_payment",
+  "submitted",
+  "accepted",
+  "preparing",
+  "ready",
+  "served",
+] as const
+
+const delayedKitchenStatuses = ["submitted", "accepted", "preparing"] as const
+
+const paymentMethods = [
+  "cash",
+  "card_pos",
+  "manual_mobile_money",
+  "lenco",
+  "unrecorded",
 ] as const
 
 const dateSchema = z
@@ -92,123 +115,424 @@ dashboardRouter.get(
     }
 
     const selectedDate = dateResult.data || getDateInTimezone()
+    const delayedKitchenCutoff = new Date(
+      Date.now() - DELAYED_KITCHEN_MINUTES * 60 * 1000
+    )
 
-    const matchDate = {
+    const createdDateExpression = {
+      $dateToString: {
+        format: "%Y-%m-%d",
+        date: "$createdAt",
+        timezone: env.restaurantTimezone,
+      },
+    } as const
+
+    const paidDateExpression = {
+      $dateToString: {
+        format: "%Y-%m-%d",
+        date: {
+          $ifNull: ["$paidAt", "$createdAt"],
+        },
+        timezone: env.restaurantTimezone,
+      },
+    } as const
+
+    const paymentCreatedDateExpression = {
+      $dateToString: {
+        format: "%Y-%m-%d",
+        date: "$createdAt",
+        timezone: env.restaurantTimezone,
+      },
+    } as const
+
+    const operationalMatch = {
       restaurant: restaurantObjectId,
+      status: {
+        $ne: "draft",
+      },
       $expr: {
-        $eq: [
-          {
-            $dateToString: {
-              format: "%Y-%m-%d",
-              date: "$createdAt",
-              timezone: env.restaurantTimezone,
-            },
-          },
-          selectedDate,
-        ],
+        $eq: [createdDateExpression, selectedDate],
       },
     } as const
 
     const paidMatch = {
-      ...matchDate,
-      paymentStatus: "paid" as const,
-    }
+      restaurant: restaurantObjectId,
+      paymentStatus: "paid",
+      $expr: {
+        $eq: [paidDateExpression, selectedDate],
+      },
+    } as const
 
-    const [salesSummary, statusBreakdown, bestSellingItems, recentOrders] =
-      await Promise.all([
-        Order.aggregate([
-          { $match: paidMatch },
-          {
-            $group: {
-              _id: null,
-              totalSales: { $sum: "$total" },
-              paidOrders: { $sum: 1 },
-              completedOrders: {
-                $sum: {
-                  $cond: [{ $eq: ["$status", "completed"] }, 1, 0],
-                },
+    const paymentAttentionMatch = {
+      restaurant: restaurantObjectId,
+      status: {
+        $in: ["pending", "failed"],
+      },
+      $expr: {
+        $eq: [paymentCreatedDateExpression, selectedDate],
+      },
+    } as const
+
+    const [
+      salesSummary,
+      operationalSummary,
+      attentionSummary,
+      paymentAttentionSummary,
+      paymentBreakdown,
+      statusBreakdown,
+      bestSellingItems,
+      recentOrders,
+    ] = await Promise.all([
+      Order.aggregate([
+        {
+          $match: paidMatch,
+        },
+        {
+          $group: {
+            _id: null,
+            totalSales: {
+              $sum: "$total",
+            },
+            paidOrders: {
+              $sum: 1,
+            },
+          },
+        },
+      ]),
+
+      Order.aggregate([
+        {
+          $match: operationalMatch,
+        },
+        {
+          $group: {
+            _id: null,
+            completedOrders: {
+              $sum: {
+                $cond: [
+                  {
+                    $eq: ["$status", "completed"],
+                  },
+                  1,
+                  0,
+                ],
               },
-              activeOrders: {
-                $sum: {
-                  $cond: [
-                    {
-                      $in: [
-                        "$status",
-                        [
-                          "submitted",
-                          "accepted",
-                          "preparing",
-                          "ready",
-                          "served",
-                        ],
-                      ],
-                    },
-                    1,
-                    0,
+            },
+            activeOrders: {
+              $sum: {
+                $cond: [
+                  {
+                    $in: ["$status", [...activeOrderStatuses]],
+                  },
+                  1,
+                  0,
+                ],
+              },
+            },
+          },
+        },
+      ]),
+
+      Order.aggregate([
+        {
+          $match: operationalMatch,
+        },
+        {
+          $group: {
+            _id: null,
+            servedUnpaidCount: {
+              $sum: {
+                $cond: [
+                  {
+                    $and: [
+                      {
+                        $eq: ["$status", "served"],
+                      },
+                      {
+                        $ne: ["$paymentStatus", "paid"],
+                      },
+                    ],
+                  },
+                  1,
+                  0,
+                ],
+              },
+            },
+            servedUnpaidValue: {
+              $sum: {
+                $cond: [
+                  {
+                    $and: [
+                      {
+                        $eq: ["$status", "served"],
+                      },
+                      {
+                        $ne: ["$paymentStatus", "paid"],
+                      },
+                    ],
+                  },
+                  "$total",
+                  0,
+                ],
+              },
+            },
+            unclaimedQrRequests: {
+              $sum: {
+                $cond: [
+                  {
+                    $and: [
+                      {
+                        $eq: ["$source", "customer_qr"],
+                      },
+                      {
+                        $eq: ["$status", "awaiting_waiter"],
+                      },
+                    ],
+                  },
+                  1,
+                  0,
+                ],
+              },
+            },
+            delayedKitchenOrders: {
+              $sum: {
+                $cond: [
+                  {
+                    $and: [
+                      {
+                        $in: ["$status", [...delayedKitchenStatuses]],
+                      },
+                      {
+                        $lte: ["$updatedAt", delayedKitchenCutoff],
+                      },
+                    ],
+                  },
+                  1,
+                  0,
+                ],
+              },
+            },
+          },
+        },
+      ]),
+
+      Payment.aggregate([
+        {
+          $match: paymentAttentionMatch,
+        },
+        {
+          $lookup: {
+            from: Order.collection.name,
+            localField: "order",
+            foreignField: "_id",
+            as: "order",
+          },
+        },
+        {
+          $unwind: "$order",
+        },
+        {
+          $match: {
+            "order.restaurant": restaurantObjectId,
+            "order.paymentStatus": {
+              $ne: "paid",
+            },
+          },
+        },
+        {
+          $group: {
+            _id: "$status",
+            count: {
+              $sum: 1,
+            },
+          },
+        },
+      ]),
+
+      Order.aggregate([
+        {
+          $match: paidMatch,
+        },
+        {
+          $group: {
+            _id: {
+              $cond: [
+                {
+                  $in: [
+                    "$paymentMethod",
+                    ["cash", "card_pos", "manual_mobile_money", "lenco"],
                   ],
                 },
-              },
+                "$paymentMethod",
+                "unrecorded",
+              ],
+            },
+            count: {
+              $sum: 1,
+            },
+            total: {
+              $sum: "$total",
             },
           },
-        ]),
-        Order.aggregate([
-          { $match: paidMatch },
-          {
-            $group: {
-              _id: "$status",
-              count: { $sum: 1 },
-            },
+        },
+        {
+          $sort: {
+            total: -1,
           },
-          { $sort: { count: -1 } },
-        ]),
-        Order.aggregate([
-          { $match: paidMatch },
-          { $unwind: "$items" },
-          {
-            $group: {
-              _id: "$items.menuItem",
-              name: { $first: "$items.name" },
-              quantity: { $sum: "$items.quantity" },
-              sales: { $sum: "$items.lineTotal" },
-            },
-          },
-          { $sort: { quantity: -1, sales: -1 } },
-          { $limit: 5 },
-        ]),
-        Order.find(paidMatch)
-          .populate("waiter", "name")
-          .sort({ createdAt: -1 })
-          .limit(10)
-          .lean(),
-      ])
+        },
+      ]),
 
-    const summary = salesSummary[0] || {
+      Order.aggregate([
+        {
+          $match: operationalMatch,
+        },
+        {
+          $group: {
+            _id: "$status",
+            count: {
+              $sum: 1,
+            },
+          },
+        },
+        {
+          $sort: {
+            count: -1,
+          },
+        },
+      ]),
+
+      Order.aggregate([
+        {
+          $match: paidMatch,
+        },
+        {
+          $unwind: "$items",
+        },
+        {
+          $group: {
+            _id: "$items.menuItem",
+            name: {
+              $first: "$items.name",
+            },
+            quantity: {
+              $sum: "$items.quantity",
+            },
+            sales: {
+              $sum: "$items.lineTotal",
+            },
+          },
+        },
+        {
+          $sort: {
+            quantity: -1,
+            sales: -1,
+          },
+        },
+        {
+          $limit: 4,
+        },
+      ]),
+
+      Order.find(operationalMatch)
+        .populate("waiter", "name")
+        .sort({
+          createdAt: -1,
+        })
+        .limit(5)
+        .lean(),
+    ])
+
+    const sales = salesSummary[0] || {
       totalSales: 0,
       paidOrders: 0,
+    }
+
+    const operations = operationalSummary[0] || {
       completedOrders: 0,
       activeOrders: 0,
     }
 
+    const attention = attentionSummary[0] || {
+      servedUnpaidCount: 0,
+      servedUnpaidValue: 0,
+      unclaimedQrRequests: 0,
+      delayedKitchenOrders: 0,
+    }
+
+    const paymentAttentionMap = new Map(
+      paymentAttentionSummary.map((item) => [
+        String(item._id),
+        Number(item.count),
+      ])
+    )
+
+    const paymentBreakdownMap = new Map(
+      paymentBreakdown.map((item) => [
+        String(item._id),
+        {
+          count: Number(item.count),
+          total: Number(item.total),
+        },
+      ])
+    )
+
     response.json({
       date: selectedDate,
       timezone: env.restaurantTimezone,
+
       summary: {
-        ...summary,
+        totalSales: sales.totalSales,
+        paidOrders: sales.paidOrders,
+        completedOrders: operations.completedOrders,
+        activeOrders: operations.activeOrders,
         averageOrderValue:
-          summary.paidOrders > 0
-            ? Math.round(summary.totalSales / summary.paidOrders)
+          sales.paidOrders > 0
+            ? Math.round(sales.totalSales / sales.paidOrders)
             : 0,
       },
+
+      attention: {
+        servedUnpaid: {
+          count: attention.servedUnpaidCount,
+          total: attention.servedUnpaidValue,
+        },
+        unclaimedQrRequests: {
+          count: attention.unclaimedQrRequests,
+        },
+        delayedKitchenOrders: {
+          count: attention.delayedKitchenOrders,
+          thresholdMinutes: DELAYED_KITCHEN_MINUTES,
+        },
+        pendingPayments: {
+          count: paymentAttentionMap.get("pending") || 0,
+        },
+        failedPayments: {
+          count: paymentAttentionMap.get("failed") || 0,
+        },
+      },
+
+      paymentBreakdown: paymentMethods.map((method) => {
+        const paymentData = paymentBreakdownMap.get(method)
+
+        return {
+          method,
+          count: paymentData?.count || 0,
+          total: paymentData?.total || 0,
+        }
+      }),
+
       statusBreakdown: statusBreakdown.map((item) => ({
         status: item._id,
         count: item.count,
       })),
+
       bestSellingItems: bestSellingItems.map((item) => ({
         menuItem: item._id,
         name: item.name,
         quantity: item.quantity,
         sales: item.sales,
       })),
+
       recentOrders,
     })
   })
@@ -219,7 +543,6 @@ dashboardRouter.get(
   asyncHandler(async (request, response) => {
     const authenticatedRequest = request as AuthenticatedRequest
     const restaurantId = authenticatedRequest.user!.restaurantId!
-    const restaurantObjectId = new Types.ObjectId(restaurantId)
     const result = orderHistoryQuerySchema.safeParse(request.query)
 
     if (!result.success) {
@@ -256,6 +579,7 @@ dashboardRouter.get(
 
     const filter = {
       restaurant: restaurantId,
+
       ...(search
         ? {
             orderNumber: {
@@ -264,7 +588,13 @@ dashboardRouter.get(
             },
           }
         : {}),
-      ...(status !== "all" ? { status } : {}),
+
+      ...(status !== "all"
+        ? {
+            status,
+          }
+        : {}),
+
       ...(dateConditions.length > 0
         ? {
             $expr: {
@@ -280,10 +610,13 @@ dashboardRouter.get(
       Order.find(filter)
         .populate("waiter", "name email")
         .populate("restaurantTable", "name")
-        .sort({ createdAt: -1 })
+        .sort({
+          createdAt: -1,
+        })
         .skip(skip)
         .limit(limit)
         .lean(),
+
       Order.countDocuments(filter),
     ])
 
@@ -291,6 +624,7 @@ dashboardRouter.get(
 
     response.json({
       orders,
+
       pagination: {
         page,
         limit,
@@ -299,12 +633,14 @@ dashboardRouter.get(
         hasPreviousPage: page > 1,
         hasNextPage: page < totalPages,
       },
+
       filters: {
         search,
         status,
         dateFrom: dateFrom || null,
         dateTo: dateTo || null,
       },
+
       timezone: env.restaurantTimezone,
     })
   })
@@ -315,7 +651,6 @@ dashboardRouter.get(
   asyncHandler(async (request, response) => {
     const authenticatedRequest = request as AuthenticatedRequest
     const restaurantId = authenticatedRequest.user!.restaurantId!
-    const restaurantObjectId = new Types.ObjectId(restaurantId)
     const orderId = request.params.id as string
 
     if (!Types.ObjectId.isValid(orderId)) {
@@ -340,6 +675,8 @@ dashboardRouter.get(
       return
     }
 
-    response.json({ order })
+    response.json({
+      order,
+    })
   })
 )

@@ -4,6 +4,7 @@ import {
   KeyRound,
   LayoutDashboard,
   LogOut,
+  Menu,
   QrCode,
   ReceiptText,
   Settings2,
@@ -12,6 +13,15 @@ import {
 } from "lucide-react"
 
 import { Button } from "@workspace/ui/components/button"
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@workspace/ui/components/sheet"
 
 import type { AuthUser } from "../lib/api"
 
@@ -91,9 +101,9 @@ export function OwnerShell({
   const navigate = useNavigate()
 
   return (
-    <main className="min-h-svh">
-      <div className="mx-auto flex min-h-[calc(100svh-24px)] max-w-[1600px] overflow-hidden rounded-[28px] bg-[#f5f5f6] md:min-h-[calc(100svh-40px)]">
-        <aside className="hidden w-64 shrink-0 flex-col border-r border-black/5 bg-white p-5 lg:flex">
+    <main className="h-svh overflow-hidden bg-[#f5f5f6]">
+      <div className="mx-auto flex h-full w-full max-w-[1800px] overflow-hidden bg-[#f5f5f6]">
+        <aside className="hidden h-full w-64 shrink-0 flex-col overflow-y-auto border-r border-black/5 bg-white p-5 lg:flex">
           <div className="flex items-center gap-3 px-2 py-3">
             <div className="flex size-10 items-center justify-center rounded-xl bg-[#ef1428] text-white">
               <UtensilsCrossed className="size-5" />
@@ -128,17 +138,18 @@ export function OwnerShell({
             })}
           </nav>
 
-          <div className="mt-auto space-y-4">
+          <div className="mt-auto space-y-4 pt-6">
             {sidebarPanel}
 
             <div className="rounded-2xl bg-neutral-100 p-4">
               <div className="flex items-center gap-3">
-                <div className="flex size-10 items-center justify-center rounded-full bg-neutral-950 text-white">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-neutral-950 text-white">
                   {user.name.charAt(0).toUpperCase()}
                 </div>
 
                 <div className="min-w-0">
                   <p className="truncate font-semibold">{user.name}</p>
+
                   <p className="text-xs text-neutral-400 capitalize">
                     {user.role} account
                   </p>
@@ -166,66 +177,131 @@ export function OwnerShell({
           </div>
         </aside>
 
-        <div className="min-w-0 flex-1">
-          <header className="border-b border-black/5 bg-white/80 px-4 py-4 backdrop-blur md:px-7">
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div className="min-w-0 flex-1">{headerContent}</div>
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          <header className="z-30 shrink-0 border-b border-black/5 bg-white/95 px-4 py-4 backdrop-blur md:px-7">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex min-w-0 items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">{headerContent}</div>
 
-              <div className="flex items-center gap-2">
-                {headerActions}
+                <Sheet>
+                  <SheetTrigger asChild>
+                    <Button
+                      className="size-11 shrink-0 rounded-xl lg:hidden"
+                      size="icon"
+                      variant="outline"
+                      aria-label="Open navigation"
+                    >
+                      <Menu className="size-5" />
+                    </Button>
+                  </SheetTrigger>
 
-                <Button
-                  className="size-11 rounded-xl lg:hidden"
-                  size="icon"
-                  variant="outline"
-                  aria-label="Sign out"
-                  onClick={onLogout}
-                >
-                  <LogOut className="size-4" />
-                </Button>
-              </div>
-            </div>
-
-            <div className="mt-4 flex gap-2 overflow-x-auto pb-1 lg:hidden">
-              {navigationItems.map((item) => {
-                const Icon = item.icon
-                const isActive = item.key === active
-
-                return (
-                  <Button
-                    key={item.key}
-                    className="shrink-0 rounded-xl"
-                    variant={isActive ? "default" : "outline"}
-                    onClick={() => navigate(item.path)}
+                  <SheetContent
+                    side="right"
+                    className="flex h-full w-[88vw] max-w-sm flex-col overflow-y-auto border-0 bg-white p-0"
                   >
-                    <Icon className="size-4" />
-                    {item.label}
-                  </Button>
-                )
-              })}
+                    <div className="flex min-h-full flex-col p-5">
+                      <SheetHeader className="text-left">
+                        <div className="flex items-center gap-3">
+                          <div className="flex size-11 items-center justify-center rounded-xl bg-[#ef1428] text-white">
+                            <UtensilsCrossed className="size-5" />
+                          </div>
 
-              <Button
-                className="shrink-0 rounded-xl"
-                variant="outline"
-                onClick={() => navigate("/account/password")}
-              >
-                <KeyRound className="size-4" />
-                Change password
-              </Button>
+                          <div>
+                            <SheetTitle className="text-lg font-black tracking-tight">
+                              FOODLY
+                            </SheetTitle>
 
-              <Button
-                className="shrink-0 rounded-xl"
-                variant="outline"
-                onClick={onLogout}
-              >
-                <LogOut className="size-4" />
-                Sign out
-              </Button>
+                            <SheetDescription className="text-xs text-neutral-400">
+                              Restaurant admin
+                            </SheetDescription>
+                          </div>
+                        </div>
+                      </SheetHeader>
+
+                      <nav className="mt-8 space-y-2">
+                        {navigationItems.map((item) => {
+                          const Icon = item.icon
+                          const isActive = item.key === active
+
+                          return (
+                            <SheetClose key={item.key} asChild>
+                              <button
+                                type="button"
+                                onClick={() => navigate(item.path)}
+                                className={`flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-medium transition ${
+                                  isActive
+                                    ? "bg-neutral-950 text-white"
+                                    : "text-neutral-500 hover:bg-neutral-100 hover:text-neutral-950"
+                                }`}
+                              >
+                                <Icon className="size-4" />
+                                {item.label}
+                              </button>
+                            </SheetClose>
+                          )
+                        })}
+                      </nav>
+
+                      <div className="mt-auto space-y-4 pt-8">
+                        {sidebarPanel}
+
+                        <div className="rounded-2xl bg-neutral-100 p-4">
+                          <div className="flex items-center gap-3">
+                            <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-neutral-950 text-white">
+                              {user.name.charAt(0).toUpperCase()}
+                            </div>
+
+                            <div className="min-w-0">
+                              <p className="truncate font-semibold">
+                                {user.name}
+                              </p>
+
+                              <p className="text-xs text-neutral-400 capitalize">
+                                {user.role} account
+                              </p>
+                            </div>
+                          </div>
+
+                          <SheetClose asChild>
+                            <Button
+                              className="mt-4 w-full rounded-xl"
+                              variant="outline"
+                              onClick={() => navigate("/account/password")}
+                            >
+                              <KeyRound className="size-4" />
+                              Change password
+                            </Button>
+                          </SheetClose>
+
+                          <SheetClose asChild>
+                            <Button
+                              className="mt-3 w-full rounded-xl"
+                              variant="outline"
+                              onClick={onLogout}
+                            >
+                              <LogOut className="size-4" />
+                              Sign out
+                            </Button>
+                          </SheetClose>
+                        </div>
+                      </div>
+                    </div>
+                  </SheetContent>
+                </Sheet>
+              </div>
+
+              {headerActions && (
+                <div className="flex min-w-0 flex-wrap items-center gap-2 lg:shrink-0">
+                  {headerActions}
+                </div>
+              )}
             </div>
           </header>
 
-          <div className={`p-4 md:p-7 ${contentClassName || ""}`}>
-            {children}
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+            <div className={`min-w-0 p-4 md:p-7 ${contentClassName || ""}`}>
+              {children}
+            </div>
           </div>
         </div>
       </div>

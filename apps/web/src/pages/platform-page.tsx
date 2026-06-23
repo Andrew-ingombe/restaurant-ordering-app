@@ -3,7 +3,9 @@ import type { FormEvent } from "react"
 import { useNavigate } from "react-router-dom"
 import {
   Building2,
+  CalendarDays,
   CheckCircle2,
+  Clock3,
   CreditCard,
   KeyRound,
   LockKeyhole,
@@ -15,9 +17,11 @@ import {
   WalletCards,
   XCircle,
 } from "lucide-react"
+import { toast } from "sonner"
 
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
+import { Calendar } from "@workspace/ui/components/calendar"
 import {
   Dialog,
   DialogContent,
@@ -27,6 +31,11 @@ import {
 } from "@workspace/ui/components/dialog"
 import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@workspace/ui/components/popover"
 import {
   Select,
   SelectContent,
@@ -46,6 +55,7 @@ import {
 
 import {
   getPlatformRestaurants,
+  resetRestaurantOwnerPassword,
   updateRestaurantPaymentSettings,
   updateRestaurantSubscription,
 } from "../lib/api"
@@ -122,21 +132,121 @@ const isPaymentConfigured = (restaurant: PlatformRestaurant) =>
   restaurant.paymentSettings.publicKeyConfigured &&
   restaurant.paymentSettings.secretKeyConfigured
 
+function DateTimeField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string
+  value: string
+  onChange: (value: string) => void
+}) {
+  const selectedDate = value ? new Date(value) : undefined
+  const timeValue = value
+    ? value.split("T")[1]?.slice(0, 5) || "00:00"
+    : "00:00"
+
+  const updateDate = (date?: Date) => {
+    if (!date) return
+
+    const current = value ? new Date(value) : new Date()
+
+    date.setHours(current.getHours(), current.getMinutes(), 0, 0)
+    onChange(toDateTimeInput(date.toISOString()))
+  }
+
+  const updateTime = (time: string) => {
+    const current = value ? new Date(value) : new Date()
+    const [hours, minutes] = time.split(":").map(Number)
+
+    current.setHours(hours, minutes, 0, 0)
+    onChange(toDateTimeInput(current.toISOString()))
+  }
+
+  return (
+    <div className="space-y-2">
+      <Label>{label}</Label>
+
+      <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_130px]">
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-12 justify-start rounded-xl border-0 bg-neutral-100 px-4 font-normal shadow-none"
+            >
+              <CalendarDays className="size-4 text-neutral-400" />
+              {selectedDate
+                ? new Intl.DateTimeFormat("en-ZM", {
+                    dateStyle: "medium",
+                  }).format(selectedDate)
+                : "Select date"}
+            </Button>
+          </PopoverTrigger>
+
+          <PopoverContent
+            className="w-auto rounded-2xl border-neutral-200 p-0"
+            align="start"
+          >
+            <Calendar
+              mode="single"
+              selected={selectedDate}
+              onSelect={updateDate}
+            />
+          </PopoverContent>
+        </Popover>
+
+        <div className="relative">
+          <Clock3 className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-neutral-400" />
+
+          <Input
+            type="time"
+            className="h-12 rounded-xl border-0 bg-neutral-100 pl-9 shadow-none"
+            value={timeValue}
+            onChange={(event) => updateTime(event.target.value)}
+          />
+        </div>
+      </div>
+
+      {value && (
+        <Button
+          type="button"
+          variant="ghost"
+          className="h-8 rounded-lg px-2 text-xs text-neutral-400"
+          onClick={() => onChange("")}
+        >
+          Clear date and time
+        </Button>
+      )}
+    </div>
+  )
+}
+
 export function PlatformPage({ user, onLogout }: PlatformPageProps) {
   const navigate = useNavigate()
 
   const [restaurants, setRestaurants] = useState<PlatformRestaurant[]>([])
   const [selectedRestaurant, setSelectedRestaurant] =
     useState<PlatformRestaurant | null>(null)
+
   const [paymentForm, setPaymentForm] = useState(emptyPaymentForm)
   const [subscriptionForm, setSubscriptionForm] = useState(
     emptySubscriptionForm
   )
+
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false)
   const [subscriptionDialogOpen, setSubscriptionDialogOpen] = useState(false)
+
+  const [passwordRestaurant, setPasswordRestaurant] =
+    useState<PlatformRestaurant | null>(null)
+  const [temporaryPassword, setTemporaryPassword] = useState("")
+  const [confirmTemporaryPassword, setConfirmTemporaryPassword] = useState("")
+
   const [loading, setLoading] = useState(true)
   const [savingPayment, setSavingPayment] = useState(false)
   const [savingSubscription, setSavingSubscription] = useState(false)
+  const [resettingOwnerPassword, setResettingOwnerPassword] = useState(false)
+
   const [error, setError] = useState("")
   const [message, setMessage] = useState("")
 
@@ -153,14 +263,15 @@ export function PlatformPage({ user, onLogout }: PlatformPageProps) {
     setError("")
 
     try {
-      const result = await getPlatformRestaurants()
-      setRestaurants(result)
+      setRestaurants(await getPlatformRestaurants())
     } catch (requestError) {
-      setError(
+      const requestMessage =
         requestError instanceof Error
           ? requestError.message
           : "Could not load restaurants"
-      )
+
+      setError(requestMessage)
+      toast.error(requestMessage)
     } finally {
       setLoading(false)
     }
@@ -204,10 +315,18 @@ export function PlatformPage({ user, onLogout }: PlatformPageProps) {
     setMessage("")
   }
 
+  const openOwnerPasswordDialog = (restaurant: PlatformRestaurant) => {
+    setPasswordRestaurant(restaurant)
+    setTemporaryPassword("")
+    setConfirmTemporaryPassword("")
+    setError("")
+    setMessage("")
+  }
+
   const handleSavePaymentSettings = async (event: FormEvent) => {
     event.preventDefault()
 
-    if (!selectedRestaurant) return
+    if (!selectedRestaurant || savingPayment) return
 
     setSavingPayment(true)
     setError("")
@@ -231,14 +350,21 @@ export function PlatformPage({ user, onLogout }: PlatformPageProps) {
       }))
 
       setPaymentDialogOpen(false)
-      setMessage(`Updated payment settings for ${selectedRestaurant.name}`)
+
+      const successMessage = `Updated payment settings for ${selectedRestaurant.name}`
+
+      setMessage(successMessage)
+      toast.success(successMessage)
+
       await loadRestaurants()
     } catch (requestError) {
-      setError(
+      const requestMessage =
         requestError instanceof Error
           ? requestError.message
           : "Could not update payment settings"
-      )
+
+      setError(requestMessage)
+      toast.error(requestMessage)
     } finally {
       setSavingPayment(false)
     }
@@ -247,7 +373,7 @@ export function PlatformPage({ user, onLogout }: PlatformPageProps) {
   const handleSaveSubscription = async (event: FormEvent) => {
     event.preventDefault()
 
-    if (!selectedRestaurant) return
+    if (!selectedRestaurant || savingSubscription) return
 
     setSavingSubscription(true)
     setError("")
@@ -266,22 +392,65 @@ export function PlatformPage({ user, onLogout }: PlatformPageProps) {
       })
 
       setSubscriptionDialogOpen(false)
-      setMessage(`Updated subscription for ${selectedRestaurant.name}`)
+
+      const successMessage = `Updated subscription for ${selectedRestaurant.name}`
+
+      setMessage(successMessage)
+      toast.success(successMessage)
+
       await loadRestaurants()
     } catch (requestError) {
-      setError(
+      const requestMessage =
         requestError instanceof Error
           ? requestError.message
           : "Could not update subscription"
-      )
+
+      setError(requestMessage)
+      toast.error(requestMessage)
     } finally {
       setSavingSubscription(false)
     }
   }
 
+  const handleOwnerPasswordReset = async (event: FormEvent) => {
+    event.preventDefault()
+
+    if (!passwordRestaurant || resettingOwnerPassword) return
+
+    if (temporaryPassword !== confirmTemporaryPassword) {
+      toast.error("Temporary passwords do not match")
+      return
+    }
+
+    setResettingOwnerPassword(true)
+
+    try {
+      const owner = await resetRestaurantOwnerPassword(
+        passwordRestaurant.id,
+        temporaryPassword
+      )
+
+      toast.success("Owner temporary password created", {
+        description: `${owner.name} must change it after signing in.`,
+      })
+
+      setPasswordRestaurant(null)
+      setTemporaryPassword("")
+      setConfirmTemporaryPassword("")
+    } catch (requestError) {
+      toast.error(
+        requestError instanceof Error
+          ? requestError.message
+          : "Could not reset owner password"
+      )
+    } finally {
+      setResettingOwnerPassword(false)
+    }
+  }
+
   return (
-    <main className="min-h-svh bg-[#f5f5f6]">
-      <header className="border-b border-black/5 bg-white/90 px-4 py-4 backdrop-blur md:px-7">
+    <main className="flex h-svh flex-col overflow-hidden bg-[#f5f5f6]">
+      <header className="shrink-0 border-b border-black/5 bg-white/90 px-4 py-4 backdrop-blur md:px-7">
         <div className="mx-auto flex max-w-[1600px] flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="flex size-11 items-center justify-center rounded-xl bg-[#ef1428] text-white">
@@ -298,7 +467,7 @@ export function PlatformPage({ user, onLogout }: PlatformPageProps) {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <Button
               className="rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
               onClick={() => navigate("/platform/restaurants/new")}
@@ -320,47 +489,47 @@ export function PlatformPage({ user, onLogout }: PlatformPageProps) {
         </div>
       </header>
 
-      <div className="mx-auto max-w-[1600px] space-y-5 p-4 md:p-7">
+      <div className="mx-auto flex min-h-0 w-full max-w-[1600px] flex-1 flex-col gap-5 overflow-hidden p-4 md:p-7">
         {error && (
-          <p className="rounded-2xl bg-red-50 p-4 text-sm text-red-700">
+          <p className="shrink-0 rounded-2xl bg-red-50 p-4 text-sm text-red-700">
             {error}
           </p>
         )}
 
         {message && (
-          <p className="rounded-2xl bg-emerald-50 p-4 text-sm text-emerald-700">
+          <p className="shrink-0 rounded-2xl bg-emerald-50 p-4 text-sm text-emerald-700">
             {message}
           </p>
         )}
 
-        <section className="grid gap-4 md:grid-cols-4">
-          <div className="rounded-[24px] bg-[#ef1428] p-5 text-white">
+        <section className="flex shrink-0 gap-4 overflow-x-auto pb-1 md:grid md:grid-cols-4 md:overflow-visible">
+          <div className="min-w-[220px] rounded-[24px] bg-[#ef1428] p-5 text-white md:min-w-0">
             <Building2 className="size-6" />
             <p className="mt-5 text-sm text-white/70">Restaurants</p>
             <p className="mt-1 text-3xl font-black">{restaurants.length}</p>
           </div>
 
-          <div className="rounded-[24px] bg-white p-5">
+          <div className="min-w-[220px] rounded-[24px] bg-white p-5 md:min-w-0">
             <WalletCards className="size-6 text-[#ef1428]" />
             <p className="mt-5 text-sm text-neutral-400">Active</p>
             <p className="mt-1 text-3xl font-black">{activeCount}</p>
           </div>
 
-          <div className="rounded-[24px] bg-white p-5">
+          <div className="min-w-[220px] rounded-[24px] bg-white p-5 md:min-w-0">
             <ShieldCheck className="size-6 text-[#ef1428]" />
             <p className="mt-5 text-sm text-neutral-400">Trialing</p>
             <p className="mt-1 text-3xl font-black">{trialingCount}</p>
           </div>
 
-          <div className="rounded-[24px] bg-white p-5">
+          <div className="min-w-[220px] rounded-[24px] bg-white p-5 md:min-w-0">
             <CreditCard className="size-6 text-[#ef1428]" />
             <p className="mt-5 text-sm text-neutral-400">Payments ready</p>
             <p className="mt-1 text-3xl font-black">{configuredCount}</p>
           </div>
         </section>
 
-        <section className="overflow-hidden rounded-[24px] bg-white">
-          <div className="flex flex-wrap items-center justify-between gap-4 px-5 pt-5 pb-3">
+        <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[24px] bg-white">
+          <div className="flex shrink-0 flex-wrap items-center justify-between gap-4 px-5 pt-5 pb-3">
             <div>
               <h2 className="text-xl font-black">Restaurants</h2>
               <p className="text-sm text-neutral-400">
@@ -381,7 +550,7 @@ export function PlatformPage({ user, onLogout }: PlatformPageProps) {
             </Button>
           </div>
 
-          <div className="max-h-[620px] overflow-auto px-3 pb-3">
+          <div className="min-h-0 flex-1 overflow-auto px-3 pb-3">
             <Table>
               <TableHeader className="sticky top-0 z-10 bg-white">
                 <TableRow className="border-none hover:bg-transparent">
@@ -450,7 +619,7 @@ export function PlatformPage({ user, onLogout }: PlatformPageProps) {
                     </TableCell>
 
                     <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
+                      <div className="flex min-w-[420px] flex-wrap justify-end gap-2">
                         <Button
                           className="rounded-xl"
                           variant="outline"
@@ -467,6 +636,15 @@ export function PlatformPage({ user, onLogout }: PlatformPageProps) {
                         >
                           <CreditCard className="size-4" />
                           Payments
+                        </Button>
+
+                        <Button
+                          className="rounded-xl"
+                          variant="outline"
+                          onClick={() => openOwnerPasswordDialog(restaurant)}
+                        >
+                          <KeyRound className="size-4" />
+                          Owner password
                         </Button>
                       </div>
                     </TableCell>
@@ -501,10 +679,72 @@ export function PlatformPage({ user, onLogout }: PlatformPageProps) {
       </div>
 
       <Dialog
+        open={Boolean(passwordRestaurant)}
+        onOpenChange={(open) => {
+          if (!open && !resettingOwnerPassword) {
+            setPasswordRestaurant(null)
+          }
+        }}
+      >
+        <DialogContent className="rounded-[24px] border-0 sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-black">
+              Reset owner password
+            </DialogTitle>
+            <DialogDescription>
+              Create a temporary password for the owner of{" "}
+              {passwordRestaurant?.name}. They must replace it after signing in.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form className="space-y-4" onSubmit={handleOwnerPasswordReset}>
+            <div className="space-y-2">
+              <Label>Temporary password</Label>
+              <Input
+                className="h-12 rounded-xl border-0 bg-neutral-100 shadow-none"
+                type="password"
+                value={temporaryPassword}
+                onChange={(event) => setTemporaryPassword(event.target.value)}
+                minLength={8}
+                required
+                disabled={resettingOwnerPassword}
+                autoComplete="new-password"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Confirm temporary password</Label>
+              <Input
+                className="h-12 rounded-xl border-0 bg-neutral-100 shadow-none"
+                type="password"
+                value={confirmTemporaryPassword}
+                onChange={(event) =>
+                  setConfirmTemporaryPassword(event.target.value)
+                }
+                minLength={8}
+                required
+                disabled={resettingOwnerPassword}
+                autoComplete="new-password"
+              />
+            </div>
+
+            <Button
+              className="h-12 w-full rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
+              disabled={resettingOwnerPassword}
+            >
+              {resettingOwnerPassword
+                ? "Resetting..."
+                : "Create temporary password"}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
         open={subscriptionDialogOpen}
         onOpenChange={setSubscriptionDialogOpen}
       >
-        <DialogContent className="rounded-[24px] border-0 sm:max-w-lg">
+        <DialogContent className="max-h-[92svh] overflow-y-auto rounded-[24px] border-0 sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="text-xl font-black">
               Subscription settings
@@ -531,6 +771,7 @@ export function PlatformPage({ user, onLogout }: PlatformPageProps) {
                   <SelectTrigger className="h-12 rounded-xl border-0 bg-neutral-100 shadow-none">
                     <SelectValue />
                   </SelectTrigger>
+
                   <SelectContent>
                     <SelectItem value="pilot">Pilot</SelectItem>
                     <SelectItem value="starter">Starter</SelectItem>
@@ -553,6 +794,7 @@ export function PlatformPage({ user, onLogout }: PlatformPageProps) {
                   <SelectTrigger className="h-12 rounded-xl border-0 bg-neutral-100 shadow-none">
                     <SelectValue />
                   </SelectTrigger>
+
                   <SelectContent>
                     <SelectItem value="trialing">Trialing</SelectItem>
                     <SelectItem value="active">Active</SelectItem>
@@ -564,67 +806,51 @@ export function PlatformPage({ user, onLogout }: PlatformPageProps) {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label>Trial ends at</Label>
-              <Input
-                className="h-12 rounded-xl border-0 bg-neutral-100 shadow-none"
-                type="datetime-local"
-                value={subscriptionForm.trialEndsAt}
-                onChange={(event) =>
-                  setSubscriptionForm((current) => ({
-                    ...current,
-                    trialEndsAt: event.target.value,
-                  }))
-                }
-              />
-            </div>
+            <DateTimeField
+              label="Trial ends at"
+              value={subscriptionForm.trialEndsAt}
+              onChange={(trialEndsAt) =>
+                setSubscriptionForm((current) => ({
+                  ...current,
+                  trialEndsAt,
+                }))
+              }
+            />
 
             <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Current period starts</Label>
-                <Input
-                  className="h-12 rounded-xl border-0 bg-neutral-100 shadow-none"
-                  type="datetime-local"
-                  value={subscriptionForm.currentPeriodStartsAt}
-                  onChange={(event) =>
-                    setSubscriptionForm((current) => ({
-                      ...current,
-                      currentPeriodStartsAt: event.target.value,
-                    }))
-                  }
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Current period ends</Label>
-                <Input
-                  className="h-12 rounded-xl border-0 bg-neutral-100 shadow-none"
-                  type="datetime-local"
-                  value={subscriptionForm.currentPeriodEndsAt}
-                  onChange={(event) =>
-                    setSubscriptionForm((current) => ({
-                      ...current,
-                      currentPeriodEndsAt: event.target.value,
-                    }))
-                  }
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Grace period ends at</Label>
-              <Input
-                className="h-12 rounded-xl border-0 bg-neutral-100 shadow-none"
-                type="datetime-local"
-                value={subscriptionForm.gracePeriodEndsAt}
-                onChange={(event) =>
+              <DateTimeField
+                label="Current period starts"
+                value={subscriptionForm.currentPeriodStartsAt}
+                onChange={(currentPeriodStartsAt) =>
                   setSubscriptionForm((current) => ({
                     ...current,
-                    gracePeriodEndsAt: event.target.value,
+                    currentPeriodStartsAt,
+                  }))
+                }
+              />
+
+              <DateTimeField
+                label="Current period ends"
+                value={subscriptionForm.currentPeriodEndsAt}
+                onChange={(currentPeriodEndsAt) =>
+                  setSubscriptionForm((current) => ({
+                    ...current,
+                    currentPeriodEndsAt,
                   }))
                 }
               />
             </div>
+
+            <DateTimeField
+              label="Grace period ends at"
+              value={subscriptionForm.gracePeriodEndsAt}
+              onChange={(gracePeriodEndsAt) =>
+                setSubscriptionForm((current) => ({
+                  ...current,
+                  gracePeriodEndsAt,
+                }))
+              }
+            />
 
             <Button
               className="h-12 w-full rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
@@ -647,7 +873,7 @@ export function PlatformPage({ user, onLogout }: PlatformPageProps) {
       </Dialog>
 
       <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
-        <DialogContent className="rounded-[24px] border-0 sm:max-w-lg">
+        <DialogContent className="max-h-[92svh] overflow-y-auto rounded-[24px] border-0 sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="text-xl font-black">
               Lenco credentials
@@ -661,6 +887,7 @@ export function PlatformPage({ user, onLogout }: PlatformPageProps) {
           <form className="space-y-4" onSubmit={handleSavePaymentSettings}>
             <div className="space-y-2">
               <Label>Environment</Label>
+
               <Select
                 value={paymentForm.environment}
                 onValueChange={(value) =>
@@ -702,8 +929,10 @@ export function PlatformPage({ user, onLogout }: PlatformPageProps) {
 
             <div className="space-y-2">
               <Label>Public key</Label>
+
               <div className="relative">
                 <KeyRound className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-neutral-400" />
+
                 <Input
                   className="h-12 rounded-xl border-0 bg-neutral-100 pl-11 shadow-none"
                   value={paymentForm.publicKey}
@@ -724,8 +953,10 @@ export function PlatformPage({ user, onLogout }: PlatformPageProps) {
 
             <div className="space-y-2">
               <Label>Secret key</Label>
+
               <div className="relative">
                 <LockKeyhole className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-neutral-400" />
+
                 <Input
                   className="h-12 rounded-xl border-0 bg-neutral-100 pl-11 shadow-none"
                   type="password"

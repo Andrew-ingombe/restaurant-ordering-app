@@ -11,6 +11,8 @@ import { Textarea } from "@workspace/ui/components/textarea"
 import { getRestaurantSettings, updateRestaurantSettings } from "../lib/api"
 import type { AuthUser, OwnerRestaurantSettings } from "../lib/api"
 import { OwnerShell } from "../components/owner-shell"
+import { RestaurantSettingsSkeleton } from "../components/page-skeletons"
+import { toast } from "sonner"
 
 type OwnerSettingsPageProps = {
   user: AuthUser
@@ -52,11 +54,15 @@ export function OwnerSettingsPage({ user, onLogout }: OwnerSettingsPageProps) {
       .catch((requestError) => {
         if (!active) return
 
-        setError(
+        const message =
           requestError instanceof Error
             ? requestError.message
             : "Could not load restaurant settings"
-        )
+
+        setError(message)
+        toast.error(message, {
+          id: "restaurant-settings-load-error",
+        })
       })
       .finally(() => {
         if (active) {
@@ -71,6 +77,9 @@ export function OwnerSettingsPage({ user, onLogout }: OwnerSettingsPageProps) {
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
+
+    if (saving) return
+
     setSaving(true)
     setError("")
     setSuccess("")
@@ -86,14 +95,19 @@ export function OwnerSettingsPage({ user, onLogout }: OwnerSettingsPageProps) {
         receiptFooter,
       })
 
+      const successMessage = "Restaurant settings updated successfully."
+
       setRestaurant(updated)
-      setSuccess("Restaurant settings updated successfully.")
+      setSuccess(successMessage)
+      toast.success(successMessage)
     } catch (requestError) {
-      setError(
+      const message =
         requestError instanceof Error
           ? requestError.message
           : "Could not update restaurant settings"
-      )
+
+      setError(message)
+      toast.error(message)
     } finally {
       setSaving(false)
     }
@@ -132,9 +146,7 @@ export function OwnerSettingsPage({ user, onLogout }: OwnerSettingsPageProps) {
       }
     >
       {loading ? (
-        <div className="flex min-h-96 items-center justify-center rounded-[24px] bg-white">
-          <p className="text-sm text-neutral-400">Loading settings...</p>
-        </div>
+        <RestaurantSettingsSkeleton />
       ) : (
         <>
           {error && (
