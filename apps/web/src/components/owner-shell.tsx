@@ -125,7 +125,7 @@ export function OwnerShell({
                   key={item.key}
                   type="button"
                   onClick={() => navigate(item.path)}
-                  className={`flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-medium transition ${
+                  className={`flex w-full cursor-pointer items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-medium transition ${
                     isActive
                       ? "bg-neutral-950 text-white"
                       : "text-neutral-500 hover:bg-neutral-100 hover:text-neutral-950"
@@ -157,7 +157,7 @@ export function OwnerShell({
               </div>
 
               <Button
-                className="mt-4 w-full rounded-xl"
+                className="mt-4 h-12 w-full cursor-pointer rounded-xl"
                 variant="outline"
                 onClick={() => navigate("/account/password")}
               >
@@ -166,7 +166,7 @@ export function OwnerShell({
               </Button>
 
               <Button
-                className="mt-3 w-full rounded-xl"
+                className="mt-3 h-12 w-full cursor-pointer rounded-xl"
                 variant="outline"
                 onClick={onLogout}
               >
@@ -264,7 +264,7 @@ export function OwnerShell({
 
                           <SheetClose asChild>
                             <Button
-                              className="mt-4 w-full rounded-xl"
+                              className="mt-4 h-12 w-full cursor-pointer rounded-xl"
                               variant="outline"
                               onClick={() => navigate("/account/password")}
                             >
@@ -275,7 +275,7 @@ export function OwnerShell({
 
                           <SheetClose asChild>
                             <Button
-                              className="mt-3 w-full rounded-xl"
+                              className="mt-3 h-12 w-full cursor-pointer rounded-xl"
                               variant="outline"
                               onClick={onLogout}
                             >

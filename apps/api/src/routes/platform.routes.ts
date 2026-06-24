@@ -547,6 +547,21 @@ platformRouter.patch(
       return
     }
 
+    if (
+      result.data.status &&
+      ["suspended", "cancelled"].includes(result.data.status)
+    ) {
+      const restaurantUsers = await User.find({
+        restaurant: restaurant._id,
+      })
+        .select("_id")
+        .lean()
+
+      restaurantUsers.forEach((user) => {
+        disconnectUserSockets(user._id.toString())
+      })
+    }
+
     response.json({
       message: "Subscription updated",
       subscription: restaurant.subscription,

@@ -966,6 +966,14 @@ export type OwnerRestaurantSettings = {
     address: string
     receiptFooter: string
   }
+  subscription: {
+    plan: "pilot" | "starter" | "growth"
+    status: "trialing" | "active" | "past_due" | "suspended" | "cancelled"
+    trialEndsAt?: string | null
+    currentPeriodStartsAt?: string | null
+    currentPeriodEndsAt?: string | null
+    gracePeriodEndsAt?: string | null
+  }
 }
 
 export const getRestaurantSettings =

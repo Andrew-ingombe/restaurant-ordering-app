@@ -18,6 +18,7 @@ import {
   SlidersHorizontal,
   UtensilsCrossed,
   WalletCards,
+  UserRound,
 } from "lucide-react"
 
 import { Badge } from "@workspace/ui/components/badge"
@@ -135,9 +136,11 @@ const getStatusConfig = (status: string) =>
 function OrderCard({
   order,
   onOpen,
+  showWaiterName,
 }: {
   order: DraftOrder
   onOpen: () => void
+  showWaiterName: boolean
 }) {
   const itemCount = order.items.reduce(
     (total, item) => total + item.quantity,
@@ -146,9 +149,11 @@ function OrderCard({
 
   const currentStatus = getStatusConfig(order.status)
   const StatusIcon = currentStatus.icon
+  const assignedWaiterName = order.waiter?.name
+  const showAssignedWaiter = showWaiterName && Boolean(assignedWaiterName)
 
   return (
-    <article className="rounded-[20px] border border-neutral-100 bg-white p-4 transition hover:border-neutral-200 hover:bg-neutral-50">
+    <article className="flex h-full flex-col rounded-[20px] border border-neutral-100 bg-white p-4 transition hover:border-neutral-200 hover:bg-neutral-50">
       <div className="flex items-start justify-between gap-3">
         <div
           className={`flex size-11 shrink-0 items-center justify-center rounded-full ${currentStatus.iconClassName}`}
@@ -174,6 +179,22 @@ function OrderCard({
           {new Date(order.createdAt).toLocaleString()}
         </p>
       </div>
+
+      {showAssignedWaiter && (
+        <div className="mt-4 flex items-center gap-3 rounded-2xl bg-[#fff0f1] p-3">
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#ef1428] text-white">
+            <UserRound className="size-4" />
+          </div>
+
+          <div className="min-w-0">
+            <p className="text-xs font-semibold tracking-[0.14em] text-[#ef1428] uppercase">
+              Owned by
+            </p>
+
+            <p className="truncate font-black">{assignedWaiterName}</p>
+          </div>
+        </div>
+      )}
 
       <div className="mt-4 rounded-2xl bg-neutral-100 p-3">
         <p className="text-xs font-semibold text-neutral-400">Customer</p>
@@ -211,42 +232,44 @@ function OrderCard({
         )}
       </div>
 
-      <div className="mt-5 flex items-center justify-between gap-3 border-t border-neutral-100 pt-4">
-        <div>
-          <p className="text-xs text-neutral-400">Total</p>
+      <div className="mt-auto pt-5">
+        <div className="flex items-center justify-between gap-3 border-t border-neutral-100 pt-4">
+          <div>
+            <p className="text-xs text-neutral-400">Total</p>
 
-          <p className="mt-1 text-lg font-black text-[#ef1428]">
-            {formatPrice(order.total)}
-          </p>
+            <p className="mt-1 text-lg font-black text-[#ef1428]">
+              {formatPrice(order.total)}
+            </p>
+          </div>
+
+          <div className="text-right">
+            <p className="text-xs text-neutral-400">
+              {itemCount} {itemCount === 1 ? "item" : "items"}
+            </p>
+
+            <Badge
+              className={`mt-1 rounded-full border-0 capitalize ${
+                order.paymentStatus === "paid"
+                  ? "bg-emerald-50 text-emerald-700"
+                  : order.paymentStatus === "failed"
+                    ? "bg-red-50 text-red-700"
+                    : "bg-amber-50 text-amber-700"
+              }`}
+            >
+              <WalletCards className="size-3" />
+              {formatStatus(order.paymentStatus)}
+            </Badge>
+          </div>
         </div>
 
-        <div className="text-right">
-          <p className="text-xs text-neutral-400">
-            {itemCount} {itemCount === 1 ? "item" : "items"}
-          </p>
-
-          <Badge
-            className={`mt-1 rounded-full border-0 capitalize ${
-              order.paymentStatus === "paid"
-                ? "bg-emerald-50 text-emerald-700"
-                : order.paymentStatus === "failed"
-                  ? "bg-red-50 text-red-700"
-                  : "bg-amber-50 text-amber-700"
-            }`}
-          >
-            <WalletCards className="size-3" />
-            {formatStatus(order.paymentStatus)}
-          </Badge>
-        </div>
+        <Button
+          className="mt-4 h-11 w-full cursor-pointer rounded-xl bg-neutral-950 text-white hover:bg-neutral-800"
+          onClick={onOpen}
+        >
+          <Eye className="size-4" />
+          Open order
+        </Button>
       </div>
-
-      <Button
-        className="mt-4 h-11 w-full rounded-xl bg-neutral-950 text-white hover:bg-neutral-800"
-        onClick={onOpen}
-      >
-        <Eye className="size-4" />
-        Open order
-      </Button>
     </article>
   )
 }
@@ -443,7 +466,7 @@ export function WaiterOrdersPage({ user, onLogout }: WaiterOrdersPageProps) {
                 type="button"
                 role="tab"
                 aria-selected={view === "active"}
-                className={`h-9 rounded-lg px-3 ${
+                className={`h-9 cursor-pointer rounded-lg px-3 ${
                   view === "active"
                     ? "bg-[#ef1428] text-white shadow-sm hover:bg-[#d91023]"
                     : "bg-transparent text-neutral-500 hover:bg-white hover:text-neutral-950"
@@ -468,7 +491,7 @@ export function WaiterOrdersPage({ user, onLogout }: WaiterOrdersPageProps) {
                 type="button"
                 role="tab"
                 aria-selected={view === "history"}
-                className={`h-9 rounded-lg px-3 ${
+                className={`h-9 cursor-pointer rounded-lg px-3 ${
                   view === "history"
                     ? "bg-neutral-950 text-white shadow-sm hover:bg-neutral-800"
                     : "bg-transparent text-neutral-500 hover:bg-white hover:text-neutral-950"
@@ -496,7 +519,7 @@ export function WaiterOrdersPage({ user, onLogout }: WaiterOrdersPageProps) {
                   <Button
                     type="button"
                     variant="outline"
-                    className="h-10 rounded-xl"
+                    className="h-10 cursor-pointer rounded-xl"
                   >
                     <SlidersHorizontal className="size-4" />
                     Queue details
@@ -577,7 +600,7 @@ export function WaiterOrdersPage({ user, onLogout }: WaiterOrdersPageProps) {
                   changeHistoryStatus(value as WaiterOrderHistoryStatus)
                 }
               >
-                <SelectTrigger className="h-10 w-36 rounded-xl border-neutral-200 bg-white shadow-none">
+                <SelectTrigger className="h-10 w-36 cursor-pointer rounded-xl border-neutral-200 bg-white shadow-none">
                   <SelectValue />
                 </SelectTrigger>
 
@@ -627,11 +650,12 @@ export function WaiterOrdersPage({ user, onLogout }: WaiterOrdersPageProps) {
           <OrderCardsSkeleton />
         ) : filteredOrders.length > 0 ? (
           <>
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            <div className="grid items-stretch gap-3 md:grid-cols-2 xl:grid-cols-3">
               {filteredOrders.map((order) => (
                 <OrderCard
                   key={order._id}
                   order={order}
+                  showWaiterName={Boolean(user.sharedHub)}
                   onOpen={() => navigate(`/waiter/orders/${order._id}`)}
                 />
               ))}
@@ -648,7 +672,7 @@ export function WaiterOrdersPage({ user, onLogout }: WaiterOrdersPageProps) {
                   <Button
                     type="button"
                     variant="outline"
-                    className="h-10 rounded-xl"
+                    className="h-10 cursor-pointer rounded-xl"
                     disabled={
                       loading ||
                       refreshing ||
@@ -667,7 +691,7 @@ export function WaiterOrdersPage({ user, onLogout }: WaiterOrdersPageProps) {
                   <Button
                     type="button"
                     variant="outline"
-                    className="h-10 rounded-xl"
+                    className="h-10 cursor-pointer rounded-xl"
                     disabled={
                       loading || refreshing || !historyPagination.hasNextPage
                     }
@@ -711,7 +735,7 @@ export function WaiterOrdersPage({ user, onLogout }: WaiterOrdersPageProps) {
 
               {view === "active" && orders.length === 0 && !search && (
                 <Button
-                  className="mt-6 rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
+                  className="mt-6 cursor-pointer rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
                   onClick={() => navigate("/waiter")}
                 >
                   <Plus className="size-4" />

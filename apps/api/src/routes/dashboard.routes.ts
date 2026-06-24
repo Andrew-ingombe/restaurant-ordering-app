@@ -155,6 +155,13 @@ dashboardRouter.get(
       },
     } as const
 
+    const attentionMatch = {
+      restaurant: restaurantObjectId,
+      status: {
+        $in: [...activeOrderStatuses],
+      },
+    } as const
+
     const paidMatch = {
       restaurant: restaurantObjectId,
       paymentStatus: "paid",
@@ -235,7 +242,7 @@ dashboardRouter.get(
 
       Order.aggregate([
         {
-          $match: operationalMatch,
+          $match: attentionMatch,
         },
         {
           $group: {

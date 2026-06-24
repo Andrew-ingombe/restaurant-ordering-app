@@ -12,7 +12,17 @@ import {
   Store,
   UserRound,
   UtensilsCrossed,
+  AlertTriangle,
+  Trash2,
 } from "lucide-react"
+
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@workspace/ui/components/dialog"
 
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
@@ -91,6 +101,8 @@ export function WaiterPage({ user, onLogout }: WaiterPageProps) {
   const [summaryOpen, setSummaryOpen] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
+  const [tableError, setTableError] = useState("")
+  const [clearOrderDialogOpen, setClearOrderDialogOpen] = useState(false)
 
   useEffect(() => {
     const loadOrderingData = async () => {
@@ -191,6 +203,24 @@ export function WaiterPage({ user, onLogout }: WaiterPageProps) {
     })
   }
 
+  const clearCurrentOrder = () => {
+    setCart({})
+    setTableName("")
+    setCustomerName("")
+    setCustomerPhone("")
+    setError("")
+    setSuccess("")
+    setTableError("")
+    setSummaryOpen(false)
+    setClearOrderDialogOpen(false)
+
+    if (user.sharedHub && activeWaiters.length !== 1) {
+      setSelectedWaiterId("")
+    }
+
+    toast.success("Draft cleared")
+  }
+
   const submitOrder = async () => {
     if (submitting) return
 
@@ -212,8 +242,8 @@ export function WaiterPage({ user, onLogout }: WaiterPageProps) {
     }
 
     if (orderType === "dine_in" && !tableName.trim()) {
-      const message = "Select a table"
-      setError(message)
+      const message = "Select a table before saving this order"
+      setTableError(message)
       toast.error(message)
       return
     }
@@ -283,7 +313,7 @@ export function WaiterPage({ user, onLogout }: WaiterPageProps) {
           : ""
       }`}
     >
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4 pr-10 sm:pr-0">
         <div>
           <p className="text-xs font-semibold tracking-[0.18em] text-[#ef1428] uppercase">
             Current order
@@ -292,7 +322,7 @@ export function WaiterPage({ user, onLogout }: WaiterPageProps) {
           <h2 className="mt-1 text-xl font-black">Order summary</h2>
         </div>
 
-        <div className="flex size-11 items-center justify-center rounded-full bg-neutral-950 text-white">
+        <div className="hidden size-11 items-center justify-center rounded-full bg-neutral-950 text-white sm:flex">
           <ShoppingBag className="size-5" />
         </div>
       </div>
@@ -326,7 +356,7 @@ export function WaiterPage({ user, onLogout }: WaiterPageProps) {
             >
               <SelectTrigger
                 id={`${idPrefix}-served-by`}
-                className="h-12 w-full rounded-xl border-0 bg-white px-4 shadow-none"
+                className="min-h-12 w-full rounded-xl border-0 bg-white px-4 shadow-none"
               >
                 <SelectValue
                   placeholder={
@@ -386,6 +416,7 @@ export function WaiterPage({ user, onLogout }: WaiterPageProps) {
 
             setOrderType(nextOrderType)
             setError("")
+            setTableError("")
 
             if (nextOrderType === "takeaway") {
               setTableName("")
@@ -394,7 +425,7 @@ export function WaiterPage({ user, onLogout }: WaiterPageProps) {
         >
           <SelectTrigger
             id={`${idPrefix}-order-type`}
-            className="h-12 w-full rounded-xl border-0 bg-neutral-100 px-4 shadow-none"
+            className="min-h-12 w-full rounded-xl border-0 bg-neutral-100 px-4 shadow-none"
           >
             <SelectValue />
           </SelectTrigger>
@@ -415,12 +446,13 @@ export function WaiterPage({ user, onLogout }: WaiterPageProps) {
             onValueChange={(value) => {
               setTableName(value)
               setError("")
+              setTableError("")
             }}
             disabled={loadingData || availableTables.length === 0}
           >
             <SelectTrigger
               id={`${idPrefix}-table`}
-              className="h-12 w-full rounded-xl border-0 bg-neutral-100 px-4 shadow-none"
+              className="min-h-12 w-full rounded-xl border-0 bg-neutral-100 px-4 shadow-none"
             >
               <SelectValue
                 placeholder={
@@ -441,6 +473,10 @@ export function WaiterPage({ user, onLogout }: WaiterPageProps) {
               ))}
             </SelectContent>
           </Select>
+
+          {tableError && (
+            <p className="text-xs leading-5 text-red-700">{tableError}</p>
+          )}
 
           {!loadingData && availableTables.length === 0 && (
             <p className="text-xs leading-5 text-amber-700">
@@ -553,24 +589,38 @@ export function WaiterPage({ user, onLogout }: WaiterPageProps) {
         </span>
       </div>
 
-      <Button
-        className="h-13 w-full rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
-        disabled={
-          submitting ||
-          cartItems.length === 0 ||
-          (user.sharedHub && (!selectedWaiterId || activeWaiters.length === 0))
-        }
-        onClick={submitOrder}
-      >
-        {submitting ? (
-          "Saving..."
-        ) : (
-          <>
-            <ReceiptText className="size-4" />
-            Save draft order
-          </>
-        )}
-      </Button>
+      <div className="grid gap-2 sm:grid-cols-[0.8fr_1.2fr]">
+        <Button
+          className="h-13 rounded-xl text-red-600 hover:bg-red-50 hover:text-red-700"
+          type="button"
+          variant="outline"
+          disabled={submitting || cartItems.length === 0}
+          onClick={() => setClearOrderDialogOpen(true)}
+        >
+          <Trash2 className="size-4" />
+          Clear order
+        </Button>
+
+        <Button
+          className="h-13 rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
+          disabled={
+            submitting ||
+            cartItems.length === 0 ||
+            (user.sharedHub &&
+              (!selectedWaiterId || activeWaiters.length === 0))
+          }
+          onClick={submitOrder}
+        >
+          {submitting ? (
+            "Saving..."
+          ) : (
+            <>
+              <ReceiptText className="size-4" />
+              Save draft order
+            </>
+          )}
+        </Button>
+      </div>
     </div>
   )
 
@@ -605,6 +655,53 @@ export function WaiterPage({ user, onLogout }: WaiterPageProps) {
       contentScrollable={false}
       contentClassName="grid min-h-0 gap-5 md:p-6 xl:grid-cols-[minmax(0,1fr)_400px]"
     >
+      <Dialog
+        open={clearOrderDialogOpen}
+        onOpenChange={(open) => {
+          if (!submitting) {
+            setClearOrderDialogOpen(open)
+          }
+        }}
+      >
+        <DialogContent className="rounded-[28px] border-0 p-0 sm:max-w-md">
+          <div className="p-5 md:p-6">
+            <DialogHeader>
+              <div className="mb-4 flex size-12 items-center justify-center rounded-full bg-red-50 text-[#ef1428]">
+                <AlertTriangle className="size-5" />
+              </div>
+
+              <DialogTitle className="text-2xl font-black tracking-tight">
+                Clear this order?
+              </DialogTitle>
+
+              <DialogDescription className="text-sm leading-6 text-neutral-500">
+                This only clears the current unsaved selection on this screen.
+                No saved order will be cancelled.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="mt-6 grid gap-2 sm:grid-cols-2">
+              <Button
+                className="h-12 rounded-xl"
+                type="button"
+                variant="outline"
+                onClick={() => setClearOrderDialogOpen(false)}
+              >
+                Keep order
+              </Button>
+
+              <Button
+                className="h-12 rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
+                type="button"
+                onClick={clearCurrentOrder}
+              >
+                Clear order
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <section className="flex min-h-0 min-w-0 flex-col gap-4">
         <div className="shrink-0 rounded-[20px] bg-white p-3">
           <div className="flex items-center gap-3">
@@ -647,8 +744,8 @@ export function WaiterPage({ user, onLogout }: WaiterPageProps) {
           </div>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto pr-1 pb-24 xl:pb-0">
-          <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
+        <div className="min-h-0 flex-1 overflow-y-auto px-1 pb-20 xl:pb-0">
+          <div className="grid gap-4 pb-1 sm:grid-cols-2 2xl:grid-cols-3">
             {visibleItems.map((item) => {
               const quantity = cart[item._id]?.quantity || 0
 
@@ -657,7 +754,7 @@ export function WaiterPage({ user, onLogout }: WaiterPageProps) {
                   key={item._id}
                   className={`overflow-hidden rounded-[24px] bg-white transition ${
                     quantity > 0
-                      ? "ring-2 ring-[#ef1428]"
+                      ? "outline-2 outline-offset-2 outline-[#ef1428]"
                       : "hover:-translate-y-0.5 hover:shadow-lg"
                   }`}
                 >
@@ -696,19 +793,19 @@ export function WaiterPage({ user, onLogout }: WaiterPageProps) {
                       {item.description || "No description available."}
                     </p>
 
-                    <div className="mt-5 flex items-center justify-between rounded-2xl bg-neutral-100 p-2">
+                    <div className="mt-5 flex min-h-14 items-center justify-between rounded-2xl bg-neutral-100 p-2">
                       <Button
-                        className="size-10 rounded-full"
+                        className="h-11 min-w-16 cursor-pointer rounded-full"
                         size="icon"
                         variant="outline"
                         disabled={quantity === 0}
                         onClick={() => changeQuantity(item, -1)}
                       >
-                        <Minus className="size-4" />
+                        <Minus className="size-5" />
                       </Button>
 
-                      <div className="text-center">
-                        <p className="text-lg font-black">{quantity}</p>
+                      <div className="px-3 text-center">
+                        <p className="text-xl font-black">{quantity}</p>
 
                         <p className="text-[10px] tracking-wide text-neutral-400 uppercase">
                           Selected
@@ -716,11 +813,11 @@ export function WaiterPage({ user, onLogout }: WaiterPageProps) {
                       </div>
 
                       <Button
-                        className="size-10 rounded-full bg-neutral-950 text-white hover:bg-neutral-800"
+                        className="h-11 min-w-16 cursor-pointer rounded-full bg-neutral-950 text-white hover:bg-neutral-800"
                         size="icon"
                         onClick={() => changeQuantity(item, 1)}
                       >
-                        <Plus className="size-4" />
+                        <Plus className="size-5" />
                       </Button>
                     </div>
                   </div>
@@ -751,7 +848,7 @@ export function WaiterPage({ user, onLogout }: WaiterPageProps) {
         <Sheet open={summaryOpen} onOpenChange={setSummaryOpen}>
           <SheetTrigger asChild>
             <div className="fixed right-4 bottom-4 left-4 z-40 xl:hidden">
-              <Button className="h-16 w-full justify-between rounded-2xl bg-neutral-950 px-5 text-white shadow-2xl hover:bg-neutral-800">
+              <Button className="h-16 w-full justify-between rounded-2xl bg-neutral-950 px-5 text-white hover:bg-neutral-800">
                 <span className="flex items-center gap-3">
                   <span className="relative flex size-10 items-center justify-center rounded-full bg-white/10">
                     <ShoppingBag className="size-5" />

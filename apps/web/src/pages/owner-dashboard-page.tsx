@@ -14,6 +14,7 @@ import {
   Smartphone,
   TrendingUp,
   WalletCards,
+  UtensilsCrossed,
 } from "lucide-react"
 
 import { Badge } from "@workspace/ui/components/badge"
@@ -84,16 +85,6 @@ const paymentStatusStyles: Record<string, string> = {
   refunded: "bg-purple-50 text-purple-700",
 }
 
-const operationalStatuses = new Set([
-  "awaiting_waiter",
-  "awaiting_payment",
-  "submitted",
-  "accepted",
-  "preparing",
-  "ready",
-  "served",
-])
-
 const paymentMethodConfig = {
   cash: {
     label: "Cash",
@@ -116,6 +107,58 @@ const paymentMethodConfig = {
     icon: CircleAlert,
   },
 }
+
+const liveFlowConfig = [
+  {
+    status: "awaiting_waiter",
+    label: "QR requests",
+    helper: "Waiting for waiter",
+    icon: QrCode,
+    className: "bg-orange-50 text-orange-700",
+  },
+  {
+    status: "awaiting_payment",
+    label: "Awaiting payment",
+    helper: "Ready to collect",
+    icon: WalletCards,
+    className: "bg-amber-50 text-amber-700",
+  },
+  {
+    status: "submitted",
+    label: "Sent to kitchen",
+    helper: "New kitchen orders",
+    icon: ReceiptText,
+    className: "bg-blue-50 text-blue-700",
+  },
+  {
+    status: "accepted",
+    label: "Accepted",
+    helper: "Kitchen accepted",
+    icon: CheckCircle2,
+    className: "bg-violet-50 text-violet-700",
+  },
+  {
+    status: "preparing",
+    label: "Preparing",
+    helper: "Being prepared",
+    icon: ChefHat,
+    className: "bg-amber-50 text-amber-700",
+  },
+  {
+    status: "ready",
+    label: "Ready",
+    helper: "Ready to serve",
+    icon: CheckCircle2,
+    className: "bg-emerald-50 text-emerald-700",
+  },
+  {
+    status: "served",
+    label: "Served",
+    helper: "Awaiting closeout",
+    icon: UtensilsCrossed,
+    className: "bg-cyan-50 text-cyan-700",
+  },
+]
 
 const parseDate = (value: string) => {
   if (!value) return undefined
@@ -163,8 +206,11 @@ export function OwnerDashboardPage({
     >()
   )
 
-  const loadDashboard = async (date?: string) => {
-    setLoading(true)
+  const loadDashboard = async (date?: string, showSkeleton = true) => {
+    if (showSkeleton) {
+      setLoading(true)
+    }
+
     setError("")
 
     try {
@@ -183,13 +229,17 @@ export function OwnerDashboardPage({
         setSelectedDate(result.date)
       }
     } catch (requestError) {
-      setError(
+      const message =
         requestError instanceof Error
           ? requestError.message
           : "Could not load dashboard"
-      )
+
+      setError(message)
+      toast.error(message)
     } finally {
-      setLoading(false)
+      if (showSkeleton) {
+        setLoading(false)
+      }
     }
   }
 
@@ -203,7 +253,7 @@ export function OwnerDashboardPage({
     if (!socket) return
 
     const refreshDashboard = () => {
-      void loadDashboard(selectedDate || undefined)
+      void loadDashboard(selectedDate || undefined, false)
     }
 
     const handleOrderUpdated = (updatedOrder: DraftOrder) => {
@@ -291,52 +341,6 @@ export function OwnerDashboardPage({
     }
   }, [selectedDate])
 
-  const summaryCards = dashboard
-    ? [
-        {
-          label: "Total sales",
-          helper: "Paid orders only",
-          value: formatPrice(dashboard.summary.totalSales),
-          icon: TrendingUp,
-          featured: true,
-        },
-        {
-          label: "Active orders",
-          helper: "Live restaurant flow",
-          value: dashboard.summary.activeOrders,
-          icon: Clock3,
-        },
-        {
-          label: "Paid orders",
-          helper: "Collected payments",
-          value: dashboard.summary.paidOrders,
-          icon: WalletCards,
-        },
-        {
-          label: "Completed",
-          helper: "Closed orders",
-          value: dashboard.summary.completedOrders,
-          icon: CheckCircle2,
-        },
-        {
-          label: "Average order",
-          helper: "Paid orders only",
-          value: formatPrice(dashboard.summary.averageOrderValue),
-          icon: ReceiptText,
-        },
-      ]
-    : []
-
-  const activeStatusBreakdown =
-    dashboard?.statusBreakdown.filter((item) =>
-      operationalStatuses.has(item.status)
-    ) || []
-
-  const completedStatusBreakdown =
-    dashboard?.statusBreakdown.filter((item) =>
-      ["completed", "cancelled"].includes(item.status)
-    ) || []
-
   const attentionItems = dashboard
     ? [
         {
@@ -387,6 +391,53 @@ export function OwnerDashboardPage({
     0
   )
 
+  const summaryCards = dashboard
+    ? [
+        {
+          label: "Total sales",
+          helper: "Paid orders only",
+          value: formatPrice(dashboard.summary.totalSales),
+          icon: TrendingUp,
+          featured: true,
+        },
+        {
+          label: "Average order",
+          helper: "Paid orders only",
+          value: formatPrice(dashboard.summary.averageOrderValue),
+          icon: ReceiptText,
+        },
+        {
+          label: "Active orders",
+          helper: "Currently in progress",
+          value: dashboard.summary.activeOrders,
+          icon: Clock3,
+        },
+        {
+          label: "Needs attention",
+          helper: "Current operational issues",
+          value: totalAttentionItems,
+          icon: AlertTriangle,
+        },
+      ]
+    : []
+
+  const completedStatusBreakdown =
+    dashboard?.statusBreakdown.filter((item) =>
+      ["completed", "cancelled"].includes(item.status)
+    ) || []
+
+  const liveFlowItems = dashboard
+    ? liveFlowConfig.map((item) => ({
+        ...item,
+        count:
+          dashboard.statusBreakdown.find(
+            (statusItem) => statusItem.status === item.status
+          )?.count || 0,
+      }))
+    : []
+
+  const totalPaymentSales = dashboard?.summary.totalSales || 0
+
   return (
     <OwnerShell
       user={user}
@@ -411,7 +462,7 @@ export function OwnerDashboardPage({
               <Button
                 type="button"
                 variant="ghost"
-                className="h-11 max-w-full justify-start rounded-xl bg-neutral-100 px-3 font-normal hover:bg-neutral-100 sm:px-4"
+                className="h-11 max-w-full cursor-pointer justify-start rounded-xl bg-neutral-100 px-3 font-normal hover:bg-neutral-100 sm:px-4"
               >
                 <CalendarDays className="size-4 shrink-0 text-neutral-400" />
 
@@ -443,7 +494,7 @@ export function OwnerDashboardPage({
           </Popover>
 
           <Button
-            className="h-11 rounded-xl bg-[#ef1428] px-4 text-white hover:bg-[#d91023] sm:px-5"
+            className="h-11 cursor-pointer rounded-xl bg-[#ef1428] px-4 text-white hover:bg-[#d91023] sm:px-5"
             disabled={loading}
             onClick={() => void loadDashboard(selectedDate || undefined)}
           >
@@ -458,11 +509,11 @@ export function OwnerDashboardPage({
         </p>
       )}
 
-      {loading && !dashboard ? (
+      {loading ? (
         <DashboardPageSkeleton />
       ) : dashboard ? (
         <>
-          <section className="grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-5">
+          <section className="grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {summaryCards.map((card) => {
               const Icon = card.icon
 
@@ -587,7 +638,7 @@ export function OwnerDashboardPage({
               </div>
             </div>
 
-            <div className="min-w-0 overflow-hidden rounded-[24px] bg-neutral-950 p-4 text-white sm:p-5">
+            <div className="min-w-0 overflow-hidden rounded-[24px] bg-white p-4 sm:p-5">
               <div>
                 <p className="text-xs font-semibold tracking-[0.16em] text-[#ef1428] uppercase">
                   Payments
@@ -597,37 +648,62 @@ export function OwnerDashboardPage({
                   Sales by payment method
                 </h2>
 
-                <p className="text-sm text-white/45">
-                  Paid orders for {dashboard.date}
+                <p className="text-sm text-neutral-400">
+                  Breakdown of the paid sales total above
                 </p>
               </div>
 
-              <div className="mt-5 space-y-2">
+              <div className="mt-5 space-y-3">
                 {dashboard.paymentBreakdown.map((payment) => {
                   const config = paymentMethodConfig[payment.method]
                   const Icon = config.icon
+                  const percentage =
+                    totalPaymentSales > 0
+                      ? Math.round((payment.total / totalPaymentSales) * 100)
+                      : 0
 
                   return (
                     <div
                       key={payment.method}
-                      className="flex min-w-0 items-center gap-3 rounded-2xl bg-white/7 p-3"
+                      className="rounded-2xl border border-neutral-100 p-3"
                     >
-                      <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-white/10">
-                        <Icon className="size-4" />
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-neutral-700">
+                          <Icon className="size-4" />
+                        </div>
+
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="truncate font-bold">
+                                {config.label}
+                              </p>
+
+                              <p className="text-xs text-neutral-400">
+                                {payment.count}{" "}
+                                {payment.count === 1 ? "payment" : "payments"}
+                              </p>
+                            </div>
+
+                            <div className="shrink-0 text-right">
+                              <p className="font-black">
+                                {formatPrice(payment.total)}
+                              </p>
+
+                              <p className="text-xs text-neutral-400">
+                                {percentage}%
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="mt-3 h-2 overflow-hidden rounded-full bg-neutral-100">
+                            <div
+                              className="h-full rounded-full bg-[#ef1428]"
+                              style={{ width: `${percentage}%` }}
+                            />
+                          </div>
+                        </div>
                       </div>
-
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate font-semibold">{config.label}</p>
-
-                        <p className="text-xs text-white/40">
-                          {payment.count}{" "}
-                          {payment.count === 1 ? "payment" : "payments"}
-                        </p>
-                      </div>
-
-                      <p className="shrink-0 text-right text-sm font-black sm:text-base">
-                        {formatPrice(payment.total)}
-                      </p>
                     </div>
                   )
                 })}
@@ -652,22 +728,51 @@ export function OwnerDashboardPage({
               </div>
 
               <div className="mt-6 grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2">
-                {activeStatusBreakdown.map((item) => (
-                  <div
-                    key={item.status}
-                    className="min-w-0 overflow-hidden rounded-2xl border border-dashed border-neutral-200 p-4"
-                  >
-                    <p className="truncate text-xs text-neutral-500 capitalize">
-                      {formatStatus(item.status)}
-                    </p>
+                {liveFlowItems.map((item) => {
+                  const Icon = item.icon
+                  const isActive = item.count > 0
 
-                    <p className="mt-2 text-3xl font-black">{item.count}</p>
-                  </div>
-                ))}
+                  return (
+                    <div
+                      key={item.status}
+                      className={`min-w-0 overflow-hidden rounded-2xl border p-4 ${
+                        isActive
+                          ? "border-neutral-200 bg-white"
+                          : "border-neutral-100 bg-neutral-50"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div
+                          className={`flex size-10 shrink-0 items-center justify-center rounded-full ${
+                            isActive
+                              ? item.className
+                              : "bg-white text-neutral-400"
+                          }`}
+                        >
+                          <Icon className="size-4" />
+                        </div>
+
+                        <p
+                          className={`text-3xl font-black ${
+                            isActive ? "text-neutral-950" : "text-neutral-300"
+                          }`}
+                        >
+                          {item.count}
+                        </p>
+                      </div>
+
+                      <p className="mt-4 font-bold">{item.label}</p>
+
+                      <p className="mt-1 text-xs leading-5 text-neutral-400">
+                        {item.helper}
+                      </p>
+                    </div>
+                  )
+                })}
               </div>
 
-              {activeStatusBreakdown.length === 0 && (
-                <div className="mt-6 rounded-2xl bg-neutral-50 p-8 text-center text-sm text-neutral-400">
+              {dashboard.summary.activeOrders === 0 && (
+                <div className="mt-5 rounded-2xl bg-neutral-50 p-5 text-center text-sm text-neutral-400">
                   No active orders for this date.
                 </div>
               )}

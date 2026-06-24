@@ -43,6 +43,8 @@ import {
 } from "../lib/api"
 import type { AuthUser, MenuCategory, MenuPreparationArea } from "../lib/api"
 
+const CATEGORY_DESCRIPTION_MAX_LENGTH = 180
+
 type OwnerMenuPageProps = {
   user: AuthUser
   onLogout: () => void
@@ -355,7 +357,12 @@ export function OwnerMenuPage({ user, onLogout }: OwnerMenuPageProps) {
                   value={description}
                   onChange={(event) => setDescription(event.target.value)}
                   placeholder="Briefly describe this category"
+                  maxLength={CATEGORY_DESCRIPTION_MAX_LENGTH}
                 />
+
+                <p className="text-right text-xs text-neutral-400">
+                  {description.length}/{CATEGORY_DESCRIPTION_MAX_LENGTH}
+                </p>
               </div>
 
               {error && (
@@ -502,7 +509,7 @@ export function OwnerMenuPage({ user, onLogout }: OwnerMenuPageProps) {
               return (
                 <article
                   key={category._id}
-                  className={`group rounded-[20px] border p-4 transition ${
+                  className={`group flex h-full flex-col rounded-[20px] border p-4 transition ${
                     editingId === category._id
                       ? "border-[#ef1428] bg-[#fff8f8]"
                       : "border-neutral-100 hover:border-neutral-200 hover:bg-neutral-50"
@@ -545,51 +552,53 @@ export function OwnerMenuPage({ user, onLogout }: OwnerMenuPageProps) {
                     </div>
                   </div>
 
-                  <div className="mt-5">
+                  <div className="mt-5 flex-1">
                     <h3 className="text-lg font-black">{category.name}</h3>
                     <p className="mt-2 min-h-10 text-sm leading-5 text-neutral-400">
                       {category.description || "No category description added."}
                     </p>
                   </div>
 
-                  <div className="mt-5 flex gap-2 border-t border-neutral-100 pt-4">
-                    <Button
-                      className="flex-1 rounded-xl"
-                      size="sm"
-                      variant="outline"
-                      onClick={() => startEditing(category)}
-                    >
-                      <Pencil className="size-3.5" />
-                      Edit
-                    </Button>
+                  <div className="mt-auto space-y-3 border-t border-neutral-100 pt-4">
+                    <div className="flex gap-2">
+                      <Button
+                        className="flex-1 rounded-xl"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => startEditing(category)}
+                      >
+                        <Pencil className="size-3.5" />
+                        Edit
+                      </Button>
 
-                    <Button
-                      className={`flex-1 rounded-xl ${
-                        category.active
-                          ? ""
-                          : "bg-neutral-950 text-white hover:bg-neutral-800"
-                      }`}
-                      size="sm"
-                      variant={category.active ? "outline" : "default"}
-                      disabled={updatingId === category._id}
-                      onClick={() => requestCategoryStatusChange(category)}
+                      <Button
+                        className={`flex-1 rounded-xl ${
+                          category.active
+                            ? ""
+                            : "bg-neutral-950 text-white hover:bg-neutral-800"
+                        }`}
+                        size="sm"
+                        variant={category.active ? "outline" : "default"}
+                        disabled={updatingId === category._id}
+                        onClick={() => requestCategoryStatusChange(category)}
+                      >
+                        {updatingId === category._id
+                          ? "Updating..."
+                          : category.active
+                            ? "Deactivate"
+                            : "Activate"}
+                      </Button>
+                    </div>
+
+                    <button
+                      type="button"
+                      className="flex w-full items-center justify-between rounded-xl bg-neutral-50 px-3 py-2 text-xs font-medium text-neutral-500 transition hover:bg-neutral-100"
+                      onClick={() => navigate("/owner/menu/items")}
                     >
-                      {updatingId === category._id
-                        ? "Updating..."
-                        : category.active
-                          ? "Deactivate"
-                          : "Activate"}
-                    </Button>
+                      View menu items
+                      <ChevronRight className="size-3.5" />
+                    </button>
                   </div>
-
-                  <button
-                    type="button"
-                    className="mt-3 flex w-full items-center justify-between rounded-xl bg-neutral-50 px-3 py-2 text-xs font-medium text-neutral-500 transition hover:bg-neutral-100"
-                    onClick={() => navigate("/owner/menu/items")}
-                  >
-                    View menu items
-                    <ChevronRight className="size-3.5" />
-                  </button>
                 </article>
               )
             })}

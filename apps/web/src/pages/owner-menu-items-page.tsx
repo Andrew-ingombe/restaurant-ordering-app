@@ -60,6 +60,8 @@ const formatPrice = (price: number) =>
     currency: "ZMW",
   }).format(price / 100)
 
+const MENU_ITEM_DESCRIPTION_MAX_LENGTH = 240
+
 export function OwnerMenuItemsPage({
   user,
   onLogout,
@@ -265,6 +267,7 @@ export function OwnerMenuItemsPage({
   }
 
   const availableItems = items.filter((item) => item.available).length
+  const canUploadImage = Boolean(category && name.trim()) && !uploadingImage
 
   return (
     <OwnerShell
@@ -453,7 +456,11 @@ export function OwnerMenuItemsPage({
                     value={description}
                     onChange={(event) => setDescription(event.target.value)}
                     placeholder="Describe the dish"
+                    maxLength={MENU_ITEM_DESCRIPTION_MAX_LENGTH}
                   />
+                  <p className="text-right text-xs text-neutral-400">
+                    {description.length}/{MENU_ITEM_DESCRIPTION_MAX_LENGTH}
+                  </p>
                 </div>
 
                 <div className="space-y-2">
@@ -488,7 +495,7 @@ export function OwnerMenuItemsPage({
                         className="rounded-xl"
                         type="button"
                         variant="outline"
-                        disabled={uploadingImage}
+                        disabled={!canUploadImage}
                         onClick={() => fileInputRef.current?.click()}
                       >
                         {uploadingImage ? (
@@ -525,19 +532,13 @@ export function OwnerMenuItemsPage({
                     <p className="mt-3 text-xs text-neutral-500">
                       JPG, PNG, or WebP. Maximum size 5MB.
                     </p>
+                    {!category || !name.trim() ? (
+                      <p className="mt-2 text-xs text-amber-700">
+                        Choose a category and enter the item name before
+                        uploading an image.
+                      </p>
+                    ) : null}
                   </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="item-image-url">Image URL</Label>
-                  <Input
-                    id="item-image-url"
-                    className="h-12 rounded-xl border-0 bg-neutral-100 px-4 shadow-none"
-                    type="url"
-                    value={imageUrl}
-                    onChange={(event) => setImageUrl(event.target.value)}
-                    placeholder="Cloudinary image URL"
-                  />
                 </div>
 
                 {imageUrl && (
@@ -592,7 +593,7 @@ export function OwnerMenuItemsPage({
                 {items.map((item) => (
                   <article
                     key={item._id}
-                    className={`overflow-hidden rounded-[20px] border transition ${
+                    className={`flex h-full flex-col overflow-hidden rounded-[20px] border transition ${
                       editingId === item._id
                         ? "border-[#ef1428] bg-[#fff8f8]"
                         : "border-neutral-100 hover:border-neutral-200"
@@ -627,7 +628,7 @@ export function OwnerMenuItemsPage({
                       </Badge>
                     </div>
 
-                    <div className="p-4">
+                    <div className="flex flex-1 flex-col p-4">
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <Badge variant="secondary" className="rounded-full">
@@ -644,11 +645,11 @@ export function OwnerMenuItemsPage({
                         </p>
                       </div>
 
-                      <p className="mt-2 min-h-10 text-sm leading-5 text-neutral-400">
+                      <p className="mt-2 line-clamp-2 min-h-10 text-sm leading-5 text-neutral-400">
                         {item.description || "No description added."}
                       </p>
 
-                      <div className="mt-5 flex gap-2 border-t border-neutral-100 pt-4">
+                      <div className="mt-auto flex gap-2 border-t border-neutral-100 pt-4">
                         <Button
                           className="flex-1 rounded-xl"
                           size="sm"

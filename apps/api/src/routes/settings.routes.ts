@@ -44,6 +44,14 @@ const serializeRestaurantSettings = (restaurant: {
     address?: string
     receiptFooter?: string
   }
+  subscription?: {
+    plan?: string
+    status?: string
+    trialEndsAt?: Date | string | null
+    currentPeriodStartsAt?: Date | string | null
+    currentPeriodEndsAt?: Date | string | null
+    gracePeriodEndsAt?: Date | string | null
+  }
 }) => ({
   id: restaurant.id,
   name: restaurant.name,
@@ -56,6 +64,15 @@ const serializeRestaurantSettings = (restaurant: {
     email: restaurant.settings?.email || "",
     address: restaurant.settings?.address || "",
     receiptFooter: restaurant.settings?.receiptFooter || "",
+  },
+  subscription: {
+    plan: restaurant.subscription?.plan || "pilot",
+    status: restaurant.subscription?.status || "trialing",
+    trialEndsAt: restaurant.subscription?.trialEndsAt || null,
+    currentPeriodStartsAt:
+      restaurant.subscription?.currentPeriodStartsAt || null,
+    currentPeriodEndsAt: restaurant.subscription?.currentPeriodEndsAt || null,
+    gracePeriodEndsAt: restaurant.subscription?.gracePeriodEndsAt || null,
   },
 })
 
@@ -82,6 +99,7 @@ settingsRouter.get(
         slug: restaurant.slug,
         active: restaurant.active,
         settings: restaurant.settings || undefined,
+        subscription: restaurant.subscription || undefined,
       }),
     })
   })
@@ -157,6 +175,7 @@ settingsRouter.patch(
         slug: restaurant.slug,
         active: restaurant.active,
         settings: restaurant.settings || undefined,
+        subscription: restaurant.subscription || undefined,
       }),
     })
   })

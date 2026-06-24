@@ -334,8 +334,8 @@ export function CustomerMenuPage() {
               className="mt-6 h-13 w-full rounded-2xl bg-neutral-950 text-white hover:bg-neutral-800"
               onClick={() => setResult(null)}
             >
-              <Plus className="size-4" />
-              Create another order
+              <UtensilsCrossed className="size-4" />
+              Back to menu
             </Button>
           </div>
         </div>

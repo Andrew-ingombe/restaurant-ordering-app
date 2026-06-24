@@ -19,6 +19,28 @@ type OwnerSettingsPageProps = {
   onLogout: () => void
 }
 
+const subscriptionStatusStyles: Record<
+  OwnerRestaurantSettings["subscription"]["status"],
+  string
+> = {
+  trialing: "bg-blue-50 text-blue-700",
+  active: "bg-emerald-50 text-emerald-700",
+  past_due: "bg-amber-50 text-amber-700",
+  suspended: "bg-red-50 text-red-700",
+  cancelled: "bg-neutral-100 text-neutral-600",
+}
+
+const formatStatus = (status: string) => status.replaceAll("_", " ")
+
+const formatDateTime = (value?: string | null) => {
+  if (!value) return "Not set"
+
+  return new Date(value).toLocaleString(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  })
+}
+
 export function OwnerSettingsPage({ user, onLogout }: OwnerSettingsPageProps) {
   const [restaurant, setRestaurant] = useState<OwnerRestaurantSettings | null>(
     null
@@ -178,23 +200,58 @@ export function OwnerSettingsPage({ user, onLogout }: OwnerSettingsPageProps) {
                 <div className="mt-6 space-y-3 rounded-2xl bg-neutral-50 p-4">
                   <div className="flex items-center justify-between gap-3">
                     <span className="text-sm text-neutral-500">Restaurant</span>
-                    <span className="font-semibold text-neutral-900">
+                    <span className="text-right font-semibold text-neutral-900">
                       {restaurant.name}
                     </span>
                   </div>
 
                   <div className="flex items-center justify-between gap-3">
                     <span className="text-sm text-neutral-500">Slug</span>
-                    <span className="font-mono text-sm text-neutral-700">
+                    <span className="text-right font-mono text-sm text-neutral-700">
                       {restaurant.slug}
                     </span>
                   </div>
 
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-sm text-neutral-500">Status</span>
-                    <Badge className="rounded-full border-0 bg-emerald-50 text-emerald-700">
+                    <span className="text-sm text-neutral-500">
+                      Restaurant status
+                    </span>
+                    <Badge
+                      className={`rounded-full border-0 ${
+                        restaurant.active
+                          ? "bg-emerald-50 text-emerald-700"
+                          : "bg-red-50 text-red-700"
+                      }`}
+                    >
                       {restaurant.active ? "Active" : "Inactive"}
                     </Badge>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-sm text-neutral-500">
+                      Subscription
+                    </span>
+                    <Badge
+                      className={`rounded-full border-0 capitalize ${
+                        subscriptionStatusStyles[restaurant.subscription.status]
+                      }`}
+                    >
+                      {formatStatus(restaurant.subscription.status)}
+                    </Badge>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-sm text-neutral-500">Plan</span>
+                    <span className="text-right font-semibold text-neutral-900 capitalize">
+                      {restaurant.subscription.plan}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-sm text-neutral-500">Trial ends</span>
+                    <span className="text-right text-sm font-semibold text-neutral-700">
+                      {formatDateTime(restaurant.subscription.trialEndsAt)}
+                    </span>
                   </div>
                 </div>
               )}

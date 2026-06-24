@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react"
 import type { FormEvent } from "react"
 import { QRCodeSVG } from "qrcode.react"
+import * as QRCode from "qrcode"
+import { jsPDF } from "jspdf"
 import {
   AlertTriangle,
   Check,
@@ -27,14 +29,33 @@ import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
 
 import { OwnerShell } from "../components/owner-shell"
-import { createTable, getTables, updateTable } from "../lib/api"
-import type { AuthUser, RestaurantTable } from "../lib/api"
+import {
+  createTable,
+  getRestaurantSettings,
+  getTables,
+  updateTable,
+} from "../lib/api"
+import type {
+  AuthUser,
+  OwnerRestaurantSettings,
+  RestaurantTable,
+} from "../lib/api"
 
 import { TablesGridSkeleton } from "../components/page-skeletons"
 
 type OwnerTablesPageProps = {
   user: AuthUser
   onLogout: () => void
+}
+
+const createQrFileName = (tableName: string) => {
+  const slug = tableName
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+
+  return `foodly-${slug || "table"}-qr.pdf`
 }
 
 export function OwnerTablesPage({ user, onLogout }: OwnerTablesPageProps) {
@@ -47,14 +68,21 @@ export function OwnerTablesPage({ user, onLogout }: OwnerTablesPageProps) {
   const [submitting, setSubmitting] = useState(false)
   const [updatingId, setUpdatingId] = useState("")
   const [copiedId, setCopiedId] = useState("")
+  const [downloadingId, setDownloadingId] = useState("")
   const [error, setError] = useState("")
   const [disableTarget, setDisableTarget] = useState<RestaurantTable | null>(
     null
   )
+  const [restaurant, setRestaurant] = useState<OwnerRestaurantSettings | null>(
+    null
+  )
 
   useEffect(() => {
-    void getTables()
-      .then(setTables)
+    void Promise.all([getTables(), getRestaurantSettings()])
+      .then(([loadedTables, loadedRestaurant]) => {
+        setTables(loadedTables)
+        setRestaurant(loadedRestaurant)
+      })
       .catch((requestError) => {
         setError(
           requestError instanceof Error
@@ -198,31 +226,138 @@ export function OwnerTablesPage({ user, onLogout }: OwnerTablesPageProps) {
     }
   }
 
-  const downloadQrCode = (table: RestaurantTable) => {
-    const svg = document.getElementById(`qr-${table.id}`)
+  const downloadQrPdf = async (table: RestaurantTable) => {
+    if (downloadingId) return
 
-    if (!svg) {
-      toast.error("Could not find the QR code")
-      return
+    setDownloadingId(table.id)
+
+    try {
+      const qrDataUrl = await QRCode.toDataURL(table.menuUrl, {
+        width: 900,
+        margin: 2,
+        color: {
+          dark: "#111111",
+          light: "#ffffff",
+        },
+      })
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: [105, 148],
+      })
+
+      const displayRestaurantName =
+        restaurantName.length > 24
+          ? `${restaurantName.slice(0, 24).trim()}...`
+          : restaurantName
+
+      // Background
+      pdf.setFillColor("#ef1428")
+      pdf.rect(0, 0, 105, 148, "F")
+
+      // Decorative shapes
+      pdf.setFillColor("#ffffff")
+      pdf.circle(105, 0, 38, "F")
+      pdf.circle(0, 148, 34, "F")
+
+      pdf.setFillColor("#f43f4f")
+      pdf.circle(16, 116, 30, "F")
+      pdf.circle(94, 41, 22, "F")
+
+      // Main white card
+      pdf.setFillColor("#ffffff")
+      pdf.roundedRect(9, 10, 87, 128, 8, 8, "F")
+
+      // Restaurant pill
+      pdf.setFillColor("#111111")
+      pdf.roundedRect(16, 18, 73, 13, 6.5, 6.5, "F")
+
+      pdf.setFont("helvetica", "bold")
+      pdf.setFontSize(8.8)
+      pdf.setTextColor("#ffffff")
+      pdf.text(displayRestaurantName.toUpperCase(), 52.5, 26.2, {
+        align: "center",
+      })
+
+      // Title
+      pdf.setTextColor("#111111")
+      pdf.setFontSize(20)
+      pdf.text("FOOD MENU", 52.5, 43, { align: "center" })
+
+      // Scan pill
+      pdf.setFillColor("#ef1428")
+      pdf.roundedRect(26, 49, 53, 11, 5.5, 5.5, "F")
+
+      pdf.setTextColor("#ffffff")
+      pdf.setFontSize(10.5)
+      pdf.text("SCAN HERE", 52.5, 56.4, { align: "center" })
+
+      // Table pill
+      pdf.setFillColor("#fff0f1")
+      pdf.roundedRect(28, 64, 49, 9.5, 4.75, 4.75, "F")
+
+      pdf.setTextColor("#ef1428")
+      pdf.setFontSize(9.5)
+      pdf.text(table.name.toUpperCase(), 52.5, 70.4, { align: "center" })
+
+      // QR frame
+      pdf.setFillColor("#ffffff")
+      pdf.setDrawColor("#ef1428")
+      pdf.setLineWidth(1.2)
+      pdf.roundedRect(27, 78, 51, 51, 6.5, 6.5, "FD")
+
+      pdf.addImage(qrDataUrl, "PNG", 31, 82, 43, 43)
+
+      // Decorative QR corner marks
+      pdf.setDrawColor("#111111")
+      pdf.setLineWidth(1)
+
+      pdf.line(31, 81, 38, 81)
+      pdf.line(31, 81, 31, 88)
+
+      pdf.line(74, 81, 67, 81)
+      pdf.line(74, 81, 74, 88)
+
+      pdf.line(31, 126, 38, 126)
+      pdf.line(31, 126, 31, 119)
+
+      pdf.line(74, 126, 67, 126)
+      pdf.line(74, 126, 74, 119)
+
+      // Footer instruction
+      pdf.setFont("helvetica", "normal")
+      pdf.setFontSize(6.4)
+      pdf.setTextColor("#525252")
+
+      const instructionLines = pdf.splitTextToSize(
+        "Scan with your phone camera to view the menu and send your order to a waiter.",
+        62
+      )
+
+      pdf.text(instructionLines, 52.5, 134, {
+        align: "center",
+      })
+
+      // Footer
+      pdf.setFont("helvetica", "bold")
+      pdf.setFontSize(7)
+      pdf.setTextColor("#111111")
+      pdf.text("Powered by FOODLY", 52.5, 143, { align: "center" })
+
+      pdf.save(createQrFileName(table.name))
+      toast.success(`${table.name} print-ready QR downloaded`)
+    } catch {
+      const message = "Could not create the QR PDF"
+      setError(message)
+      toast.error(message)
+    } finally {
+      setDownloadingId("")
     }
-
-    const content = new XMLSerializer().serializeToString(svg)
-    const blob = new Blob([content], {
-      type: "image/svg+xml;charset=utf-8",
-    })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement("a")
-
-    link.href = url
-    link.download = `${table.name.replaceAll(" ", "-")}-qr.svg`
-    link.click()
-
-    URL.revokeObjectURL(url)
-    toast.success(`${table.name} QR code downloaded`)
   }
 
   const activeTables = tables.filter((table) => table.active).length
   const inactiveTables = tables.length - activeTables
+  const restaurantName = restaurant?.name || "Restaurant"
 
   return (
     <OwnerShell
@@ -263,8 +398,8 @@ export function OwnerTablesPage({ user, onLogout }: OwnerTablesPageProps) {
           <p className="mt-3 font-bold">QR ordering</p>
 
           <p className="mt-1 text-xs leading-5 text-neutral-500">
-            Print or share a table QR code so customers can browse the menu and
-            submit selections.
+            Download A6 print-ready QR cards for each table so customers can
+            browse the menu and submit selections.
           </p>
         </div>
       }
@@ -392,8 +527,8 @@ export function OwnerTablesPage({ user, onLogout }: OwnerTablesPageProps) {
             <h2 className="text-xl font-black">Table management</h2>
 
             <p className="mt-1 text-sm text-neutral-400">
-              Rename tables, copy menu links, download QR codes, and control
-              customer access.
+              Rename tables, copy menu links, download print-ready QR cards, and
+              control customer access.
             </p>
           </div>
         </div>
@@ -554,10 +689,13 @@ export function OwnerTablesPage({ user, onLogout }: OwnerTablesPageProps) {
                     className="min-w-0 rounded-xl"
                     size="sm"
                     variant="outline"
-                    onClick={() => downloadQrCode(table)}
+                    disabled={downloadingId === table.id}
+                    onClick={() => void downloadQrPdf(table)}
                   >
                     <Download className="size-3.5 shrink-0" />
-                    <span className="truncate">Download</span>
+                    <span className="truncate">
+                      {downloadingId === table.id ? "Preparing..." : "PDF QR"}
+                    </span>
                   </Button>
 
                   <Button
