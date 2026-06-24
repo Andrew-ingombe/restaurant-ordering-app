@@ -7,7 +7,9 @@ import {
   ChefHat,
   Clock3,
   CookingPot,
+  KeyRound,
   LogOut,
+  Menu,
   PackageCheck,
   RefreshCw,
   UserRound,
@@ -16,6 +18,14 @@ import {
 
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@workspace/ui/components/sheet"
 
 import { getKitchenOrders, updateKitchenOrderStatus } from "../lib/api"
 import type { AuthUser, DraftOrder, KitchenStatus } from "../lib/api"
@@ -209,7 +219,7 @@ function KitchenOrderCard({
 
         {nextStatus && action ? (
           <Button
-            className="mt-4 h-11 w-full rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
+            className="mt-4 h-11 w-full cursor-pointer rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
             disabled={updating}
             onClick={() => onAdvance(order._id, nextStatus)}
           >
@@ -239,6 +249,7 @@ export function KitchenPage({ user, onLogout }: KitchenPageProps) {
   const [updatingId, setUpdatingId] = useState("")
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState("")
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [, setClock] = useState(Date.now())
   const orderStatusesRef = useRef(new Map<string, string>())
 
@@ -405,7 +416,6 @@ export function KitchenPage({ user, onLogout }: KitchenPageProps) {
     setUpdatingId(orderId)
     setError("")
 
-    // Prevent the matching socket event from producing a duplicate toast.
     orderStatusesRef.current.set(orderId, status)
 
     try {
@@ -453,32 +463,48 @@ export function KitchenPage({ user, onLogout }: KitchenPageProps) {
     }
   }
 
+  const userInitial = user.name.trim().charAt(0).toUpperCase() || "K"
+
+  const closeMobileMenu = () => setMobileMenuOpen(false)
+
+  const handleMobilePassword = () => {
+    closeMobileMenu()
+    navigate("/account/password")
+  }
+
+  const handleMobileLogout = () => {
+    closeMobileMenu()
+    onLogout()
+  }
+
   return (
-    <main className="min-h-svh">
-      <div className="mx-auto min-h-[calc(100svh-24px)] max-w-[1800px] overflow-hidden rounded-[28px] bg-[#f5f5f6] md:min-h-[calc(100svh-40px)]">
-        <header className="border-b border-black/5 bg-white/90 px-4 py-4 backdrop-blur md:px-7">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="flex size-12 items-center justify-center rounded-2xl bg-[#ef1428] text-white">
+    <main className="h-svh overflow-hidden bg-[#f5f5f6]">
+      <div className="mx-auto flex h-full max-w-[1800px] flex-col overflow-hidden">
+        <header className="z-20 shrink-0 border-b border-black/5 bg-white/95 px-4 py-4 backdrop-blur md:px-7">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex min-w-0 items-center gap-3 md:gap-4">
+              <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-[#ef1428] text-white md:size-12">
                 <ChefHat className="size-6" />
               </div>
 
-              <div>
-                <p className="text-xs font-semibold tracking-[0.2em] text-[#ef1428] uppercase">
+              <div className="min-w-0">
+                <p className="truncate text-[10px] font-semibold tracking-[0.18em] text-[#ef1428] uppercase sm:text-xs sm:tracking-[0.2em]">
                   Live kitchen
                 </p>
-                <h1 className="text-2xl font-black tracking-tight">
+
+                <h1 className="truncate text-xl font-black tracking-tight md:text-2xl">
                   Kitchen board
                 </h1>
-                <p className="text-sm text-neutral-400">
+
+                <p className="hidden truncate text-sm text-neutral-400 sm:block">
                   Signed in as {user.name}
                 </p>
               </div>
             </div>
 
-            <div className="flex flex-wrap gap-2">
+            <div className="hidden flex-wrap gap-2 xl:flex">
               <Button
-                className="h-11 rounded-xl"
+                className="h-11 cursor-pointer rounded-xl"
                 variant="outline"
                 disabled={refreshing}
                 onClick={() => void loadOrders(true)}
@@ -490,15 +516,16 @@ export function KitchenPage({ user, onLogout }: KitchenPageProps) {
               </Button>
 
               <Button
-                className="h-11 rounded-xl"
+                className="h-11 cursor-pointer rounded-xl"
                 variant="outline"
                 onClick={() => navigate("/account/password")}
               >
+                <KeyRound className="size-4" />
                 Change password
               </Button>
 
               <Button
-                className="h-11 rounded-xl"
+                className="h-11 cursor-pointer rounded-xl"
                 variant="outline"
                 onClick={onLogout}
               >
@@ -506,10 +533,111 @@ export function KitchenPage({ user, onLogout }: KitchenPageProps) {
                 Sign out
               </Button>
             </div>
+
+            <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+              <SheetTrigger asChild>
+                <Button
+                  className="size-11 shrink-0 cursor-pointer rounded-xl xl:hidden"
+                  size="icon"
+                  variant="outline"
+                  aria-label="Open kitchen navigation"
+                >
+                  <Menu className="size-5" />
+                </Button>
+              </SheetTrigger>
+
+              <SheetContent
+                side="right"
+                className="flex h-full w-[88vw] max-w-md flex-col border-0 bg-white p-0"
+              >
+                <SheetHeader className="border-b border-neutral-100 px-6 py-6 text-left">
+                  <div className="flex items-center gap-4 pr-10">
+                    <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-[#ef1428] text-white">
+                      <ChefHat className="size-7" />
+                    </div>
+
+                    <div className="min-w-0">
+                      <SheetTitle className="truncate text-2xl font-black">
+                        Kitchen board
+                      </SheetTitle>
+
+                      <SheetDescription className="mt-1 truncate text-sm text-neutral-400">
+                        Live preparation workspace
+                      </SheetDescription>
+                    </div>
+                  </div>
+                </SheetHeader>
+
+                <nav className="flex-1 space-y-2 overflow-y-auto px-5 py-6">
+                  <Button
+                    className="h-14 w-full cursor-pointer justify-start rounded-2xl bg-neutral-950 px-5 text-base font-bold text-white hover:bg-neutral-800"
+                    variant="ghost"
+                    onClick={closeMobileMenu}
+                  >
+                    <ChefHat className="mr-2 size-5" />
+                    Kitchen board
+                  </Button>
+
+                  <Button
+                    className="h-14 w-full cursor-pointer justify-start rounded-2xl px-5 text-base font-bold text-neutral-500 hover:bg-neutral-100 hover:text-neutral-950"
+                    variant="ghost"
+                    disabled={refreshing}
+                    onClick={() => {
+                      closeMobileMenu()
+                      void loadOrders(true)
+                    }}
+                  >
+                    <RefreshCw
+                      className={`mr-2 size-5 ${
+                        refreshing ? "animate-spin" : ""
+                      }`}
+                    />
+                    Refresh board
+                  </Button>
+                </nav>
+
+                <div className="border-t border-neutral-100 p-5">
+                  <div className="rounded-[24px] bg-neutral-100 p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-neutral-950 text-lg font-black text-white">
+                        {userInitial}
+                      </div>
+
+                      <div className="min-w-0">
+                        <p className="truncate font-black">{user.name}</p>
+                        <p className="truncate text-sm text-neutral-400">
+                          Kitchen account
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 space-y-2">
+                      <Button
+                        className="h-12 w-full cursor-pointer justify-center rounded-xl bg-white"
+                        variant="outline"
+                        onClick={handleMobilePassword}
+                      >
+                        <KeyRound className="size-4" />
+                        Change password
+                      </Button>
+
+                      <Button
+                        className="h-12 w-full cursor-pointer justify-center rounded-xl bg-white"
+                        variant="outline"
+                        onClick={handleMobileLogout}
+                      >
+                        <LogOut className="size-4" />
+                        Sign out
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </SheetContent>
+            </Sheet>
           </div>
         </header>
 
-        <div className="p-4 md:p-6">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 md:p-6">
           <section className="mb-5 rounded-[24px] bg-white p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex flex-wrap items-center gap-2">
