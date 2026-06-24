@@ -665,6 +665,12 @@ export const submitCustomerOrder = async (details: {
   return data
 }
 
+export const getCustomerOrderRequestCount = async (): Promise<number> => {
+  const data = await authenticatedRequest("/orders/customer-requests/count")
+
+  return data.count
+}
+
 export const getCustomerOrderRequests = async (): Promise<DraftOrder[]> => {
   const data = await authenticatedRequest("/orders/customer-requests")
 

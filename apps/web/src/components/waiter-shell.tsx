@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react"
+import { useEffect, useState, type ReactNode } from "react"
 import { useNavigate } from "react-router-dom"
 import {
   BellRing,
@@ -20,7 +20,9 @@ import {
   SheetTrigger,
 } from "@workspace/ui/components/sheet"
 
-import type { AuthUser } from "../lib/api"
+import type { AuthUser, DraftOrder } from "../lib/api"
+import { getCustomerOrderRequestCount } from "../lib/api"
+import { getSocket } from "../lib/socket"
 
 type WaiterShellActive = "new-order" | "orders" | "requests"
 
@@ -64,6 +66,8 @@ const navigationItems: {
   },
 ]
 
+const formatQrCount = (count: number) => (count > 9 ? "9+" : String(count))
+
 export function WaiterShell({
   user,
   onLogout,
@@ -79,6 +83,50 @@ export function WaiterShell({
 }: WaiterShellProps) {
   const navigate = useNavigate()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [qrRequestCount, setQrRequestCount] = useState(0)
+  const [qrCountPulse, setQrCountPulse] = useState(false)
+
+  const loadQrRequestCount = async () => {
+    try {
+      setQrRequestCount(await getCustomerOrderRequestCount())
+    } catch {
+      setQrRequestCount(0)
+    }
+  }
+
+  useEffect(() => {
+    void loadQrRequestCount()
+  }, [])
+
+  useEffect(() => {
+    const socket = getSocket()
+
+    if (!socket) return
+
+    const handleCustomerRequest = () => {
+      setQrRequestCount((current) => current + 1)
+      setQrCountPulse(true)
+      window.setTimeout(() => setQrCountPulse(false), 1200)
+
+      void loadQrRequestCount()
+    }
+
+    const handleCustomerClaimed = (order: DraftOrder) => {
+      setQrRequestCount((current) => Math.max(0, current - 1))
+
+      if (order) {
+        void loadQrRequestCount()
+      }
+    }
+
+    socket.on("order:customer-requested", handleCustomerRequest)
+    socket.on("order:customer-claimed", handleCustomerClaimed)
+
+    return () => {
+      socket.off("order:customer-requested", handleCustomerRequest)
+      socket.off("order:customer-claimed", handleCustomerClaimed)
+    }
+  }, [])
 
   const navigateFromMenu = (path: string) => {
     setMobileMenuOpen(false)
@@ -91,6 +139,28 @@ export function WaiterShell({
   }
 
   const userInitial = user.name.trim().charAt(0).toUpperCase() || "W"
+
+  const renderQrBadge = (isActive: boolean, mobile = false) => {
+    if (qrRequestCount <= 0) return null
+
+    return (
+      <span
+        className={`ml-auto flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-[11px] font-black ${
+          qrCountPulse ? "animate-pulse" : ""
+        } ${
+          mobile
+            ? isActive
+              ? "bg-white/20 text-white"
+              : "bg-[#ef1428] text-white"
+            : isActive
+              ? "bg-white/20 text-white"
+              : "bg-[#ef1428] text-white"
+        }`}
+      >
+        {formatQrCount(qrRequestCount)}
+      </span>
+    )
+  }
 
   return (
     <main className="h-svh overflow-hidden bg-[#f5f5f6]">
@@ -121,11 +191,12 @@ export function WaiterShell({
               {navigationItems.map((item) => {
                 const Icon = item.icon
                 const isActive = active === item.active
+                const isQrRequests = item.active === "requests"
 
                 return (
                   <Button
                     key={item.path}
-                    className={`h-11 rounded-xl ${
+                    className={`h-11 cursor-pointer rounded-xl ${
                       isActive
                         ? "bg-[#ef1428] text-white hover:bg-[#d91023]"
                         : ""
@@ -135,12 +206,13 @@ export function WaiterShell({
                   >
                     <Icon className="size-4" />
                     {item.label}
+                    {isQrRequests && renderQrBadge(isActive)}
                   </Button>
                 )
               })}
 
               <Button
-                className="h-11 rounded-xl"
+                className="h-11 cursor-pointer rounded-xl"
                 variant="outline"
                 onClick={() => navigate("/account/password")}
               >
@@ -149,7 +221,7 @@ export function WaiterShell({
               </Button>
 
               <Button
-                className="h-11 rounded-xl"
+                className="h-11 cursor-pointer rounded-xl"
                 variant="outline"
                 onClick={onLogout}
               >
@@ -161,7 +233,7 @@ export function WaiterShell({
             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
               <SheetTrigger asChild>
                 <Button
-                  className="size-11 shrink-0 rounded-xl xl:hidden"
+                  className="size-11 shrink-0 cursor-pointer rounded-xl xl:hidden"
                   size="icon"
                   variant="outline"
                   aria-label="Open waiter navigation"
@@ -196,11 +268,12 @@ export function WaiterShell({
                   {navigationItems.map((item) => {
                     const Icon = item.icon
                     const isActive = active === item.active
+                    const isQrRequests = item.active === "requests"
 
                     return (
                       <Button
                         key={item.path}
-                        className={`h-14 w-full justify-start rounded-2xl px-5 text-base font-bold ${
+                        className={`h-14 w-full cursor-pointer justify-start rounded-2xl px-5 text-base font-bold ${
                           isActive
                             ? "bg-neutral-950 text-white hover:bg-neutral-800"
                             : "text-neutral-500 hover:bg-neutral-100 hover:text-neutral-950"
@@ -210,6 +283,7 @@ export function WaiterShell({
                       >
                         <Icon className="mr-2 size-5" />
                         {item.label}
+                        {isQrRequests && renderQrBadge(isActive, true)}
                       </Button>
                     )
                   })}
@@ -232,7 +306,7 @@ export function WaiterShell({
 
                     <div className="mt-4 space-y-2">
                       <Button
-                        className="h-12 w-full justify-center rounded-xl bg-white"
+                        className="h-12 w-full cursor-pointer justify-center rounded-xl bg-white"
                         variant="outline"
                         onClick={() => navigateFromMenu("/account/password")}
                       >
@@ -241,7 +315,7 @@ export function WaiterShell({
                       </Button>
 
                       <Button
-                        className="h-12 w-full justify-center rounded-xl bg-white"
+                        className="h-12 w-full cursor-pointer justify-center rounded-xl bg-white"
                         variant="outline"
                         onClick={handleLogout}
                       >

@@ -605,6 +605,30 @@ orderRouter.get(
   })
 )
 
+orderRouter.get(
+  "/customer-requests/count",
+  asyncHandler(async (request, response) => {
+    const authenticatedRequest = request as AuthenticatedRequest
+    const actor = await getWaiterActor(authenticatedRequest)
+
+    if (!actor) {
+      response.status(401).json({
+        message: "Waiter account is unavailable",
+      })
+      return
+    }
+
+    const count = await Order.countDocuments({
+      restaurant: actor.restaurantId,
+      source: "customer_qr",
+      status: "awaiting_waiter",
+      $or: [{ waiter: { $exists: false } }, { waiter: null }],
+    })
+
+    response.json({ count })
+  })
+)
+
 orderRouter.patch(
   "/customer-requests/:id/claim",
   asyncHandler(async (request, response) => {
@@ -681,6 +705,10 @@ orderRouter.patch(
       order,
       userIds: [actor.userId, assignedWaiter.waiterId],
     })
+
+    getSocketServer()
+      .to(`restaurant:${actor.restaurantId}:role:waiter`)
+      .emit("order:customer-claimed", order.toObject())
 
     response.json({
       message: "Customer request claimed",
