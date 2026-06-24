@@ -15,6 +15,8 @@ import {
   UtensilsCrossed,
   KeyRound,
   MonitorSmartphone,
+  Eye,
+  EyeOff,
 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -81,6 +83,11 @@ export function OwnerPage({ user, onLogout }: OwnerPageProps) {
   const [confirmTemporaryPassword, setConfirmTemporaryPassword] = useState("")
   const [resettingPassword, setResettingPassword] = useState(false)
 
+  const [showStaffPassword, setShowStaffPassword] = useState(false)
+  const [showTemporaryPassword, setShowTemporaryPassword] = useState(false)
+  const [showConfirmTemporaryPassword, setShowConfirmTemporaryPassword] =
+    useState(false)
+
   const loadStaff = async () => {
     try {
       setError("")
@@ -116,6 +123,7 @@ export function OwnerPage({ user, onLogout }: OwnerPageProps) {
     setError("")
     resetForm()
     setStaffDialogOpen(true)
+    setShowStaffPassword(false)
   }
 
   const openEditDialog = (staffMember: StaffUser) => {
@@ -146,6 +154,8 @@ export function OwnerPage({ user, onLogout }: OwnerPageProps) {
     setTemporaryPassword("")
     setConfirmTemporaryPassword("")
     setPasswordTarget(staffMember)
+    setShowTemporaryPassword(false)
+    setShowConfirmTemporaryPassword(false)
   }
 
   const closePasswordResetDialog = () => {
@@ -154,6 +164,8 @@ export function OwnerPage({ user, onLogout }: OwnerPageProps) {
     setPasswordTarget(null)
     setTemporaryPassword("")
     setConfirmTemporaryPassword("")
+    setShowTemporaryPassword(false)
+    setShowConfirmTemporaryPassword(false)
   }
 
   const handlePasswordReset = async (event: FormEvent) => {
@@ -453,17 +465,38 @@ export function OwnerPage({ user, onLogout }: OwnerPageProps) {
               {!editingStaff && (
                 <div className="space-y-2">
                   <Label htmlFor="staff-password">Temporary password</Label>
-                  <Input
-                    id="staff-password"
-                    className="h-12 rounded-xl border-0 bg-neutral-100 px-4 shadow-none"
-                    type="password"
-                    value={password}
-                    onChange={(event) => setPassword(event.target.value)}
-                    placeholder="Minimum 8 characters"
-                    required
-                    minLength={8}
-                    disabled={submitting}
-                  />
+
+                  <div className="relative">
+                    <Input
+                      id="staff-password"
+                      className="h-12 rounded-xl border-0 bg-neutral-100 px-4 pr-12 shadow-none"
+                      type={showStaffPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                      placeholder="Minimum 8 characters"
+                      required
+                      minLength={8}
+                      disabled={submitting}
+                    />
+
+                    <button
+                      type="button"
+                      className="absolute top-1/2 right-3 flex size-8 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full text-neutral-400 transition hover:bg-white hover:text-neutral-950"
+                      onClick={() =>
+                        setShowStaffPassword((current) => !current)
+                      }
+                      aria-label={
+                        showStaffPassword ? "Hide password" : "Show password"
+                      }
+                      disabled={submitting}
+                    >
+                      {showStaffPassword ? (
+                        <EyeOff className="size-4" />
+                      ) : (
+                        <Eye className="size-4" />
+                      )}
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -648,17 +681,39 @@ export function OwnerPage({ user, onLogout }: OwnerPageProps) {
               <div className="space-y-2">
                 <Label htmlFor="temporary-password">Temporary password</Label>
 
-                <Input
-                  id="temporary-password"
-                  className="h-12 rounded-xl border-0 bg-neutral-100 px-4 shadow-none"
-                  type="password"
-                  value={temporaryPassword}
-                  onChange={(event) => setTemporaryPassword(event.target.value)}
-                  minLength={8}
-                  required
-                  disabled={resettingPassword}
-                  autoComplete="new-password"
-                />
+                <div className="relative">
+                  <Input
+                    id="temporary-password"
+                    className="h-12 rounded-xl border-0 bg-neutral-100 pr-12 pl-4 shadow-none"
+                    type={showTemporaryPassword ? "text" : "password"}
+                    value={temporaryPassword}
+                    onChange={(event) =>
+                      setTemporaryPassword(event.target.value)
+                    }
+                    minLength={8}
+                    required
+                    disabled={resettingPassword}
+                    autoComplete="new-password"
+                  />
+
+                  <button
+                    type="button"
+                    className="absolute top-1/2 right-3 flex size-8 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full text-neutral-400 transition hover:bg-white hover:text-neutral-950"
+                    onClick={() =>
+                      setShowTemporaryPassword((current) => !current)
+                    }
+                    aria-label={
+                      showTemporaryPassword ? "Hide password" : "Show password"
+                    }
+                    disabled={resettingPassword}
+                  >
+                    {showTemporaryPassword ? (
+                      <EyeOff className="size-4" />
+                    ) : (
+                      <Eye className="size-4" />
+                    )}
+                  </button>
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -666,19 +721,41 @@ export function OwnerPage({ user, onLogout }: OwnerPageProps) {
                   Confirm temporary password
                 </Label>
 
-                <Input
-                  id="confirm-temporary-password"
-                  className="h-12 rounded-xl border-0 bg-neutral-100 px-4 shadow-none"
-                  type="password"
-                  value={confirmTemporaryPassword}
-                  onChange={(event) =>
-                    setConfirmTemporaryPassword(event.target.value)
-                  }
-                  minLength={8}
-                  required
-                  disabled={resettingPassword}
-                  autoComplete="new-password"
-                />
+                <div className="relative">
+                  <Input
+                    id="confirm-temporary-password"
+                    className="h-12 rounded-xl border-0 bg-neutral-100 pr-12 pl-4 shadow-none"
+                    type={showConfirmTemporaryPassword ? "text" : "password"}
+                    value={confirmTemporaryPassword}
+                    onChange={(event) =>
+                      setConfirmTemporaryPassword(event.target.value)
+                    }
+                    minLength={8}
+                    required
+                    disabled={resettingPassword}
+                    autoComplete="new-password"
+                  />
+
+                  <button
+                    type="button"
+                    className="absolute top-1/2 right-3 flex size-8 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full text-neutral-400 transition hover:bg-white hover:text-neutral-950"
+                    onClick={() =>
+                      setShowConfirmTemporaryPassword((current) => !current)
+                    }
+                    aria-label={
+                      showConfirmTemporaryPassword
+                        ? "Hide password"
+                        : "Show password"
+                    }
+                    disabled={resettingPassword}
+                  >
+                    {showConfirmTemporaryPassword ? (
+                      <EyeOff className="size-4" />
+                    ) : (
+                      <Eye className="size-4" />
+                    )}
+                  </button>
+                </div>
               </div>
 
               {error && passwordTarget && (

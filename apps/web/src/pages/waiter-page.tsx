@@ -745,7 +745,7 @@ export function WaiterPage({ user, onLogout }: WaiterPageProps) {
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-1 pb-20 xl:pb-0">
-          <div className="grid gap-4 pb-1 sm:grid-cols-2 2xl:grid-cols-3">
+          <div className="grid gap-4 pt-2.5 pb-1 sm:grid-cols-2 2xl:grid-cols-3">
             {visibleItems.map((item) => {
               const quantity = cart[item._id]?.quantity || 0
 

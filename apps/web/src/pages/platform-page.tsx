@@ -16,6 +16,8 @@ import {
   ShieldCheck,
   WalletCards,
   XCircle,
+  Eye,
+  EyeOff,
 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -242,6 +244,10 @@ export function PlatformPage({ user, onLogout }: PlatformPageProps) {
   const [temporaryPassword, setTemporaryPassword] = useState("")
   const [confirmTemporaryPassword, setConfirmTemporaryPassword] = useState("")
 
+  const [showTemporaryPassword, setShowTemporaryPassword] = useState(false)
+  const [showConfirmTemporaryPassword, setShowConfirmTemporaryPassword] =
+    useState(false)
+
   const [loading, setLoading] = useState(true)
   const [savingPayment, setSavingPayment] = useState(false)
   const [savingSubscription, setSavingSubscription] = useState(false)
@@ -321,6 +327,8 @@ export function PlatformPage({ user, onLogout }: PlatformPageProps) {
     setConfirmTemporaryPassword("")
     setError("")
     setMessage("")
+    setShowTemporaryPassword(false)
+    setShowConfirmTemporaryPassword(false)
   }
 
   const handleSavePaymentSettings = async (event: FormEvent) => {
@@ -699,33 +707,83 @@ export function PlatformPage({ user, onLogout }: PlatformPageProps) {
 
           <form className="space-y-4" onSubmit={handleOwnerPasswordReset}>
             <div className="space-y-2">
-              <Label>Temporary password</Label>
-              <Input
-                className="h-12 rounded-xl border-0 bg-neutral-100 shadow-none"
-                type="password"
-                value={temporaryPassword}
-                onChange={(event) => setTemporaryPassword(event.target.value)}
-                minLength={8}
-                required
-                disabled={resettingOwnerPassword}
-                autoComplete="new-password"
-              />
+              <Label htmlFor="owner-temporary-password">
+                Temporary password
+              </Label>
+
+              <div className="relative">
+                <Input
+                  id="owner-temporary-password"
+                  className="h-12 rounded-xl border-0 bg-neutral-100 pr-12 pl-4 shadow-none"
+                  type={showTemporaryPassword ? "text" : "password"}
+                  value={temporaryPassword}
+                  onChange={(event) => setTemporaryPassword(event.target.value)}
+                  minLength={8}
+                  required
+                  disabled={resettingOwnerPassword}
+                  autoComplete="new-password"
+                />
+
+                <button
+                  type="button"
+                  className="absolute top-1/2 right-3 flex size-8 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full text-neutral-400 transition hover:bg-white hover:text-neutral-950"
+                  onClick={() =>
+                    setShowTemporaryPassword((current) => !current)
+                  }
+                  aria-label={
+                    showTemporaryPassword ? "Hide password" : "Show password"
+                  }
+                  disabled={resettingOwnerPassword}
+                >
+                  {showTemporaryPassword ? (
+                    <EyeOff className="size-4" />
+                  ) : (
+                    <Eye className="size-4" />
+                  )}
+                </button>
+              </div>
             </div>
 
             <div className="space-y-2">
-              <Label>Confirm temporary password</Label>
-              <Input
-                className="h-12 rounded-xl border-0 bg-neutral-100 shadow-none"
-                type="password"
-                value={confirmTemporaryPassword}
-                onChange={(event) =>
-                  setConfirmTemporaryPassword(event.target.value)
-                }
-                minLength={8}
-                required
-                disabled={resettingOwnerPassword}
-                autoComplete="new-password"
-              />
+              <Label htmlFor="owner-confirm-temporary-password">
+                Confirm temporary password
+              </Label>
+
+              <div className="relative">
+                <Input
+                  id="owner-confirm-temporary-password"
+                  className="h-12 rounded-xl border-0 bg-neutral-100 pr-12 pl-4 shadow-none"
+                  type={showConfirmTemporaryPassword ? "text" : "password"}
+                  value={confirmTemporaryPassword}
+                  onChange={(event) =>
+                    setConfirmTemporaryPassword(event.target.value)
+                  }
+                  minLength={8}
+                  required
+                  disabled={resettingOwnerPassword}
+                  autoComplete="new-password"
+                />
+
+                <button
+                  type="button"
+                  className="absolute top-1/2 right-3 flex size-8 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full text-neutral-400 transition hover:bg-white hover:text-neutral-950"
+                  onClick={() =>
+                    setShowConfirmTemporaryPassword((current) => !current)
+                  }
+                  aria-label={
+                    showConfirmTemporaryPassword
+                      ? "Hide password"
+                      : "Show password"
+                  }
+                  disabled={resettingOwnerPassword}
+                >
+                  {showConfirmTemporaryPassword ? (
+                    <EyeOff className="size-4" />
+                  ) : (
+                    <Eye className="size-4" />
+                  )}
+                </button>
+              </div>
             </div>
 
             <Button

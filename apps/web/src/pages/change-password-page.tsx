@@ -6,6 +6,8 @@ import {
   LockKeyhole,
   RefreshCw,
   ShieldCheck,
+  Eye,
+  EyeOff,
 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -34,8 +36,18 @@ export function ChangePasswordPage({
   const [confirmPassword, setConfirmPassword] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState("")
+  const [visiblePasswords, setVisiblePasswords] = useState<
+    Record<string, boolean>
+  >({})
 
   const requiredChange = Boolean(user.mustChangePassword)
+
+  const togglePasswordVisibility = (fieldId: string) => {
+    setVisiblePasswords((current) => ({
+      ...current,
+      [fieldId]: !current[fieldId],
+    }))
+  }
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -184,8 +196,8 @@ export function ChangePasswordPage({
 
                   <Input
                     id={field.id}
-                    className="h-12 rounded-xl border-0 bg-neutral-100 pl-11 shadow-none"
-                    type="password"
+                    className="h-12 rounded-xl border-0 bg-neutral-100 pr-12 pl-11 shadow-none"
+                    type={visiblePasswords[field.id] ? "text" : "password"}
                     autoComplete={
                       field.id === "current-password"
                         ? "current-password"
@@ -197,6 +209,24 @@ export function ChangePasswordPage({
                     required
                     disabled={submitting}
                   />
+
+                  <button
+                    type="button"
+                    className="absolute top-1/2 right-3 flex size-8 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full text-neutral-400 transition hover:bg-white hover:text-neutral-950"
+                    onClick={() => togglePasswordVisibility(field.id)}
+                    aria-label={
+                      visiblePasswords[field.id]
+                        ? "Hide password"
+                        : "Show password"
+                    }
+                    disabled={submitting}
+                  >
+                    {visiblePasswords[field.id] ? (
+                      <EyeOff className="size-4" />
+                    ) : (
+                      <Eye className="size-4" />
+                    )}
+                  </button>
                 </div>
               </div>
             ))}

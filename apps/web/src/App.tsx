@@ -52,6 +52,8 @@ import {
   CircleX,
   Info,
   TriangleAlert,
+  Eye,
+  EyeOff,
 } from "lucide-react"
 
 const getStoredUser = (): AuthUser | null => {
@@ -75,6 +77,7 @@ function LoginPage({ onLogin }: { onLogin: (user: AuthUser) => void }) {
   const navigate = useNavigate()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
 
@@ -221,8 +224,8 @@ function LoginPage({ onLogin }: { onLogin: (user: AuthUser) => void }) {
 
                 <Input
                   id="password"
-                  className="h-13 rounded-xl border-0 bg-white pl-11 shadow-none ring-1 ring-neutral-200 transition focus-visible:ring-2 focus-visible:ring-[#ef1428]"
-                  type="password"
+                  className="h-13 rounded-xl border-0 bg-white pr-12 pl-11 shadow-none ring-1 ring-neutral-200 transition focus-visible:ring-2 focus-visible:ring-[#ef1428]"
+                  type={showPassword ? "text" : "password"}
                   autoComplete="current-password"
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
@@ -230,6 +233,19 @@ function LoginPage({ onLogin }: { onLogin: (user: AuthUser) => void }) {
                   required
                   minLength={8}
                 />
+
+                <button
+                  type="button"
+                  className="absolute top-1/2 right-4 flex size-8 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full text-neutral-400 transition hover:bg-neutral-100 hover:text-neutral-950"
+                  onClick={() => setShowPassword((current) => !current)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? (
+                    <EyeOff className="size-4" />
+                  ) : (
+                    <Eye className="size-4" />
+                  )}
+                </button>
               </div>
             </div>
 
@@ -240,7 +256,7 @@ function LoginPage({ onLogin }: { onLogin: (user: AuthUser) => void }) {
             )}
 
             <Button
-              className="h-13 w-full rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
+              className="h-13 w-full cursor-pointer rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
               disabled={loading}
             >
               {loading ? (

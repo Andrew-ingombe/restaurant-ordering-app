@@ -513,212 +513,70 @@ export function OwnerDashboardPage({
         <DashboardPageSkeleton />
       ) : dashboard ? (
         <>
-          <section className="grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {summaryCards.map((card) => {
-              const Icon = card.icon
+          <section className="xl:sticky xl:top-0 xl:z-20 xl:-mx-6 xl:bg-[#f5f5f6]/95 xl:px-6 xl:pb-3 xl:backdrop-blur">
+            <div className="grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              {summaryCards.map((card) => {
+                const Icon = card.icon
 
-              return (
-                <div
-                  key={card.label}
-                  className={`min-w-0 overflow-hidden rounded-[22px] p-5 ${
-                    card.featured
-                      ? "bg-[#ef1428] text-white"
-                      : "bg-white text-neutral-950"
-                  }`}
-                >
-                  <div className="flex min-w-0 items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p
-                        className={`truncate text-sm ${
-                          card.featured ? "text-white/75" : "text-neutral-500"
+                return (
+                  <div
+                    key={card.label}
+                    className={`min-w-0 overflow-hidden rounded-[22px] p-5 ${
+                      card.featured
+                        ? "bg-[#ef1428] text-white"
+                        : "bg-white text-neutral-950"
+                    }`}
+                  >
+                    <div className="flex min-w-0 items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p
+                          className={`truncate text-sm ${
+                            card.featured ? "text-white/75" : "text-neutral-500"
+                          }`}
+                        >
+                          {card.label}
+                        </p>
+
+                        <p
+                          className={`mt-1 truncate text-xs ${
+                            card.featured ? "text-white/55" : "text-neutral-400"
+                          }`}
+                        >
+                          {card.helper}
+                        </p>
+                      </div>
+
+                      <div
+                        className={`flex size-9 shrink-0 items-center justify-center rounded-full ${
+                          card.featured ? "bg-white/15" : "bg-neutral-100"
                         }`}
                       >
-                        {card.label}
-                      </p>
-
-                      <p
-                        className={`mt-1 truncate text-xs ${
-                          card.featured ? "text-white/55" : "text-neutral-400"
-                        }`}
-                      >
-                        {card.helper}
-                      </p>
+                        <Icon className="size-4" />
+                      </div>
                     </div>
 
-                    <div
-                      className={`flex size-9 shrink-0 items-center justify-center rounded-full ${
-                        card.featured ? "bg-white/15" : "bg-neutral-100"
-                      }`}
-                    >
-                      <Icon className="size-4" />
-                    </div>
+                    <p className="mt-5 text-2xl font-black tracking-tight break-words">
+                      {card.value}
+                    </p>
                   </div>
-
-                  <p className="mt-5 text-2xl font-black tracking-tight break-words">
-                    {card.value}
-                  </p>
-                </div>
-              )
-            })}
-          </section>
-
-          <section className="grid min-w-0 gap-5 xl:grid-cols-[1.1fr_0.9fr]">
-            <div className="min-w-0 rounded-[24px] bg-white p-4 sm:p-5">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-xs font-semibold tracking-[0.16em] text-[#ef1428] uppercase">
-                    Operations
-                  </p>
-
-                  <h2 className="mt-1 text-lg font-black">
-                    Requires attention
-                  </h2>
-
-                  <p className="text-sm text-neutral-400">
-                    Issues that may need action from you or your staff
-                  </p>
-                </div>
-
-                <Badge
-                  className={`shrink-0 rounded-full border-0 ${
-                    totalAttentionItems > 0
-                      ? "bg-red-50 text-red-700"
-                      : "bg-emerald-50 text-emerald-700"
-                  }`}
-                >
-                  {totalAttentionItems > 0
-                    ? `${totalAttentionItems} to review`
-                    : "All clear"}
-                </Badge>
-              </div>
-
-              <div className="mt-5 grid min-w-0 gap-3 sm:grid-cols-2">
-                {attentionItems.map((item) => {
-                  const Icon = item.icon
-
-                  return (
-                    <div
-                      key={item.label}
-                      className={`min-w-0 overflow-hidden rounded-2xl border p-4 ${
-                        item.needsAttention
-                          ? "border-red-100 bg-red-50/60"
-                          : "border-neutral-100 bg-neutral-50"
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        <div
-                          className={`flex size-10 shrink-0 items-center justify-center rounded-full ${
-                            item.needsAttention
-                              ? "bg-red-100 text-red-700"
-                              : "bg-white text-neutral-500"
-                          }`}
-                        >
-                          <Icon className="size-4" />
-                        </div>
-
-                        <span
-                          className={`text-2xl font-black ${
-                            item.needsAttention
-                              ? "text-red-700"
-                              : "text-neutral-950"
-                          }`}
-                        >
-                          {item.value}
-                        </span>
-                      </div>
-
-                      <p className="mt-4 font-bold">{item.label}</p>
-
-                      <p className="mt-1 text-xs leading-5 break-words text-neutral-500">
-                        {item.helper}
-                      </p>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-
-            <div className="min-w-0 overflow-hidden rounded-[24px] bg-white p-4 sm:p-5">
-              <div>
-                <p className="text-xs font-semibold tracking-[0.16em] text-[#ef1428] uppercase">
-                  Payments
-                </p>
-
-                <h2 className="mt-1 text-lg font-black">
-                  Sales by payment method
-                </h2>
-
-                <p className="text-sm text-neutral-400">
-                  Breakdown of the paid sales total above
-                </p>
-              </div>
-
-              <div className="mt-5 space-y-3">
-                {dashboard.paymentBreakdown.map((payment) => {
-                  const config = paymentMethodConfig[payment.method]
-                  const Icon = config.icon
-                  const percentage =
-                    totalPaymentSales > 0
-                      ? Math.round((payment.total / totalPaymentSales) * 100)
-                      : 0
-
-                  return (
-                    <div
-                      key={payment.method}
-                      className="rounded-2xl border border-neutral-100 p-3"
-                    >
-                      <div className="flex min-w-0 items-center gap-3">
-                        <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-neutral-700">
-                          <Icon className="size-4" />
-                        </div>
-
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <p className="truncate font-bold">
-                                {config.label}
-                              </p>
-
-                              <p className="text-xs text-neutral-400">
-                                {payment.count}{" "}
-                                {payment.count === 1 ? "payment" : "payments"}
-                              </p>
-                            </div>
-
-                            <div className="shrink-0 text-right">
-                              <p className="font-black">
-                                {formatPrice(payment.total)}
-                              </p>
-
-                              <p className="text-xs text-neutral-400">
-                                {percentage}%
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="mt-3 h-2 overflow-hidden rounded-full bg-neutral-100">
-                            <div
-                              className="h-full rounded-full bg-[#ef1428]"
-                              style={{ width: `${percentage}%` }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
+                )
+              })}
             </div>
           </section>
 
-          <section className="grid min-w-0 gap-5 xl:grid-cols-[0.85fr_1.15fr]">
+          <section className="grid min-w-0 gap-5 xl:grid-cols-[1.15fr_0.85fr]">
             <div className="min-w-0 rounded-[24px] bg-white p-4 sm:p-5">
               <div className="flex min-w-0 items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <h2 className="text-lg font-black">Live order flow</h2>
+                  <p className="text-xs font-semibold tracking-[0.16em] text-[#ef1428] uppercase">
+                    Live operations
+                  </p>
+
+                  <h2 className="mt-1 text-lg font-black">Live order flow</h2>
 
                   <p className="text-sm break-words text-neutral-400">
-                    Unpaid and paid active orders for {dashboard.date}
+                    Current movement across QR requests, kitchen, serving, and
+                    payment for {dashboard.date}
                   </p>
                 </div>
 
@@ -727,7 +585,7 @@ export function OwnerDashboardPage({
                 </Badge>
               </div>
 
-              <div className="mt-6 grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="mt-6 grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                 {liveFlowItems.map((item) => {
                   const Icon = item.icon
                   const isActive = item.count > 0
@@ -801,8 +659,164 @@ export function OwnerDashboardPage({
             </div>
 
             <div className="min-w-0 rounded-[24px] bg-white p-4 sm:p-5">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold tracking-[0.16em] text-[#ef1428] uppercase">
+                    Action queue
+                  </p>
+
+                  <h2 className="mt-1 text-lg font-black">
+                    Requires attention
+                  </h2>
+
+                  <p className="text-sm text-neutral-400">
+                    Issues that may need action from you or your staff
+                  </p>
+                </div>
+
+                <Badge
+                  className={`shrink-0 rounded-full border-0 ${
+                    totalAttentionItems > 0
+                      ? "bg-red-50 text-red-700"
+                      : "bg-emerald-50 text-emerald-700"
+                  }`}
+                >
+                  {totalAttentionItems > 0
+                    ? `${totalAttentionItems} to review`
+                    : "All clear"}
+                </Badge>
+              </div>
+
+              <div className="mt-5 grid min-w-0 gap-3">
+                {attentionItems.map((item) => {
+                  const Icon = item.icon
+
+                  return (
+                    <div
+                      key={item.label}
+                      className={`min-w-0 overflow-hidden rounded-2xl border p-4 ${
+                        item.needsAttention
+                          ? "border-red-100 bg-red-50/60"
+                          : "border-neutral-100 bg-neutral-50"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <div
+                            className={`flex size-10 shrink-0 items-center justify-center rounded-full ${
+                              item.needsAttention
+                                ? "bg-red-100 text-red-700"
+                                : "bg-white text-neutral-500"
+                            }`}
+                          >
+                            <Icon className="size-4" />
+                          </div>
+
+                          <div className="min-w-0">
+                            <p className="truncate font-bold">{item.label}</p>
+                            <p className="mt-1 text-xs leading-5 text-neutral-500">
+                              {item.helper}
+                            </p>
+                          </div>
+                        </div>
+
+                        <span
+                          className={`shrink-0 text-2xl font-black ${
+                            item.needsAttention
+                              ? "text-red-700"
+                              : "text-neutral-950"
+                          }`}
+                        >
+                          {item.value}
+                        </span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </section>
+
+          <section className="grid min-w-0 gap-5 xl:grid-cols-[0.9fr_1.1fr]">
+            <div className="min-w-0 overflow-hidden rounded-[24px] bg-white p-4 sm:p-5">
               <div>
-                <h2 className="text-lg font-black">Best-selling items</h2>
+                <p className="text-xs font-semibold tracking-[0.16em] text-[#ef1428] uppercase">
+                  Payments
+                </p>
+
+                <h2 className="mt-1 text-lg font-black">
+                  Sales by payment method
+                </h2>
+
+                <p className="text-sm text-neutral-400">
+                  Breakdown of the paid sales total above
+                </p>
+              </div>
+
+              <div className="mt-5 space-y-3">
+                {dashboard.paymentBreakdown.map((payment) => {
+                  const config = paymentMethodConfig[payment.method]
+                  const Icon = config.icon
+                  const percentage =
+                    totalPaymentSales > 0
+                      ? Math.round((payment.total / totalPaymentSales) * 100)
+                      : 0
+
+                  return (
+                    <div
+                      key={payment.method}
+                      className="rounded-2xl border border-neutral-100 p-3"
+                    >
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-neutral-700">
+                          <Icon className="size-4" />
+                        </div>
+
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="truncate font-bold">
+                                {config.label}
+                              </p>
+
+                              <p className="text-xs text-neutral-400">
+                                {payment.count}{" "}
+                                {payment.count === 1 ? "payment" : "payments"}
+                              </p>
+                            </div>
+
+                            <div className="shrink-0 text-right">
+                              <p className="font-black">
+                                {formatPrice(payment.total)}
+                              </p>
+
+                              <p className="text-xs text-neutral-400">
+                                {percentage}%
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="mt-3 h-2 overflow-hidden rounded-full bg-neutral-100">
+                            <div
+                              className="h-full rounded-full bg-[#ef1428]"
+                              style={{ width: `${percentage}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
+            <div className="min-w-0 rounded-[24px] bg-white p-4 sm:p-5">
+              <div>
+                <p className="text-xs font-semibold tracking-[0.16em] text-[#ef1428] uppercase">
+                  Menu performance
+                </p>
+
+                <h2 className="mt-1 text-lg font-black">Best-selling items</h2>
 
                 <p className="text-sm text-neutral-400">
                   Top four paid items, ranked by quantity
