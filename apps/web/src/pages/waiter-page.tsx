@@ -797,7 +797,7 @@ export function WaiterPage({ user, onLogout }: WaiterPageProps) {
 
                     <h3 className="mt-3 text-lg font-black">{item.name}</h3>
 
-                    <p className="mt-2 min-h-10 text-sm leading-5 text-neutral-400">
+                    <p className="mt-2 min-h-10 text-sm leading-6 text-neutral-400">
                       {item.description || "No description available."}
                     </p>
 

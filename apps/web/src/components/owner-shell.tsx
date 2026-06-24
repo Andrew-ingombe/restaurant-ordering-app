@@ -228,9 +228,9 @@ export function OwnerShell({
                               <button
                                 type="button"
                                 onClick={() => navigate(item.path)}
-                                className={`flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-medium transition ${
+                                className={`flex h-14 w-full cursor-pointer items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-medium transition ${
                                   isActive
-                                    ? "bg-neutral-950 text-white"
+                                    ? "bg-neutral-950 text-white hover:bg-neutral-800"
                                     : "text-neutral-500 hover:bg-neutral-100 hover:text-neutral-950"
                                 }`}
                               >

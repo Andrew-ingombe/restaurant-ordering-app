@@ -275,7 +275,7 @@ export function WaiterShell({
                         key={item.path}
                         className={`h-14 w-full cursor-pointer justify-start rounded-2xl px-5 text-base font-bold ${
                           isActive
-                            ? "bg-neutral-950 text-white hover:bg-neutral-800"
+                            ? "bg-neutral-950 text-white hover:bg-neutral-800 hover:text-white"
                             : "text-neutral-500 hover:bg-neutral-100 hover:text-neutral-950"
                         }`}
                         variant="ghost"

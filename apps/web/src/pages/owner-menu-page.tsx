@@ -554,7 +554,7 @@ export function OwnerMenuPage({ user, onLogout }: OwnerMenuPageProps) {
 
                   <div className="mt-5 flex-1">
                     <h3 className="text-lg font-black">{category.name}</h3>
-                    <p className="mt-2 min-h-10 text-sm leading-5 text-neutral-400">
+                    <p className="mt-2 min-h-10 text-sm leading-6 text-neutral-400">
                       {category.description || "No category description added."}
                     </p>
                   </div>

@@ -570,7 +570,7 @@ export function KitchenPage({ user, onLogout }: KitchenPageProps) {
 
                 <nav className="flex-1 space-y-2 overflow-y-auto px-5 py-6">
                   <Button
-                    className="h-14 w-full cursor-pointer justify-start rounded-2xl bg-neutral-950 px-5 text-base font-bold text-white hover:bg-neutral-800"
+                    className="h-14 w-full cursor-pointer justify-start rounded-2xl bg-neutral-950 px-5 text-base font-bold text-white hover:bg-neutral-800 hover:text-white"
                     variant="ghost"
                     onClick={closeMobileMenu}
                   >
