@@ -21,6 +21,14 @@ import {
   UserRound,
 } from "lucide-react"
 
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@workspace/ui/components/dialog"
+
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
@@ -42,7 +50,7 @@ import {
   OrdersToolbarSkeleton,
 } from "../components/page-skeletons"
 import { WaiterShell } from "../components/waiter-shell"
-import { getMyOrders } from "../lib/api"
+import { getMyOrders, updateWaiterOrderStatus } from "../lib/api"
 import type { AuthUser, DraftOrder, WaiterOrderHistoryStatus } from "../lib/api"
 import { getSocket } from "../lib/socket"
 
@@ -136,10 +144,14 @@ const getStatusConfig = (status: string) =>
 function OrderCard({
   order,
   onOpen,
+  onMarkServed,
+  markingServed,
   showWaiterName,
 }: {
   order: DraftOrder
   onOpen: () => void
+  onMarkServed: () => void
+  markingServed: boolean
   showWaiterName: boolean
 }) {
   const itemCount = order.items.reduce(
@@ -262,13 +274,26 @@ function OrderCard({
           </div>
         </div>
 
-        <Button
-          className="mt-4 h-11 w-full cursor-pointer rounded-xl bg-neutral-950 text-white hover:bg-neutral-800"
-          onClick={onOpen}
-        >
-          <Eye className="size-4" />
-          Open order
-        </Button>
+        <div className="mt-4 grid gap-2">
+          {order.status === "ready" && (
+            <Button
+              className="h-11 w-full cursor-pointer rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
+              disabled={markingServed}
+              onClick={onMarkServed}
+            >
+              <UtensilsCrossed className="size-4" />
+              {markingServed ? "Marking served..." : "Mark served"}
+            </Button>
+          )}
+
+          <Button
+            className="h-11 w-full cursor-pointer rounded-xl bg-neutral-950 text-white hover:bg-neutral-800"
+            onClick={onOpen}
+          >
+            <Eye className="size-4" />
+            Open order
+          </Button>
+        </div>
       </div>
     </article>
   )
@@ -297,6 +322,9 @@ export function WaiterOrdersPage({ user, onLogout }: WaiterOrdersPageProps) {
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState("")
   const [search, setSearch] = useState("")
+
+  const [serveTarget, setServeTarget] = useState<DraftOrder | null>(null)
+  const [servingId, setServingId] = useState("")
 
   const loadOrders = useCallback(
     async (silent = false) => {
@@ -354,6 +382,11 @@ export function WaiterOrdersPage({ user, onLogout }: WaiterOrdersPageProps) {
 
       orderStatusesRef.current.set(updatedOrder._id, updatedOrder.status)
 
+      if (user.sharedHub) {
+        void loadOrders(true)
+        return
+      }
+
       if (!previousStatus) {
         if (activeOrderStatuses.includes(updatedOrder.status)) {
           toast.info(`New order: ${updatedOrder.orderNumber}`, {
@@ -387,7 +420,19 @@ export function WaiterOrdersPage({ user, onLogout }: WaiterOrdersPageProps) {
     return () => {
       socket.off("order:updated", handleOrderUpdated)
     }
-  }, [loadOrders])
+  }, [loadOrders, user.sharedHub])
+
+  useEffect(() => {
+    if (!user.sharedHub) return
+
+    const timer = window.setInterval(() => {
+      void loadOrders(true)
+    }, 20000)
+
+    return () => {
+      window.clearInterval(timer)
+    }
+  }, [loadOrders, user.sharedHub])
 
   const summary = useMemo(() => {
     return {
@@ -402,6 +447,20 @@ export function WaiterOrdersPage({ user, onLogout }: WaiterOrdersPageProps) {
       ).length,
       ready: orders.filter((order) => order.status === "ready").length,
       awaitingPayment: orders.filter(
+        (order) => order.status === "served" && order.paymentStatus !== "paid"
+      ).length,
+    }
+  }, [orders])
+
+  const hubStatusSummary = useMemo(() => {
+    return {
+      sentToKitchen: orders.filter((order) => order.status === "submitted")
+        .length,
+      preparing: orders.filter((order) =>
+        ["accepted", "preparing"].includes(order.status)
+      ).length,
+      ready: orders.filter((order) => order.status === "ready").length,
+      servedUnpaid: orders.filter(
         (order) => order.status === "served" && order.paymentStatus !== "paid"
       ).length,
     }
@@ -435,6 +494,49 @@ export function WaiterOrdersPage({ user, onLogout }: WaiterOrdersPageProps) {
     setSearch("")
   }
 
+  const markOrderServed = async () => {
+    if (!serveTarget || servingId) return
+
+    setServingId(serveTarget._id)
+    setError("")
+
+    try {
+      const updatedOrder = await updateWaiterOrderStatus(
+        serveTarget._id,
+        "served"
+      )
+
+      setOrders((current) =>
+        current.map((order) =>
+          order._id === updatedOrder._id ? updatedOrder : order
+        )
+      )
+
+      setHistoryOrders((current) =>
+        current.map((order) =>
+          order._id === updatedOrder._id ? updatedOrder : order
+        )
+      )
+
+      toast.success("Order marked as served", {
+        description: `${updatedOrder.orderNumber} is now awaiting payment or completion.`,
+      })
+
+      setServeTarget(null)
+      void loadOrders(true)
+    } catch (requestError) {
+      const message =
+        requestError instanceof Error
+          ? requestError.message
+          : "Could not mark order as served"
+
+      setError(message)
+      toast.error(message)
+    } finally {
+      setServingId("")
+    }
+  }
+
   return (
     <WaiterShell
       user={user}
@@ -446,6 +548,56 @@ export function WaiterOrdersPage({ user, onLogout }: WaiterOrdersPageProps) {
       contentScrollable={false}
       contentClassName="flex min-h-0 flex-col gap-4"
     >
+      <Dialog
+        open={Boolean(serveTarget)}
+        onOpenChange={(open) => {
+          if (!open && !servingId) {
+            setServeTarget(null)
+          }
+        }}
+      >
+        <DialogContent className="rounded-[28px] border-0 p-0 sm:max-w-md">
+          <div className="p-5 md:p-6">
+            <DialogHeader>
+              <div className="mb-4 flex size-12 items-center justify-center rounded-full bg-cyan-50 text-cyan-700">
+                <UtensilsCrossed className="size-5" />
+              </div>
+
+              <DialogTitle className="text-2xl font-black tracking-tight">
+                Mark order as served?
+              </DialogTitle>
+
+              <DialogDescription className="text-sm leading-6 text-neutral-500">
+                This will move{" "}
+                <strong className="text-neutral-900">
+                  {serveTarget?.orderNumber}
+                </strong>{" "}
+                to served. Payment can still be collected afterwards.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="mt-6 grid gap-2 sm:grid-cols-2">
+              <Button
+                className="h-12 cursor-pointer rounded-xl"
+                variant="outline"
+                disabled={Boolean(servingId)}
+                onClick={() => setServeTarget(null)}
+              >
+                Cancel
+              </Button>
+
+              <Button
+                className="h-12 cursor-pointer rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
+                disabled={Boolean(servingId)}
+                onClick={() => void markOrderServed()}
+              >
+                {servingId ? "Marking served..." : "Mark served"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {error && (
         <p className="shrink-0 rounded-2xl bg-red-50 p-4 text-sm text-red-700">
           {error}
@@ -641,6 +793,94 @@ export function WaiterOrdersPage({ user, onLogout }: WaiterOrdersPageProps) {
                 {refreshing ? "Updating" : "Live"}
               </span>
             </div>
+
+            {user.sharedHub && view === "active" && (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="mt-2 h-9 w-fit cursor-pointer rounded-full border-neutral-200 bg-white px-3 text-xs font-bold text-neutral-700 hover:bg-neutral-50"
+                  >
+                    <ChefHat className="size-3.5" />
+                    Kitchen status
+                    {hubStatusSummary.ready > 0 && (
+                      <span className="ml-1 flex min-w-5 items-center justify-center rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] font-black text-emerald-700">
+                        {hubStatusSummary.ready}
+                      </span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+
+                <PopoverContent
+                  className="w-72 rounded-2xl border-neutral-200 p-3"
+                  align="start"
+                >
+                  <div className="px-1 pb-3">
+                    <p className="font-black">Hub kitchen status</p>
+                    <p className="text-xs text-neutral-400">
+                      Quiet overview of active orders
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between rounded-xl bg-blue-50 px-3 py-2.5">
+                      <span className="text-sm font-semibold text-blue-700">
+                        Sent to kitchen
+                      </span>
+                      <span className="font-black text-blue-700">
+                        {hubStatusSummary.sentToKitchen}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between rounded-xl bg-amber-50 px-3 py-2.5">
+                      <span className="text-sm font-semibold text-amber-700">
+                        Preparing
+                      </span>
+                      <span className="font-black text-amber-700">
+                        {hubStatusSummary.preparing}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between rounded-xl bg-emerald-50 px-3 py-2.5">
+                      <span className="text-sm font-semibold text-emerald-700">
+                        Ready
+                      </span>
+                      <span className="font-black text-emerald-700">
+                        {hubStatusSummary.ready}
+                      </span>
+                    </div>
+
+                    <div
+                      className={`flex items-center justify-between rounded-xl px-3 py-2.5 ${
+                        hubStatusSummary.servedUnpaid > 0
+                          ? "bg-red-50"
+                          : "bg-neutral-100"
+                      }`}
+                    >
+                      <span
+                        className={`text-sm font-semibold ${
+                          hubStatusSummary.servedUnpaid > 0
+                            ? "text-red-700"
+                            : "text-neutral-600"
+                        }`}
+                      >
+                        Served unpaid
+                      </span>
+                      <span
+                        className={`font-black ${
+                          hubStatusSummary.servedUnpaid > 0
+                            ? "text-red-700"
+                            : "text-neutral-700"
+                        }`}
+                      >
+                        {hubStatusSummary.servedUnpaid}
+                      </span>
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            )}
           </div>
         </section>
       )}
@@ -656,6 +896,8 @@ export function WaiterOrdersPage({ user, onLogout }: WaiterOrdersPageProps) {
                   key={order._id}
                   order={order}
                   showWaiterName={Boolean(user.sharedHub)}
+                  markingServed={servingId === order._id}
+                  onMarkServed={() => setServeTarget(order)}
                   onOpen={() => navigate(`/waiter/orders/${order._id}`)}
                 />
               ))}

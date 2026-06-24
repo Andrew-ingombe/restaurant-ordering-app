@@ -631,7 +631,7 @@ export function WaiterEditOrderPage({
 
       <div className="grid min-h-0 flex-1 gap-5 overflow-y-auto overscroll-contain pr-1 xl:grid-cols-[minmax(0,1fr)_400px]">
         <section className="min-w-0">
-          <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
+          <div className="grid gap-4 p-2.5 sm:grid-cols-2 2xl:grid-cols-3">
             {visibleItems.map((item) => {
               const quantity = cart[item._id]?.quantity || 0
 
@@ -679,19 +679,19 @@ export function WaiterEditOrderPage({
                       {item.description || "No description available."}
                     </p>
 
-                    <div className="mt-5 flex items-center justify-between rounded-2xl bg-neutral-100 p-2">
+                    <div className="mt-5 flex min-h-14 items-center justify-between rounded-2xl bg-neutral-100 p-2">
                       <Button
-                        className="size-10 rounded-full"
+                        className="h-11 min-w-16 cursor-pointer rounded-full"
                         size="icon"
                         variant="outline"
                         disabled={quantity === 0}
                         onClick={() => changeQuantity(item, -1)}
                       >
-                        <Minus className="size-4" />
+                        <Minus className="size-5" />
                       </Button>
 
-                      <div className="text-center">
-                        <p className="text-lg font-black">{quantity}</p>
+                      <div className="px-3 text-center">
+                        <p className="text-xl font-black">{quantity}</p>
 
                         <p className="text-[10px] tracking-wide text-neutral-400 uppercase">
                           Selected
@@ -699,11 +699,11 @@ export function WaiterEditOrderPage({
                       </div>
 
                       <Button
-                        className="size-10 rounded-full bg-neutral-950 text-white hover:bg-neutral-800"
+                        className="h-11 min-w-16 cursor-pointer rounded-full bg-neutral-950 text-white hover:bg-neutral-800"
                         size="icon"
                         onClick={() => changeQuantity(item, 1)}
                       >
-                        <Plus className="size-4" />
+                        <Plus className="size-5" />
                       </Button>
                     </div>
                   </div>
