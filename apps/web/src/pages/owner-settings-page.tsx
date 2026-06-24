@@ -140,7 +140,7 @@ export function OwnerSettingsPage({ user, onLogout }: OwnerSettingsPageProps) {
       user={user}
       onLogout={onLogout}
       active="settings"
-      contentClassName="space-y-5"
+      contentClassName="min-w-0 space-y-5 overflow-x-hidden"
       headerContent={
         <div>
           <p className="text-xs font-semibold tracking-[0.2em] text-[#ef1428] uppercase">
@@ -168,7 +168,9 @@ export function OwnerSettingsPage({ user, onLogout }: OwnerSettingsPageProps) {
       }
     >
       {loading ? (
-        <RestaurantSettingsSkeleton />
+        <div className="min-w-0 overflow-hidden">
+          <RestaurantSettingsSkeleton />
+        </div>
       ) : (
         <>
           {error && (

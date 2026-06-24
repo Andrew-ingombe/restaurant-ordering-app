@@ -382,7 +382,7 @@ export function WaiterRequestsPage({
               return (
                 <article
                   key={order._id}
-                  className="rounded-[20px] border border-neutral-100 bg-white p-4 transition hover:border-neutral-200 hover:bg-neutral-50"
+                  className="flex h-full flex-col rounded-[20px] border border-neutral-100 bg-white p-4 transition hover:border-neutral-200 hover:bg-neutral-50"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
@@ -428,7 +428,7 @@ export function WaiterRequestsPage({
                     </div>
                   </div>
 
-                  <div className="mt-4 space-y-2">
+                  <div className="mt-4 flex-1 space-y-2">
                     {order.items.slice(0, 3).map((item, index) => (
                       <div
                         key={`${item.menuItem}-${index}`}
