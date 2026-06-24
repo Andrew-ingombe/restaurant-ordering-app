@@ -305,13 +305,17 @@ export function OwnerOrdersPage({ user, onLogout }: OwnerOrdersPageProps) {
               setStatus(value as OwnerOrderStatus | "all")
             }}
           >
-            <SelectTrigger className="min-h-12 w-full rounded-xl border-0 bg-neutral-100 px-4 shadow-none">
+            <SelectTrigger className="min-h-12 w-full cursor-pointer rounded-xl border-0 bg-neutral-100 px-4 shadow-none">
               <SelectValue placeholder="All statuses" />
             </SelectTrigger>
 
             <SelectContent className="rounded-xl">
               {statusOptions.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
+                <SelectItem
+                  className="cursor-pointer"
+                  key={option.value}
+                  value={option.value}
+                >
                   {option.label}
                 </SelectItem>
               ))}

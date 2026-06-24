@@ -425,14 +425,18 @@ export function WaiterPage({ user, onLogout }: WaiterPageProps) {
         >
           <SelectTrigger
             id={`${idPrefix}-order-type`}
-            className="min-h-12 w-full rounded-xl border-0 bg-neutral-100 px-4 shadow-none"
+            className="min-h-12 w-full cursor-pointer rounded-xl border-0 bg-neutral-100 px-4 shadow-none"
           >
             <SelectValue />
           </SelectTrigger>
 
           <SelectContent>
-            <SelectItem value="dine_in">Dine in</SelectItem>
-            <SelectItem value="takeaway">Takeaway</SelectItem>
+            <SelectItem className="cursor-pointer" value="dine_in">
+              Dine in
+            </SelectItem>
+            <SelectItem className="cursor-pointer" value="takeaway">
+              Takeaway
+            </SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -452,7 +456,7 @@ export function WaiterPage({ user, onLogout }: WaiterPageProps) {
           >
             <SelectTrigger
               id={`${idPrefix}-table`}
-              className="min-h-12 w-full rounded-xl border-0 bg-neutral-100 px-4 shadow-none"
+              className="min-h-12 w-full cursor-pointer rounded-xl border-0 bg-neutral-100 px-4 shadow-none"
             >
               <SelectValue
                 placeholder={
@@ -467,7 +471,11 @@ export function WaiterPage({ user, onLogout }: WaiterPageProps) {
 
             <SelectContent>
               {availableTables.map((table) => (
-                <SelectItem key={table.id} value={table.name}>
+                <SelectItem
+                  className="cursor-pointer"
+                  key={table.id}
+                  value={table.name}
+                >
                   {table.name}
                 </SelectItem>
               ))}
@@ -591,7 +599,7 @@ export function WaiterPage({ user, onLogout }: WaiterPageProps) {
 
       <div className="grid gap-2 sm:grid-cols-[0.8fr_1.2fr]">
         <Button
-          className="h-13 rounded-xl text-red-600 hover:bg-red-50 hover:text-red-700"
+          className="h-13 cursor-pointer rounded-xl text-red-600 hover:bg-red-50 hover:text-red-700"
           type="button"
           variant="outline"
           disabled={submitting || cartItems.length === 0}
@@ -602,7 +610,7 @@ export function WaiterPage({ user, onLogout }: WaiterPageProps) {
         </Button>
 
         <Button
-          className="h-13 rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
+          className="h-13 cursor-pointer rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
           disabled={
             submitting ||
             cartItems.length === 0 ||
@@ -682,7 +690,7 @@ export function WaiterPage({ user, onLogout }: WaiterPageProps) {
 
             <div className="mt-6 grid gap-2 sm:grid-cols-2">
               <Button
-                className="h-12 rounded-xl"
+                className="h-12 cursor-pointer rounded-xl"
                 type="button"
                 variant="outline"
                 onClick={() => setClearOrderDialogOpen(false)}
@@ -691,7 +699,7 @@ export function WaiterPage({ user, onLogout }: WaiterPageProps) {
               </Button>
 
               <Button
-                className="h-12 rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
+                className="h-12 cursor-pointer rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
                 type="button"
                 onClick={clearCurrentOrder}
               >
@@ -707,9 +715,9 @@ export function WaiterPage({ user, onLogout }: WaiterPageProps) {
           <div className="flex items-center gap-3">
             <div className="flex min-w-0 flex-1 gap-2 overflow-x-auto pb-1">
               <Button
-                className={`h-10 shrink-0 rounded-xl px-4 ${
+                className={`h-10 shrink-0 cursor-pointer rounded-xl px-4 ${
                   selectedCategory === "all"
-                    ? "bg-neutral-950 text-white hover:bg-neutral-800"
+                    ? "bg-neutral-950 text-white hover:bg-neutral-800 hover:text-white"
                     : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
                 }`}
                 variant="ghost"
@@ -721,9 +729,9 @@ export function WaiterPage({ user, onLogout }: WaiterPageProps) {
               {categories.map((category) => (
                 <Button
                   key={category._id}
-                  className={`h-10 shrink-0 rounded-xl px-4 ${
+                  className={`h-10 shrink-0 cursor-pointer rounded-xl px-4 ${
                     selectedCategory === category._id
-                      ? "bg-[#ef1428] text-white hover:bg-[#d91023]"
+                      ? "bg-[#ef1428] text-white hover:bg-[#d91023] hover:text-white"
                       : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
                   }`}
                   variant="ghost"

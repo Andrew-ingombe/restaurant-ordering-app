@@ -721,7 +721,7 @@ export function OwnerMenuItemsPage({
 
                     <div className="mt-auto flex gap-2 border-t border-neutral-100 pt-4">
                       <Button
-                        className="flex-1 cursor-pointer rounded-xl"
+                        className="h-10 flex-1 cursor-pointer rounded-xl"
                         size="sm"
                         variant="outline"
                         onClick={() => startEditing(item)}
@@ -731,7 +731,7 @@ export function OwnerMenuItemsPage({
                       </Button>
 
                       <Button
-                        className={`flex-1 cursor-pointer rounded-xl ${
+                        className={`h-10 flex-1 cursor-pointer rounded-xl ${
                           !item.available
                             ? "bg-neutral-950 text-white hover:bg-neutral-800"
                             : ""

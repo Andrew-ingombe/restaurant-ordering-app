@@ -346,7 +346,7 @@ export function WaiterRequestsPage({
               </div>
 
               <Button
-                className="h-10 rounded-xl"
+                className="h-10 cursor-pointer rounded-xl"
                 variant="outline"
                 disabled={refreshing}
                 onClick={() => void loadRequests(true)}
@@ -490,7 +490,7 @@ export function WaiterRequestsPage({
                   </div>
 
                   <Button
-                    className="mt-4 h-11 w-full rounded-xl bg-neutral-950 text-white hover:bg-neutral-800"
+                    className="mt-4 h-11 w-full cursor-pointer rounded-xl bg-neutral-950 text-white hover:bg-neutral-800"
                     disabled={
                       Boolean(claimingId) ||
                       (user.sharedHub &&
@@ -529,7 +529,7 @@ export function WaiterRequestsPage({
               </p>
 
               <Button
-                className="mt-6 rounded-xl bg-neutral-950 text-white hover:bg-neutral-800"
+                className="mt-6 h-12 cursor-pointer rounded-xl bg-neutral-950 text-white hover:bg-neutral-800"
                 onClick={() => navigate("/waiter")}
               >
                 <UtensilsCrossed className="size-4" />

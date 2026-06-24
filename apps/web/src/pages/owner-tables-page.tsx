@@ -653,7 +653,7 @@ export function OwnerTablesPage({ user, onLogout }: OwnerTablesPageProps) {
 
                 <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-4">
                   <Button
-                    className="min-w-0 rounded-xl"
+                    className="h-10 min-w-0 rounded-xl"
                     size="sm"
                     variant="outline"
                     disabled={editingId === table.id}
@@ -667,7 +667,7 @@ export function OwnerTablesPage({ user, onLogout }: OwnerTablesPageProps) {
                   </Button>
 
                   <Button
-                    className="min-w-0 rounded-xl"
+                    className="h-10 min-w-0 rounded-xl"
                     size="sm"
                     variant="outline"
                     onClick={() => void copyMenuLink(table)}
@@ -686,7 +686,7 @@ export function OwnerTablesPage({ user, onLogout }: OwnerTablesPageProps) {
                   </Button>
 
                   <Button
-                    className="min-w-0 rounded-xl"
+                    className="h-10 min-w-0 rounded-xl"
                     size="sm"
                     variant="outline"
                     disabled={downloadingId === table.id}
@@ -699,7 +699,7 @@ export function OwnerTablesPage({ user, onLogout }: OwnerTablesPageProps) {
                   </Button>
 
                   <Button
-                    className={`min-w-0 rounded-xl ${
+                    className={`h-10 min-w-0 rounded-xl ${
                       !table.active
                         ? "bg-neutral-950 text-white hover:bg-neutral-800"
                         : ""

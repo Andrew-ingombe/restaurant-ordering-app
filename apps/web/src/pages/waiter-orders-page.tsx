@@ -620,7 +620,7 @@ export function WaiterOrdersPage({ user, onLogout }: WaiterOrdersPageProps) {
                 aria-selected={view === "active"}
                 className={`h-9 cursor-pointer rounded-lg px-3 ${
                   view === "active"
-                    ? "bg-[#ef1428] text-white shadow-sm hover:bg-[#d91023]"
+                    ? "bg-[#ef1428] text-white shadow-sm hover:bg-[#d91023] hover:text-white"
                     : "bg-transparent text-neutral-500 hover:bg-white hover:text-neutral-950"
                 }`}
                 variant="ghost"
@@ -645,7 +645,7 @@ export function WaiterOrdersPage({ user, onLogout }: WaiterOrdersPageProps) {
                 aria-selected={view === "history"}
                 className={`h-9 cursor-pointer rounded-lg px-3 ${
                   view === "history"
-                    ? "bg-neutral-950 text-white shadow-sm hover:bg-neutral-800"
+                    ? "bg-neutral-950 text-white shadow-sm hover:bg-neutral-800 hover:text-white"
                     : "bg-transparent text-neutral-500 hover:bg-white hover:text-neutral-950"
                 }`}
                 variant="ghost"

@@ -270,7 +270,7 @@ export function OwnerSettingsPage({ user, onLogout }: OwnerSettingsPageProps) {
                 </div>
 
                 <Button
-                  className="rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
+                  className="h-10 rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
                   disabled={saving}
                 >
                   {saving ? (

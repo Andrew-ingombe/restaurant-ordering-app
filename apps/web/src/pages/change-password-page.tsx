@@ -104,7 +104,7 @@ export function ChangePasswordPage({
         <div className="mx-auto flex max-w-5xl items-center gap-4">
           {!requiredChange && (
             <Button
-              className="size-11 rounded-xl"
+              className="size-11 cursor-pointer rounded-xl"
               size="icon"
               variant="outline"
               onClick={() => navigate(getRolePath(user))}
@@ -238,7 +238,7 @@ export function ChangePasswordPage({
             )}
 
             <Button
-              className="h-12 w-full rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
+              className="h-12 w-full cursor-pointer rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
               disabled={submitting}
             >
               {submitting ? (

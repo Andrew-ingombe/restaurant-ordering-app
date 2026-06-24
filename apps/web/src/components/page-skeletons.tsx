@@ -135,7 +135,7 @@ export function ListPageSkeleton({ rows = 6 }: ListPageSkeletonProps) {
 export function MenuGridSkeleton({ items = 4 }: MenuGridSkeletonProps) {
   return (
     <div className="flex min-h-0 flex-col gap-4">
-      <div className="shrink-0 rounded-[20px] bg-white p-3 shadow-sm">
+      <div className="shrink-0 rounded-[20px] bg-white p-3">
         <div className="flex items-center gap-3">
           <div className="flex min-w-0 flex-1 gap-2 overflow-hidden">
             <Skeleton className="h-10 w-24 shrink-0 rounded-xl bg-neutral-200" />
@@ -152,7 +152,7 @@ export function MenuGridSkeleton({ items = 4 }: MenuGridSkeletonProps) {
           {Array.from({ length: items }).map((_, index) => (
             <div
               key={index}
-              className="overflow-hidden rounded-[24px] bg-white shadow-sm ring-1 ring-black/5"
+              className="overflow-hidden rounded-[24px] bg-white ring-1 ring-black/5"
             >
               <Skeleton className="h-44 w-full rounded-none bg-neutral-200" />
 
@@ -179,7 +179,7 @@ export function MenuGridSkeleton({ items = 4 }: MenuGridSkeletonProps) {
 export function OrderDetailSkeleton() {
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4">
-      <section className="shrink-0 rounded-[20px] bg-white p-3 shadow-sm">
+      <section className="shrink-0 rounded-[20px] bg-white p-3">
         <div className="flex min-w-0 items-center gap-2">
           <Skeleton className="h-10 w-24 rounded-xl bg-neutral-200" />
           <Skeleton className="h-10 w-24 rounded-xl bg-neutral-200" />
@@ -429,7 +429,7 @@ export function EditOrderSkeleton() {
             {Array.from({ length: 4 }).map((_, index) => (
               <div
                 key={index}
-                className="overflow-hidden rounded-[24px] bg-white shadow-sm ring-1 ring-black/5"
+                className="overflow-hidden rounded-[24px] bg-white ring-1 ring-black/5"
               >
                 <Skeleton className="h-44 w-full rounded-none bg-neutral-200" />
 
@@ -527,7 +527,7 @@ export function KitchenColumnsSkeleton() {
               (_, cardIndex) => (
                 <div
                   key={cardIndex}
-                  className="overflow-hidden rounded-[22px] bg-white p-4 shadow-sm"
+                  className="overflow-hidden rounded-[22px] bg-white p-4"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="space-y-2">

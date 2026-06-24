@@ -596,7 +596,7 @@ export function WaiterEditOrderPage({
           </Badge>
 
           <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-            <SelectTrigger className="h-10 min-w-0 flex-1 rounded-xl border-0 bg-neutral-100 px-3 shadow-none sm:max-w-56 sm:flex-none">
+            <SelectTrigger className="min-h-10 min-w-0 flex-1 cursor-pointer rounded-xl border-0 bg-neutral-100 px-3 shadow-none sm:max-w-56 sm:flex-none">
               <SelectValue placeholder="Select category" />
             </SelectTrigger>
 
@@ -609,7 +609,11 @@ export function WaiterEditOrderPage({
                 ).length
 
                 return (
-                  <SelectItem key={category._id} value={category._id}>
+                  <SelectItem
+                    className="cursor-pointer"
+                    key={category._id}
+                    value={category._id}
+                  >
                     {category.name} ({categoryItems})
                   </SelectItem>
                 )

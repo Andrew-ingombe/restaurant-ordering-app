@@ -936,7 +936,7 @@ export function OwnerPage({ user, onLogout }: OwnerPageProps) {
 
                   <div className="mt-5 grid grid-cols-2 gap-2 border-t border-neutral-100 pt-4">
                     <Button
-                      className="rounded-xl"
+                      className="h-10 rounded-xl"
                       size="sm"
                       variant="outline"
                       disabled={updatingId === id || resettingPassword}
@@ -947,7 +947,7 @@ export function OwnerPage({ user, onLogout }: OwnerPageProps) {
                     </Button>
 
                     <Button
-                      className={`rounded-xl ${
+                      className={`h-10 rounded-xl ${
                         !staffMember.active
                           ? "bg-neutral-950 text-white hover:bg-neutral-800"
                           : ""
@@ -965,7 +965,7 @@ export function OwnerPage({ user, onLogout }: OwnerPageProps) {
                     </Button>
 
                     <Button
-                      className="col-span-2 rounded-xl"
+                      className="col-span-2 h-10 rounded-xl"
                       size="sm"
                       variant="outline"
                       disabled={updatingId === id || resettingPassword}

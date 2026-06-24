@@ -571,7 +571,7 @@ export function WaiterOrderDetailPage({
         description="Could not load this order."
         icon={<ReceiptText className="size-6" />}
       >
-        <div className="mx-auto w-full max-w-md rounded-[24px] bg-white p-8 text-center shadow-sm">
+        <div className="mx-auto w-full max-w-md rounded-[24px] bg-white p-8 text-center">
           <p className="text-red-700">{error}</p>
 
           <Button
@@ -652,7 +652,7 @@ export function WaiterOrderDetailPage({
       contentScrollable={false}
       contentClassName="flex min-h-0 flex-col gap-4"
     >
-      <section className="shrink-0 rounded-[20px] bg-white p-3 shadow-sm">
+      <section className="shrink-0 rounded-[20px] bg-white p-3">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           <Button
             className="h-10 rounded-xl px-3"
@@ -695,7 +695,7 @@ export function WaiterOrderDetailPage({
 
       <div className="grid min-h-0 flex-1 gap-5 overflow-y-auto overscroll-contain pr-1 lg:grid-cols-[minmax(0,1fr)_380px]">
         <section className="min-w-0 space-y-5">
-          <div className="rounded-[24px] bg-white p-5 shadow-sm">
+          <div className="rounded-[24px] bg-white p-5">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-xl font-black">Ordered items</h2>
@@ -750,7 +750,7 @@ export function WaiterOrderDetailPage({
         </section>
 
         <aside className="space-y-5">
-          <div className="rounded-[24px] bg-white p-5 shadow-sm">
+          <div className="rounded-[24px] bg-white p-5">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-semibold tracking-[0.16em] text-[#ef1428] uppercase">
@@ -793,7 +793,7 @@ export function WaiterOrderDetailPage({
             </div>
           </div>
 
-          <div className="rounded-[24px] bg-neutral-950 p-5 text-white shadow-sm">
+          <div className="rounded-[24px] bg-neutral-950 p-5 text-white">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs tracking-[0.16em] text-white/50 uppercase">
@@ -824,7 +824,7 @@ export function WaiterOrderDetailPage({
 
             {isDraft && (
               <Button
-                className="mt-5 h-12 w-full rounded-xl border-white/20 bg-white/10 text-white hover:bg-white/20"
+                className="mt-5 h-12 w-full rounded-xl border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white"
                 variant="outline"
                 onClick={() => navigate(`/waiter/orders/${order._id}/edit`)}
               >

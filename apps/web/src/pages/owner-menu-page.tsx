@@ -464,10 +464,10 @@ export function OwnerMenuPage({ user, onLogout }: OwnerMenuPageProps) {
           </div>
 
           <div className="flex gap-2">
-            <Badge variant="secondary" className="rounded-full px-3 py-1">
+            <Badge variant="secondary" className="h-8 rounded-full px-3 py-1">
               {categories.length} total
             </Badge>
-            <Badge className="rounded-full bg-[#ef1428] px-3 py-1 text-white">
+            <Badge className="h-8 rounded-full bg-[#ef1428] px-3 py-1 text-white">
               {activeCount} active
             </Badge>
           </div>
@@ -562,7 +562,7 @@ export function OwnerMenuPage({ user, onLogout }: OwnerMenuPageProps) {
                   <div className="mt-auto space-y-3 border-t border-neutral-100 pt-4">
                     <div className="flex gap-2">
                       <Button
-                        className="flex-1 rounded-xl"
+                        className="h-10 flex-1 rounded-xl"
                         size="sm"
                         variant="outline"
                         onClick={() => startEditing(category)}
@@ -572,7 +572,7 @@ export function OwnerMenuPage({ user, onLogout }: OwnerMenuPageProps) {
                       </Button>
 
                       <Button
-                        className={`flex-1 rounded-xl ${
+                        className={`h-10 flex-1 rounded-xl ${
                           category.active
                             ? ""
                             : "bg-neutral-950 text-white hover:bg-neutral-800"
@@ -592,7 +592,7 @@ export function OwnerMenuPage({ user, onLogout }: OwnerMenuPageProps) {
 
                     <button
                       type="button"
-                      className="flex w-full items-center justify-between rounded-xl bg-neutral-50 px-3 py-2 text-xs font-medium text-neutral-500 transition hover:bg-neutral-100"
+                      className="flex h-10 w-full cursor-pointer items-center justify-between rounded-xl bg-neutral-50 px-3 py-2 text-xs font-medium text-neutral-500 transition hover:bg-neutral-100"
                       onClick={() => navigate("/owner/menu/items")}
                     >
                       View menu items

@@ -331,7 +331,7 @@ export function CustomerMenuPage() {
             </div>
 
             <Button
-              className="mt-6 h-13 w-full rounded-2xl bg-neutral-950 text-white hover:bg-neutral-800"
+              className="mt-6 h-13 w-full cursor-pointer rounded-2xl bg-neutral-950 text-white hover:bg-neutral-800"
               onClick={() => setResult(null)}
             >
               <UtensilsCrossed className="size-4" />
@@ -367,7 +367,7 @@ export function CustomerMenuPage() {
             </div>
 
             <Button
-              className={`size-11 shrink-0 rounded-xl ${
+              className={`size-11 shrink-0 cursor-pointer rounded-xl ${
                 searchOpen
                   ? "bg-neutral-950 text-white hover:bg-neutral-800"
                   : ""
@@ -405,7 +405,7 @@ export function CustomerMenuPage() {
               {searchQuery && (
                 <button
                   type="button"
-                  className="absolute top-1/2 right-4 flex size-6 -translate-y-1/2 items-center justify-center rounded-full bg-neutral-200"
+                  className="absolute top-1/2 right-4 flex size-7 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full bg-neutral-200"
                   onClick={() => setSearchQuery("")}
                 >
                   <X className="size-3.5" />
@@ -417,7 +417,7 @@ export function CustomerMenuPage() {
           <div className="mt-5 flex gap-6 overflow-x-auto pb-1">
             <button
               type="button"
-              className={`shrink-0 border-b-2 pb-3 text-sm font-black tracking-tight uppercase transition ${
+              className={`shrink-0 cursor-pointer border-b-2 pb-3 text-sm font-black tracking-tight uppercase transition ${
                 categoryId === "all"
                   ? "border-neutral-950 text-neutral-950"
                   : "border-transparent text-neutral-400"
@@ -431,7 +431,7 @@ export function CustomerMenuPage() {
               <button
                 key={category._id}
                 type="button"
-                className={`shrink-0 border-b-2 pb-3 text-sm font-black tracking-tight uppercase transition ${
+                className={`shrink-0 cursor-pointer border-b-2 pb-3 text-sm font-black tracking-tight uppercase transition ${
                   categoryId === category._id
                     ? "border-neutral-950 text-neutral-950"
                     : "border-transparent text-neutral-400"
@@ -462,7 +462,7 @@ export function CustomerMenuPage() {
 
             <button
               type="button"
-              className="shrink-0 text-sm font-bold text-[#ef1428]"
+              className="shrink-0 cursor-pointer text-sm font-bold text-[#ef1428]"
               onClick={() => setSearchQuery("")}
             >
               Clear
@@ -478,7 +478,7 @@ export function CustomerMenuPage() {
               <article key={item._id} className="min-w-0">
                 <button
                   type="button"
-                  className="group block w-full text-left"
+                  className="group block w-full cursor-pointer text-left"
                   onClick={() => openItemDetails(item)}
                 >
                   <div className="relative aspect-square overflow-hidden rounded-[26px] bg-neutral-100">
@@ -496,31 +496,31 @@ export function CustomerMenuPage() {
 
                     {quantity > 0 ? (
                       <div
-                        className="absolute right-3 bottom-3 flex h-12 items-center gap-4 rounded-full bg-white px-4 shadow-lg"
+                        className="absolute right-3 bottom-3 flex h-12 min-w-[132px] items-center justify-between rounded-full bg-white px-1.5 shadow-lg"
                         onClick={(event) => event.stopPropagation()}
                       >
                         <button
                           type="button"
-                          className="flex size-7 items-center justify-center rounded-full text-neutral-950"
+                          className="flex size-10 cursor-pointer items-center justify-center rounded-full text-neutral-950 hover:bg-neutral-100"
                           onClick={() => changeQuantity(item, -1)}
                         >
-                          <Minus className="size-4" />
+                          <Minus className="size-5" />
                         </button>
 
-                        <span className="min-w-4 text-center text-base font-black">
+                        <span className="min-w-8 text-center text-base font-black">
                           {quantity}
                         </span>
 
                         <button
                           type="button"
-                          className="flex size-7 items-center justify-center rounded-full text-neutral-950"
+                          className="flex size-10 cursor-pointer items-center justify-center rounded-full text-neutral-950 hover:bg-neutral-100"
                           onClick={() => changeQuantity(item, 1)}
                         >
-                          <Plus className="size-4" />
+                          <Plus className="size-5" />
                         </button>
                       </div>
                     ) : (
-                      <span className="absolute right-3 bottom-3 flex size-12 items-center justify-center rounded-full bg-white text-neutral-950 shadow-lg transition group-hover:scale-105">
+                      <span className="absolute right-3 bottom-3 flex size-12 cursor-pointer items-center justify-center rounded-full bg-white text-neutral-950 shadow-lg transition group-hover:scale-105">
                         <Plus className="size-5" />
                       </span>
                     )}
@@ -579,7 +579,7 @@ export function CustomerMenuPage() {
       {totalItems > 0 && !cartOpen && !selectedItem && (
         <button
           type="button"
-          className="fixed right-5 bottom-6 z-40 flex items-center gap-3 rounded-[28px] bg-[#ef1428] px-6 py-4 text-white shadow-2xl shadow-red-500/25"
+          className="fixed right-5 bottom-6 z-40 flex cursor-pointer items-center gap-3 rounded-[28px] bg-[#ef1428] px-6 py-4 text-white shadow-2xl shadow-red-500/25"
           onClick={() => setCartOpen(true)}
         >
           <span className="text-lg font-black">{formatPrice(total)}</span>
@@ -621,7 +621,7 @@ export function CustomerMenuPage() {
                   </div>
 
                   <Button
-                    className="size-10 shrink-0 rounded-full"
+                    className="size-10 shrink-0 cursor-pointer rounded-full"
                     size="icon"
                     variant="ghost"
                     onClick={closeItemDetails}
@@ -668,33 +668,35 @@ export function CustomerMenuPage() {
 
               <div className="shrink-0 border-t border-neutral-100 bg-white px-4 py-4">
                 <div className="grid grid-cols-[124px_1fr] gap-3 sm:grid-cols-[140px_1fr]">
-                  <div className="flex h-14 items-center justify-between rounded-2xl bg-neutral-100 px-3">
+                  <div className="flex h-14 items-center justify-between rounded-2xl bg-neutral-100 px-1.5">
                     <button
                       type="button"
-                      className="flex size-9 items-center justify-center rounded-full text-neutral-950 disabled:text-neutral-300"
+                      className="flex size-11 cursor-pointer items-center justify-center rounded-full text-neutral-950 hover:bg-white disabled:cursor-not-allowed disabled:text-neutral-300 disabled:hover:bg-transparent"
                       disabled={detailQuantity <= 1}
                       onClick={() =>
                         setDetailQuantity((current) => Math.max(1, current - 1))
                       }
                     >
-                      <Minus className="size-4" />
+                      <Minus className="size-5" />
                     </button>
 
-                    <span className="text-lg font-black">{detailQuantity}</span>
+                    <span className="min-w-8 text-center text-lg font-black">
+                      {detailQuantity}
+                    </span>
 
                     <button
                       type="button"
-                      className="flex size-9 items-center justify-center rounded-full text-neutral-950"
+                      className="flex size-11 cursor-pointer items-center justify-center rounded-full text-neutral-950 hover:bg-white"
                       onClick={() =>
                         setDetailQuantity((current) => current + 1)
                       }
                     >
-                      <Plus className="size-4" />
+                      <Plus className="size-5" />
                     </button>
                   </div>
 
                   <Button
-                    className="h-14 rounded-2xl bg-[#ef1428] text-base font-black text-white hover:bg-[#d91023]"
+                    className="h-14 cursor-pointer rounded-2xl bg-[#ef1428] text-base font-black text-white hover:bg-[#d91023]"
                     onClick={addSelectedItemToCart}
                   >
                     Add {formatPrice(selectedItem.price * detailQuantity)}
@@ -729,7 +731,7 @@ export function CustomerMenuPage() {
                 </div>
 
                 <Button
-                  className="size-10 shrink-0 rounded-full"
+                  className="size-10 shrink-0 cursor-pointer rounded-full"
                   size="icon"
                   variant="ghost"
                   onClick={() => setCartOpen(false)}
@@ -787,25 +789,25 @@ export function CustomerMenuPage() {
                     </p>
                   </div>
 
-                  <div className="flex h-11 shrink-0 items-center gap-2 rounded-2xl bg-neutral-100 px-2">
+                  <div className="flex h-12 min-w-[126px] shrink-0 items-center justify-between rounded-2xl bg-neutral-100 px-1.5">
                     <button
                       type="button"
-                      className="flex size-7 items-center justify-center"
+                      className="flex size-10 cursor-pointer items-center justify-center rounded-full hover:bg-white"
                       onClick={() => changeQuantity(cartItem.item, -1)}
                     >
-                      <Minus className="size-4" />
+                      <Minus className="size-5" />
                     </button>
 
-                    <span className="min-w-4 text-center font-black">
+                    <span className="min-w-7 text-center font-black">
                       {cartItem.quantity}
                     </span>
 
                     <button
                       type="button"
-                      className="flex size-7 items-center justify-center"
+                      className="flex size-10 cursor-pointer items-center justify-center rounded-full hover:bg-white"
                       onClick={() => changeQuantity(cartItem.item, 1)}
                     >
-                      <Plus className="size-4" />
+                      <Plus className="size-5" />
                     </button>
                   </div>
                 </div>
