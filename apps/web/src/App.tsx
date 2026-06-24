@@ -580,43 +580,61 @@ function AppRoutes() {
   )
 }
 
+function ResponsiveToaster() {
+  const [isTabletOrMobile, setIsTabletOrMobile] = useState(false)
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(max-width: 1279px)")
+
+    const updatePosition = () => {
+      setIsTabletOrMobile(mediaQuery.matches)
+    }
+
+    updatePosition()
+    mediaQuery.addEventListener("change", updatePosition)
+
+    return () => {
+      mediaQuery.removeEventListener("change", updatePosition)
+    }
+  }, [])
+
+  return (
+    <Toaster
+      theme="light"
+      position={isTabletOrMobile ? "top-center" : "top-right"}
+      duration={4000}
+      icons={{
+        success: <CheckCircle2 className="size-5 text-emerald-700" />,
+        error: <CircleX className="size-5 text-red-700" />,
+        warning: <TriangleAlert className="size-5 text-amber-700" />,
+        info: <Info className="size-5 text-blue-700" />,
+        loading: <RefreshCw className="size-5 animate-spin text-neutral-600" />,
+      }}
+      toastOptions={{
+        classNames: {
+          toast:
+            "!min-h-16 !w-[calc(100vw-2rem)] !max-w-sm !rounded-xl !border !px-4 !py-3",
+          content: "!gap-0.5",
+          title: "!font-bold !text-neutral-950",
+          description: "!text-sm !leading-5 !text-neutral-600",
+
+          success: "!border-emerald-200 !bg-emerald-50",
+          error: "!border-red-200 !bg-red-50",
+          warning: "!border-amber-200 !bg-amber-50",
+          info: "!border-blue-200 !bg-blue-50",
+        },
+      }}
+    />
+  )
+}
+
 export default function App() {
   return (
     <BrowserRouter>
       <NetworkStatusBanner />
       <AppRoutes />
 
-      <Toaster
-        theme="light"
-        position="top-right"
-        closeButton
-        duration={4000}
-        icons={{
-          success: <CheckCircle2 className="size-5 text-emerald-700" />,
-          error: <CircleX className="size-5 text-red-700" />,
-          warning: <TriangleAlert className="size-5 text-amber-700" />,
-          info: <Info className="size-5 text-blue-700" />,
-          loading: (
-            <RefreshCw className="size-5 animate-spin text-neutral-600" />
-          ),
-        }}
-        toastOptions={{
-          classNames: {
-            toast: "!min-h-16 !w-full !rounded-xl !border !px-4 !py-3",
-            content: "!gap-0.5",
-            title: "!font-bold !text-neutral-950",
-            description: "!text-sm !leading-5 !text-neutral-600",
-
-            success: "!border-emerald-200 !bg-emerald-50",
-            error: "!border-red-200 !bg-red-50",
-            warning: "!border-amber-200 !bg-amber-50",
-            info: "!border-blue-200 !bg-blue-50",
-
-            closeButton:
-              "!border-neutral-200 !bg-white !text-neutral-600 !shadow-sm hover:!bg-neutral-100",
-          },
-        }}
-      />
+      <ResponsiveToaster />
     </BrowserRouter>
   )
 }
