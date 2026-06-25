@@ -507,13 +507,17 @@ export function OwnerPage({ user, onLogout }: OwnerPageProps) {
                   disabled={submitting}
                   onValueChange={handleRoleChange}
                 >
-                  <SelectTrigger className="h-12 w-full rounded-xl border-0 bg-neutral-100 px-4 shadow-none">
+                  <SelectTrigger className="min-h-12 w-full cursor-pointer rounded-xl border-0 bg-neutral-100 px-4 shadow-none">
                     <SelectValue />
                   </SelectTrigger>
 
                   <SelectContent>
-                    <SelectItem value="waiter">Waiter</SelectItem>
-                    <SelectItem value="kitchen">Kitchen staff</SelectItem>
+                    <SelectItem className="cursor-pointer" value="waiter">
+                      Waiter
+                    </SelectItem>
+                    <SelectItem className="cursor-pointer" value="kitchen">
+                      Kitchen staff
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>

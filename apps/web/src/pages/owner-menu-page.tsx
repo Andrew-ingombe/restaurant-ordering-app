@@ -332,15 +332,21 @@ export function OwnerMenuPage({ user, onLogout }: OwnerMenuPageProps) {
                 >
                   <SelectTrigger
                     id="category-preparation-area"
-                    className="h-12 rounded-xl border-0 bg-neutral-100 px-4 shadow-none"
+                    className="min-h-12 w-full cursor-pointer rounded-xl border-0 bg-neutral-100 px-4 shadow-none"
                   >
                     <SelectValue placeholder="Choose preparation area" />
                   </SelectTrigger>
 
                   <SelectContent>
-                    <SelectItem value="kitchen">Kitchen</SelectItem>
-                    <SelectItem value="bar">Bar</SelectItem>
-                    <SelectItem value="none">No prep</SelectItem>
+                    <SelectItem className="cursor-pointer" value="kitchen">
+                      Kitchen
+                    </SelectItem>
+                    <SelectItem className="cursor-pointer" value="bar">
+                      Bar
+                    </SelectItem>
+                    <SelectItem className="cursor-pointer" value="none">
+                      No prep
+                    </SelectItem>
                   </SelectContent>
                 </Select>
 
