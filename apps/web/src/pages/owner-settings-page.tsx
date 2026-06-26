@@ -63,6 +63,30 @@ const currencyOptions = [
   { code: "EUR", label: "EUR - Euro" },
 ]
 
+const timezoneOptions = [
+  { value: "Africa/Abidjan", label: "Africa/Abidjan - GMT" },
+  { value: "Africa/Accra", label: "Africa/Accra - Ghana" },
+  { value: "Africa/Addis_Ababa", label: "Africa/Addis Ababa - Ethiopia" },
+  { value: "Africa/Algiers", label: "Africa/Algiers - Algeria" },
+  { value: "Africa/Cairo", label: "Africa/Cairo - Egypt" },
+  { value: "Africa/Casablanca", label: "Africa/Casablanca - Morocco" },
+  { value: "Africa/Dakar", label: "Africa/Dakar - Senegal" },
+  { value: "Africa/Dar_es_Salaam", label: "Africa/Dar es Salaam - Tanzania" },
+  { value: "Africa/Harare", label: "Africa/Harare - Zimbabwe/Zambia" },
+  { value: "Africa/Johannesburg", label: "Africa/Johannesburg - South Africa" },
+  { value: "Africa/Kampala", label: "Africa/Kampala - Uganda" },
+  { value: "Africa/Khartoum", label: "Africa/Khartoum - Sudan" },
+  { value: "Africa/Kigali", label: "Africa/Kigali - Rwanda" },
+  { value: "Africa/Lagos", label: "Africa/Lagos - Nigeria" },
+  { value: "Africa/Luanda", label: "Africa/Luanda - Angola" },
+  { value: "Africa/Lusaka", label: "Africa/Lusaka - Zambia" },
+  { value: "Africa/Maputo", label: "Africa/Maputo - Mozambique" },
+  { value: "Africa/Nairobi", label: "Africa/Nairobi - Kenya" },
+  { value: "Africa/Tunis", label: "Africa/Tunis - Tunisia" },
+  { value: "Indian/Mauritius", label: "Indian/Mauritius - Mauritius" },
+  { value: "UTC", label: "UTC" },
+]
+
 const formatStatus = (status: string) => status.replaceAll("_", " ")
 
 const formatDateTime = (value?: string | null) => {
@@ -366,13 +390,35 @@ export function OwnerSettingsPage({ user, onLogout }: OwnerSettingsPageProps) {
 
                 <div className="space-y-2">
                   <Label htmlFor="timezone">Timezone</Label>
-                  <Input
-                    id="timezone"
-                    className="h-12 rounded-xl border-0 bg-neutral-100 px-4 shadow-none"
-                    value={timezone}
-                    onChange={(event) => setTimezone(event.target.value)}
-                    required
-                  />
+
+                  <Select
+                    value={timezone || "Africa/Lusaka"}
+                    onValueChange={setTimezone}
+                  >
+                    <SelectTrigger
+                      id="timezone"
+                      className="min-h-12 w-full cursor-pointer rounded-xl border-0 bg-neutral-100 px-4 shadow-none"
+                    >
+                      <SelectValue placeholder="Select timezone" />
+                    </SelectTrigger>
+
+                    <SelectContent className="max-h-80 rounded-xl">
+                      {timezoneOptions.map((option) => (
+                        <SelectItem
+                          key={option.value}
+                          value={option.value}
+                          className="cursor-pointer"
+                        >
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  <p className="text-xs leading-5 text-neutral-400">
+                    Used for dashboard dates, reports, and restaurant operating
+                    records.
+                  </p>
                 </div>
 
                 <div className="space-y-2">
