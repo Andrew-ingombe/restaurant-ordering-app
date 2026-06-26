@@ -1,18 +1,25 @@
 import { useEffect, useState } from "react"
 import type { FormEvent } from "react"
 import { Building2, RefreshCw, Save, Settings2 } from "lucide-react"
+import { toast } from "sonner"
 
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@workspace/ui/components/select"
 import { Textarea } from "@workspace/ui/components/textarea"
 
 import { getRestaurantSettings, updateRestaurantSettings } from "../lib/api"
 import type { AuthUser, OwnerRestaurantSettings } from "../lib/api"
 import { OwnerShell } from "../components/owner-shell"
 import { RestaurantSettingsSkeleton } from "../components/page-skeletons"
-import { toast } from "sonner"
 
 type OwnerSettingsPageProps = {
   user: AuthUser
@@ -29,6 +36,32 @@ const subscriptionStatusStyles: Record<
   suspended: "bg-red-50 text-red-700",
   cancelled: "bg-neutral-100 text-neutral-600",
 }
+
+const currencyOptions = [
+  { code: "ZMW", label: "ZMW - Zambian Kwacha" },
+  { code: "ZAR", label: "ZAR - South African Rand" },
+  { code: "NGN", label: "NGN - Nigerian Naira" },
+  { code: "KES", label: "KES - Kenyan Shilling" },
+  { code: "GHS", label: "GHS - Ghanaian Cedi" },
+  { code: "EGP", label: "EGP - Egyptian Pound" },
+  { code: "MAD", label: "MAD - Moroccan Dirham" },
+  { code: "TZS", label: "TZS - Tanzanian Shilling" },
+  { code: "UGX", label: "UGX - Ugandan Shilling" },
+  { code: "RWF", label: "RWF - Rwandan Franc" },
+  { code: "BWP", label: "BWP - Botswana Pula" },
+  { code: "NAD", label: "NAD - Namibian Dollar" },
+  { code: "MWK", label: "MWK - Malawian Kwacha" },
+  { code: "MZN", label: "MZN - Mozambican Metical" },
+  { code: "AOA", label: "AOA - Angolan Kwanza" },
+  { code: "DZD", label: "DZD - Algerian Dinar" },
+  { code: "TND", label: "TND - Tunisian Dinar" },
+  { code: "XOF", label: "XOF - West African CFA Franc" },
+  { code: "XAF", label: "XAF - Central African CFA Franc" },
+  { code: "MUR", label: "MUR - Mauritian Rupee" },
+  { code: "USD", label: "USD - US Dollar" },
+  { code: "GBP", label: "GBP - British Pound" },
+  { code: "EUR", label: "EUR - Euro" },
+]
 
 const formatStatus = (status: string) => status.replaceAll("_", " ")
 
@@ -303,13 +336,32 @@ export function OwnerSettingsPage({ user, onLogout }: OwnerSettingsPageProps) {
 
                 <div className="space-y-2">
                   <Label htmlFor="currency">Currency</Label>
-                  <Input
-                    id="currency"
-                    className="h-12 rounded-xl border-0 bg-neutral-100 px-4 shadow-none"
-                    value={currency}
-                    onChange={(event) => setCurrency(event.target.value)}
-                    required
-                  />
+
+                  <Select value={currency || "ZMW"} onValueChange={setCurrency}>
+                    <SelectTrigger
+                      id="currency"
+                      className="min-h-12 w-full cursor-pointer rounded-xl border-0 bg-neutral-100 px-4 shadow-none"
+                    >
+                      <SelectValue placeholder="Select currency" />
+                    </SelectTrigger>
+
+                    <SelectContent className="max-h-80 rounded-xl">
+                      {currencyOptions.map((option) => (
+                        <SelectItem
+                          key={option.code}
+                          value={option.code}
+                          className="cursor-pointer"
+                        >
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  <p className="text-xs leading-5 text-neutral-400">
+                    This currency is used for menu prices, customer menus, and
+                    order totals.
+                  </p>
                 </div>
 
                 <div className="space-y-2">
