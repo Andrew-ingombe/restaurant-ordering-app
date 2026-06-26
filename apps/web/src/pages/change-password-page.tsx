@@ -88,7 +88,10 @@ export function ChangePasswordPage({
     } catch (requestError) {
       const message =
         requestError instanceof Error
-          ? requestError.message
+          ? requiredChange &&
+            requestError.message === "Current password is incorrect"
+            ? "Enter your temporary password to create a new password."
+            : requestError.message
           : "Could not change password"
 
       setError(message)
@@ -114,7 +117,7 @@ export function ChangePasswordPage({
           )}
 
           <div className="min-w-0">
-            <p className="text-xs font-semibold tracking-[0.2em] text-[#ef1428] uppercase">
+            <p className="text-xs font-semibold tracking-[0.2em] text-[#047857] uppercase">
               Account security
             </p>
 
@@ -152,7 +155,7 @@ export function ChangePasswordPage({
           </section>
 
           <section className="rounded-[24px] bg-white p-6">
-            <div className="flex size-11 items-center justify-center rounded-full bg-[#fff0f1] text-[#ef1428]">
+            <div className="flex size-11 items-center justify-center rounded-full bg-[#ECFDF5] text-[#047857]">
               <KeyRound className="size-5" />
             </div>
 
@@ -162,8 +165,10 @@ export function ChangePasswordPage({
                 : "Update your password"}
             </h2>
 
-            <p className="mt-1 text-sm text-neutral-400">
-              Signed in as {user.email}
+            <p className="mt-1 text-sm leading-6 text-neutral-400">
+              {requiredChange
+                ? "Enter the temporary password you were given, then create your own password."
+                : `Signed in as ${user.email}`}
             </p>
 
             <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
@@ -239,7 +244,7 @@ export function ChangePasswordPage({
               )}
 
               <Button
-                className="h-12 w-full cursor-pointer rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
+                className="h-12 w-full cursor-pointer rounded-xl bg-[#047857] text-white hover:bg-[#065F46]"
                 disabled={submitting}
               >
                 {submitting ? (

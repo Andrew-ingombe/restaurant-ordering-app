@@ -126,12 +126,12 @@ export function PlatformCreateRestaurantPage({
               <ArrowLeft className="size-4" />
             </Button>
 
-            <div className="flex size-11 items-center justify-center rounded-xl bg-[#ef1428] text-white">
+            <div className="flex size-11 items-center justify-center rounded-xl bg-[#047857] text-white">
               <ShieldCheck className="size-5" />
             </div>
 
             <div>
-              <p className="text-xs font-semibold tracking-[0.2em] text-[#ef1428] uppercase">
+              <p className="text-xs font-semibold tracking-[0.2em] text-[#047857] uppercase">
                 Platform admin
               </p>
               <h1 className="text-2xl font-black tracking-tight">
@@ -173,7 +173,7 @@ export function PlatformCreateRestaurantPage({
         >
           <section className="rounded-[24px] bg-white p-5 md:p-6">
             <div className="flex items-center gap-3">
-              <div className="flex size-11 items-center justify-center rounded-full bg-[#ef1428] text-white">
+              <div className="flex size-11 items-center justify-center rounded-full bg-[#047857] text-white">
                 <Building2 className="size-5" />
               </div>
 
@@ -435,7 +435,7 @@ export function PlatformCreateRestaurantPage({
               </p>
 
               <Button
-                className="mt-6 h-12 w-full rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
+                className="mt-6 h-12 w-full rounded-xl bg-[#047857] text-white hover:bg-[#065F46]"
                 disabled={creating}
               >
                 {creating ? (

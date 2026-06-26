@@ -11,6 +11,7 @@ import { MenuCategory } from "../models/menu-category.model"
 import { MenuItem } from "../models/menu-item.model"
 import { Order } from "../models/order.model"
 import { RestaurantTable } from "../models/restaurant-table.model"
+import { Restaurant } from "../models/restaurant.model"
 
 export const customerOrderRouter = Router()
 
@@ -99,6 +100,12 @@ customerOrderRouter.post(
     const restaurantId = table.restaurant
     const requestedIds = result.data.items.map((item) => item.menuItem)
 
+    const restaurant = await Restaurant.findById(restaurantId)
+      .select("settings.currency")
+      .lean()
+
+    const currency = restaurant?.settings?.currency || "ZMW"
+
     const menuItems = await MenuItem.find({
       restaurant: restaurantId,
       _id: { $in: requestedIds },
@@ -169,7 +176,7 @@ customerOrderRouter.post(
       items,
       subtotal,
       total: subtotal,
-      currency: "ZMW",
+      currency,
       status: "awaiting_waiter",
       paymentStatus: "unpaid",
     })
@@ -192,6 +199,7 @@ customerOrderRouter.post(
         tableName: order.tableName,
         total: order.total,
         status: order.status,
+        currency: order.currency,
       },
     })
   })

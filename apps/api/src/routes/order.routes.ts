@@ -23,6 +23,7 @@ import { MenuItem } from "../models/menu-item.model"
 import { Order } from "../models/order.model"
 import { Payment } from "../models/payment.model"
 import { User } from "../models/user.model"
+import { Restaurant } from "../models/restaurant.model"
 
 export const orderRouter = Router()
 
@@ -443,6 +444,12 @@ orderRouter.post(
       return
     }
 
+    const restaurant = await Restaurant.findById(actor.restaurantId)
+      .select("settings.currency")
+      .lean()
+
+    const currency = restaurant?.settings?.currency || "ZMW"
+
     let items
 
     try {
@@ -469,6 +476,7 @@ orderRouter.post(
       items,
       subtotal,
       total: subtotal,
+      currency,
       status: "draft",
       paymentStatus: "unpaid",
       paymentMethod: "",
@@ -598,7 +606,7 @@ orderRouter.get(
       status: "awaiting_waiter",
       $or: [{ waiter: { $exists: false } }, { waiter: null }],
     })
-      .sort({ createdAt: 1 })
+      .sort({ createdAt: -1 })
       .limit(100)
 
     response.json({ orders })

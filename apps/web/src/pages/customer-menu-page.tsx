@@ -41,21 +41,18 @@ type CartItem = {
   quantity: number
 }
 
-const formatPrice = (price: number) =>
+const formatPrice = (price: number, currency = "ZMW") =>
   new Intl.NumberFormat("en-ZM", {
     style: "currency",
-    currency: "ZMW",
+    currency,
   }).format(price / 100)
 
-const getCompactPrice = (price: number) => {
-  const amount = price / 100
-
-  if (amount >= 1000) {
-    return `K${amount.toLocaleString("en-ZM")}`
-  }
-
-  return `K${amount}`
-}
+const getCompactPrice = (price: number, currency = "ZMW") =>
+  new Intl.NumberFormat("en-ZM", {
+    style: "currency",
+    currency,
+    maximumFractionDigits: price % 100 === 0 ? 0 : 2,
+  }).format(price / 100)
 
 const getRestaurantName = (menu: CustomerTableMenu) => {
   return menu.restaurant.name
@@ -248,13 +245,14 @@ export function CustomerMenuPage() {
   if (!menu) return null
 
   const restaurantName = getRestaurantName(menu)
+  const currency = menu.restaurant.currency || "ZMW"
 
   if (result) {
     return (
       <main className="flex min-h-svh items-center justify-center bg-[#f5f5f6] p-4">
         <div className="w-full max-w-md overflow-hidden rounded-[28px] bg-white shadow-sm">
           <div className="flex items-center gap-3 border-b border-neutral-100 px-6 py-5">
-            <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-[#ef1428] text-white">
+            <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-[#047857] text-white">
               <UtensilsCrossed className="size-5" />
             </div>
 
@@ -308,8 +306,11 @@ export function CustomerMenuPage() {
                 <div className="p-5">
                   <p className="text-xs text-neutral-400">Order total</p>
 
-                  <p className="mt-1 font-black text-[#ef1428]">
-                    {formatPrice(result.order.total)}
+                  <p className="mt-1 font-black text-[#047857]">
+                    {formatPrice(
+                      result.order.total,
+                      result.order.currency || currency
+                    )}
                   </p>
                 </div>
               </div>
@@ -349,12 +350,12 @@ export function CustomerMenuPage() {
         <div className="mx-auto max-w-3xl px-4 py-4">
           <div className="flex items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
-              <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-[#ef1428] text-white">
+              <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-[#047857] text-white">
                 <UtensilsCrossed className="size-5" />
               </div>
 
               <div className="min-w-0">
-                <p className="text-[10px] font-bold tracking-[0.16em] text-[#ef1428] uppercase">
+                <p className="text-[10px] font-bold tracking-[0.16em] text-[#047857] uppercase">
                   Digital menu
                 </p>
 
@@ -462,7 +463,7 @@ export function CustomerMenuPage() {
 
             <button
               type="button"
-              className="shrink-0 cursor-pointer text-sm font-bold text-[#ef1428]"
+              className="shrink-0 cursor-pointer text-sm font-bold text-[#047857]"
               onClick={() => setSearchQuery("")}
             >
               Clear
@@ -520,7 +521,22 @@ export function CustomerMenuPage() {
                         </button>
                       </div>
                     ) : (
-                      <span className="absolute right-3 bottom-3 flex size-12 cursor-pointer items-center justify-center rounded-full bg-white text-neutral-950 shadow-lg transition group-hover:scale-105">
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        className="absolute right-3 bottom-3 flex size-12 cursor-pointer items-center justify-center rounded-full bg-white text-neutral-950 shadow-lg transition group-hover:scale-105"
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          changeQuantity(item, 1)
+                        }}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault()
+                            event.stopPropagation()
+                            changeQuantity(item, 1)
+                          }
+                        }}
+                      >
                         <Plus className="size-5" />
                       </span>
                     )}
@@ -528,7 +544,7 @@ export function CustomerMenuPage() {
 
                   <div className="mt-3 px-1">
                     <p className="text-base font-black">
-                      {getCompactPrice(item.price)}
+                      {getCompactPrice(item.price, currency)}
                     </p>
 
                     <h2 className="mt-1 truncate text-base font-semibold">
@@ -539,7 +555,7 @@ export function CustomerMenuPage() {
                       {item.description || "Freshly prepared"}
                     </p>
 
-                    <p className="mt-1 text-sm font-bold text-[#ef1428]">
+                    <p className="mt-1 text-sm font-bold text-[#047857]">
                       {item.category.name}
                     </p>
                   </div>
@@ -579,10 +595,12 @@ export function CustomerMenuPage() {
       {totalItems > 0 && !cartOpen && !selectedItem && (
         <button
           type="button"
-          className="fixed right-5 bottom-6 z-40 flex cursor-pointer items-center gap-3 rounded-[28px] bg-[#ef1428] px-6 py-4 text-white shadow-2xl shadow-red-500/25"
+          className="fixed right-5 bottom-6 z-40 flex cursor-pointer items-center gap-3 rounded-[28px] bg-[#047857] px-6 py-4 text-white shadow-2xl shadow-[#047857]/25"
           onClick={() => setCartOpen(true)}
         >
-          <span className="text-lg font-black">{formatPrice(total)}</span>
+          <span className="text-lg font-black">
+            {formatPrice(total, currency)}
+          </span>
 
           <span className="flex size-9 items-center justify-center rounded-full bg-white/20">
             <ShoppingBag className="size-5" />
@@ -647,7 +665,7 @@ export function CustomerMenuPage() {
                 </div>
 
                 <section className="px-6 py-6">
-                  <Badge className="rounded-full border-0 bg-[#fff0f1] px-4 py-1.5 text-[#ef1428]">
+                  <Badge className="rounded-full border-0 bg-[#ECFDF5] px-4 py-1.5 text-[#047857]">
                     {selectedItem.category.name}
                   </Badge>
 
@@ -655,8 +673,8 @@ export function CustomerMenuPage() {
                     {selectedItem.name}
                   </h2>
 
-                  <p className="mt-3 text-2xl font-black text-[#ef1428] sm:text-3xl">
-                    {formatPrice(selectedItem.price)}
+                  <p className="mt-3 text-2xl font-black text-[#047857] sm:text-3xl">
+                    {formatPrice(selectedItem.price, currency)}
                   </p>
 
                   <p className="mt-5 max-w-2xl text-base leading-7 text-neutral-500 sm:text-lg sm:leading-8">
@@ -696,10 +714,11 @@ export function CustomerMenuPage() {
                   </div>
 
                   <Button
-                    className="h-14 cursor-pointer rounded-2xl bg-[#ef1428] text-base font-black text-white hover:bg-[#d91023]"
+                    className="h-14 cursor-pointer rounded-2xl bg-[#047857] text-base font-black text-white hover:bg-[#065F46]"
                     onClick={addSelectedItemToCart}
                   >
-                    Add {formatPrice(selectedItem.price * detailQuantity)}
+                    Add{" "}
+                    {formatPrice(selectedItem.price * detailQuantity, currency)}
                   </Button>
                 </div>
               </div>
@@ -717,7 +736,7 @@ export function CustomerMenuPage() {
             <SheetHeader className="shrink-0 border-b border-neutral-100 px-5 py-5 text-left">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-xs font-semibold tracking-[0.18em] text-[#ef1428] uppercase">
+                  <p className="text-xs font-semibold tracking-[0.18em] text-[#047857] uppercase">
                     Current order
                   </p>
 
@@ -746,10 +765,10 @@ export function CustomerMenuPage() {
                   <p className="mt-2 text-2xl font-black">{totalItems}</p>
                 </div>
 
-                <div className="rounded-[22px] bg-[#fff0f1] p-4">
-                  <p className="text-sm text-[#ef1428]/70">Total</p>
-                  <p className="mt-2 text-2xl font-black text-[#ef1428]">
-                    {formatPrice(total)}
+                <div className="rounded-[22px] bg-[#ECFDF5] p-4">
+                  <p className="text-sm text-[#047857]/70">Total</p>
+                  <p className="mt-2 text-2xl font-black text-[#047857]">
+                    {formatPrice(total, currency)}
                   </p>
                 </div>
               </div>
@@ -784,8 +803,11 @@ export function CustomerMenuPage() {
                       {cartItem.item.category.name}
                     </p>
 
-                    <p className="mt-1 font-black text-[#ef1428]">
-                      {formatPrice(cartItem.item.price * cartItem.quantity)}
+                    <p className="mt-1 font-black text-[#047857]">
+                      {formatPrice(
+                        cartItem.item.price * cartItem.quantity,
+                        currency
+                      )}
                     </p>
                   </div>
 
@@ -841,7 +863,7 @@ export function CustomerMenuPage() {
 
             <div className="shrink-0 border-t border-neutral-100 bg-white px-5 py-4">
               <Button
-                className="h-14 w-full rounded-[22px] bg-[#ef1428] text-base font-black text-white hover:bg-[#d91023]"
+                className="h-14 w-full rounded-[22px] bg-[#047857] text-base font-black text-white hover:bg-[#065F46]"
                 disabled={submitting || cartItems.length === 0}
                 onClick={submitOrder}
               >
@@ -853,7 +875,7 @@ export function CustomerMenuPage() {
                 ) : (
                   <>
                     <ReceiptText className="size-4" />
-                    Send to waiter · {formatPrice(total)}
+                    Send to waiter · {formatPrice(total, currency)}
                   </>
                 )}
               </Button>

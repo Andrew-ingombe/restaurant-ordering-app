@@ -446,7 +446,7 @@ export function OwnerDashboardPage({
       contentClassName="min-w-0 space-y-6"
       headerContent={
         <div className="min-w-0">
-          <p className="text-xs font-semibold tracking-[0.2em] text-[#ef1428] uppercase">
+          <p className="text-xs font-semibold tracking-[0.2em] text-[#047857] uppercase">
             Restaurant overview
           </p>
 
@@ -494,7 +494,7 @@ export function OwnerDashboardPage({
           </Popover>
 
           <Button
-            className="h-11 cursor-pointer rounded-xl bg-[#ef1428] px-4 text-white hover:bg-[#d91023] sm:px-5"
+            className="h-11 cursor-pointer rounded-xl bg-[#047857] px-4 text-white hover:bg-[#065F46] sm:px-5"
             disabled={loading}
             onClick={() => void loadDashboard(selectedDate || undefined)}
           >
@@ -523,7 +523,7 @@ export function OwnerDashboardPage({
                     key={card.label}
                     className={`min-w-0 overflow-hidden rounded-[22px] p-5 ${
                       card.featured
-                        ? "bg-[#ef1428] text-white"
+                        ? "bg-[#047857] text-white"
                         : "bg-white text-neutral-950"
                     }`}
                   >
@@ -568,7 +568,7 @@ export function OwnerDashboardPage({
             <div className="min-w-0 rounded-[24px] bg-white p-4 sm:p-5">
               <div className="flex min-w-0 items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-xs font-semibold tracking-[0.16em] text-[#ef1428] uppercase">
+                  <p className="text-xs font-semibold tracking-[0.16em] text-[#047857] uppercase">
                     Live operations
                   </p>
 
@@ -661,7 +661,7 @@ export function OwnerDashboardPage({
             <div className="min-w-0 rounded-[24px] bg-white p-4 sm:p-5">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-xs font-semibold tracking-[0.16em] text-[#ef1428] uppercase">
+                  <p className="text-xs font-semibold tracking-[0.16em] text-[#047857] uppercase">
                     Action queue
                   </p>
 
@@ -740,7 +740,7 @@ export function OwnerDashboardPage({
           <section className="grid min-w-0 gap-5 xl:grid-cols-[0.9fr_1.1fr]">
             <div className="min-w-0 overflow-hidden rounded-[24px] bg-white p-4 sm:p-5">
               <div>
-                <p className="text-xs font-semibold tracking-[0.16em] text-[#ef1428] uppercase">
+                <p className="text-xs font-semibold tracking-[0.16em] text-[#047857] uppercase">
                   Payments
                 </p>
 
@@ -798,7 +798,7 @@ export function OwnerDashboardPage({
 
                           <div className="mt-3 h-2 overflow-hidden rounded-full bg-neutral-100">
                             <div
-                              className="h-full rounded-full bg-[#ef1428]"
+                              className="h-full rounded-full bg-[#047857]"
                               style={{ width: `${percentage}%` }}
                             />
                           </div>
@@ -812,7 +812,7 @@ export function OwnerDashboardPage({
 
             <div className="min-w-0 rounded-[24px] bg-white p-4 sm:p-5">
               <div>
-                <p className="text-xs font-semibold tracking-[0.16em] text-[#ef1428] uppercase">
+                <p className="text-xs font-semibold tracking-[0.16em] text-[#047857] uppercase">
                   Menu performance
                 </p>
 
@@ -841,7 +841,7 @@ export function OwnerDashboardPage({
                       </p>
                     </div>
 
-                    <p className="col-start-2 font-bold break-words text-[#ef1428] sm:col-start-auto sm:text-right">
+                    <p className="col-start-2 font-bold break-words text-[#047857] sm:col-start-auto sm:text-right">
                       {formatPrice(item.sales)}
                     </p>
                   </div>

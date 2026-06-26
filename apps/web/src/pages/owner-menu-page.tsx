@@ -225,6 +225,21 @@ export function OwnerMenuPage({ user, onLogout }: OwnerMenuPageProps) {
 
   const activeCount = categories.filter((category) => category.active).length
 
+  const editingCategory = editingId
+    ? categories.find((category) => category._id === editingId)
+    : null
+
+  const categoryFormChanged = editingCategory
+    ? name.trim() !== editingCategory.name ||
+      description.trim() !== (editingCategory.description || "") ||
+      preparationArea !== (editingCategory.preparationArea || "kitchen")
+    : Boolean(name.trim()) ||
+      Boolean(description.trim()) ||
+      preparationArea !== "kitchen"
+
+  const canSubmitCategory =
+    Boolean(name.trim()) && !submitting && (!editingId || categoryFormChanged)
+
   return (
     <OwnerShell
       user={user}
@@ -233,7 +248,7 @@ export function OwnerMenuPage({ user, onLogout }: OwnerMenuPageProps) {
       contentClassName="grid gap-5"
       headerContent={
         <div>
-          <p className="text-xs font-semibold tracking-[0.2em] text-[#ef1428] uppercase">
+          <p className="text-xs font-semibold tracking-[0.2em] text-[#047857] uppercase">
             Menu setup
           </p>
           <h1 className="mt-1 text-2xl font-black tracking-tight md:text-3xl">
@@ -247,7 +262,7 @@ export function OwnerMenuPage({ user, onLogout }: OwnerMenuPageProps) {
       headerActions={
         <div className="flex flex-wrap gap-2">
           <Button
-            className="h-11 rounded-xl bg-[#ef1428] px-5 text-white hover:bg-[#d91023]"
+            className="h-11 rounded-xl bg-[#047857] px-5 text-white hover:bg-[#065F46]"
             onClick={openCreateDialog}
           >
             <Plus className="size-4" />
@@ -265,8 +280,8 @@ export function OwnerMenuPage({ user, onLogout }: OwnerMenuPageProps) {
         </div>
       }
       sidebarPanel={
-        <div className="rounded-2xl bg-[#fff0f1] p-4">
-          <div className="flex size-10 items-center justify-center rounded-full bg-[#ef1428] text-white">
+        <div className="rounded-2xl bg-[#ECFDF5] p-4">
+          <div className="flex size-10 items-center justify-center rounded-full bg-[#047857] text-white">
             <ListPlus className="size-4" />
           </div>
 
@@ -277,7 +292,7 @@ export function OwnerMenuPage({ user, onLogout }: OwnerMenuPageProps) {
           </p>
 
           <Button
-            className="mt-4 w-full rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
+            className="mt-4 w-full rounded-xl bg-[#047857] text-white hover:bg-[#065F46]"
             onClick={openCreateDialog}
           >
             Add category
@@ -389,8 +404,8 @@ export function OwnerMenuPage({ user, onLogout }: OwnerMenuPageProps) {
                 </Button>
 
                 <Button
-                  className="h-12 rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
-                  disabled={submitting}
+                  className="h-12 rounded-xl bg-[#047857] text-white hover:bg-[#065F46]"
+                  disabled={!canSubmitCategory}
                 >
                   {submitting
                     ? "Saving..."
@@ -415,7 +430,7 @@ export function OwnerMenuPage({ user, onLogout }: OwnerMenuPageProps) {
         <DialogContent className="rounded-[28px] border-0 p-0 sm:max-w-md">
           <div className="p-5 md:p-6">
             <DialogHeader>
-              <div className="mb-4 flex size-12 items-center justify-center rounded-full bg-red-50 text-[#ef1428]">
+              <div className="mb-4 flex size-12 items-center justify-center rounded-full bg-red-50 text-[#047857]">
                 <AlertTriangle className="size-5" />
               </div>
 
@@ -443,7 +458,7 @@ export function OwnerMenuPage({ user, onLogout }: OwnerMenuPageProps) {
               </Button>
 
               <Button
-                className="h-12 rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
+                className="h-12 rounded-xl bg-[#047857] text-white hover:bg-[#065F46]"
                 disabled={Boolean(updatingId)}
                 onClick={() => {
                   if (deactivationTarget) {
@@ -473,7 +488,7 @@ export function OwnerMenuPage({ user, onLogout }: OwnerMenuPageProps) {
             <Badge variant="secondary" className="h-8 rounded-full px-3 py-1">
               {categories.length} total
             </Badge>
-            <Badge className="h-8 rounded-full bg-[#ef1428] px-3 py-1 text-white">
+            <Badge className="h-8 rounded-full bg-[#047857] px-3 py-1 text-white">
               {activeCount} active
             </Badge>
           </div>
@@ -497,7 +512,7 @@ export function OwnerMenuPage({ user, onLogout }: OwnerMenuPageProps) {
               Create your first category using the button above.
             </p>
             <Button
-              className="mt-5 rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
+              className="mt-5 rounded-xl bg-[#047857] text-white hover:bg-[#065F46]"
               onClick={openCreateDialog}
             >
               <Plus className="size-4" />
@@ -517,7 +532,7 @@ export function OwnerMenuPage({ user, onLogout }: OwnerMenuPageProps) {
                   key={category._id}
                   className={`group flex h-full flex-col rounded-[20px] border p-4 transition ${
                     editingId === category._id
-                      ? "border-[#ef1428] bg-[#fff8f8]"
+                      ? "border-[#A7F3D0] bg-[#ECFDF5]"
                       : "border-neutral-100 hover:border-neutral-200 hover:bg-neutral-50"
                   }`}
                 >

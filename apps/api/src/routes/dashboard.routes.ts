@@ -483,6 +483,16 @@ dashboardRouter.get(
       ])
     )
 
+    const statusBreakdownMap = new Map(
+      statusBreakdown.map((item) => [String(item._id), Number(item.count)])
+    )
+
+    statusBreakdownMap.set(
+      "awaiting_payment",
+      (statusBreakdownMap.get("awaiting_payment") || 0) +
+        Number(attention.servedUnpaidCount || 0)
+    )
+
     response.json({
       date: selectedDate,
       timezone: env.restaurantTimezone,
@@ -528,10 +538,12 @@ dashboardRouter.get(
         }
       }),
 
-      statusBreakdown: statusBreakdown.map((item) => ({
-        status: item._id,
-        count: item.count,
-      })),
+      statusBreakdown: Array.from(statusBreakdownMap.entries())
+        .filter(([, count]) => count > 0)
+        .map(([status, count]) => ({
+          status,
+          count,
+        })),
 
       bestSellingItems: bestSellingItems.map((item) => ({
         menuItem: item._id,

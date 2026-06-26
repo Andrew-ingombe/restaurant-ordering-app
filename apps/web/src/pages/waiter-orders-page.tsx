@@ -181,7 +181,7 @@ function OrderCard({
       </div>
 
       <div className="mt-5">
-        <p className="text-xs font-semibold tracking-[0.16em] text-[#ef1428] uppercase">
+        <p className="text-xs font-semibold tracking-[0.16em] text-[#047857] uppercase">
           {order.tableName || "Takeaway"}
         </p>
 
@@ -193,13 +193,13 @@ function OrderCard({
       </div>
 
       {showAssignedWaiter && (
-        <div className="mt-4 flex items-center gap-3 rounded-2xl bg-[#fff0f1] p-3">
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#ef1428] text-white">
+        <div className="mt-4 flex items-center gap-3 rounded-2xl bg-[#ECFDF5] p-3">
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#047857] text-white">
             <UserRound className="size-4" />
           </div>
 
           <div className="min-w-0">
-            <p className="text-xs font-semibold tracking-[0.14em] text-[#ef1428] uppercase">
+            <p className="text-xs font-semibold tracking-[0.14em] text-[#047857] uppercase">
               Owned by
             </p>
 
@@ -249,7 +249,7 @@ function OrderCard({
           <div>
             <p className="text-xs text-neutral-400">Total</p>
 
-            <p className="mt-1 text-lg font-black text-[#ef1428]">
+            <p className="mt-1 text-lg font-black text-[#047857]">
               {formatPrice(order.total)}
             </p>
           </div>
@@ -277,7 +277,7 @@ function OrderCard({
         <div className="mt-4 grid gap-2">
           {order.status === "ready" && (
             <Button
-              className="h-11 w-full cursor-pointer rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
+              className="h-11 w-full cursor-pointer rounded-xl bg-[#047857] text-white hover:bg-[#065F46]"
               disabled={markingServed}
               onClick={onMarkServed}
             >
@@ -587,7 +587,7 @@ export function WaiterOrdersPage({ user, onLogout }: WaiterOrdersPageProps) {
               </Button>
 
               <Button
-                className="h-12 cursor-pointer rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
+                className="h-12 cursor-pointer rounded-xl bg-[#047857] text-white hover:bg-[#065F46]"
                 disabled={Boolean(servingId)}
                 onClick={() => void markOrderServed()}
               >
@@ -620,7 +620,7 @@ export function WaiterOrdersPage({ user, onLogout }: WaiterOrdersPageProps) {
                 aria-selected={view === "active"}
                 className={`h-9 cursor-pointer rounded-lg px-3 ${
                   view === "active"
-                    ? "bg-[#ef1428] text-white shadow-sm hover:bg-[#d91023] hover:text-white"
+                    ? "bg-[#047857] text-white shadow-sm hover:bg-[#065F46] hover:text-white"
                     : "bg-transparent text-neutral-500 hover:bg-white hover:text-neutral-950"
                 }`}
                 variant="ghost"
@@ -977,7 +977,7 @@ export function WaiterOrdersPage({ user, onLogout }: WaiterOrdersPageProps) {
 
               {view === "active" && orders.length === 0 && !search && (
                 <Button
-                  className="mt-6 cursor-pointer rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
+                  className="mt-6 cursor-pointer rounded-xl bg-[#047857] text-white hover:bg-[#065F46]"
                   onClick={() => navigate("/waiter")}
                 >
                   <Plus className="size-4" />

@@ -112,12 +112,12 @@ function LoginPage({ onLogin }: { onLogin: (user: AuthUser) => void }) {
 
   return (
     <main className="grid min-h-svh bg-white lg:grid-cols-[1.05fr_0.95fr]">
-      <section className="relative hidden min-h-svh overflow-hidden bg-[#ef1428] p-10 text-white lg:flex lg:flex-col">
+      <section className="relative hidden min-h-svh overflow-hidden bg-[#047857] p-10 text-white lg:flex lg:flex-col">
         <div className="absolute -top-28 -right-28 size-80 rounded-full border-60 border-white/10" />
         <div className="absolute -bottom-36 -left-28 size-96 rounded-full border-70 border-white/10" />
 
         <div className="relative flex items-center gap-3">
-          <div className="flex size-12 items-center justify-center rounded-2xl bg-white text-[#ef1428]">
+          <div className="flex size-12 items-center justify-center rounded-2xl bg-white text-[#047857]">
             <UtensilsCrossed className="size-6" />
           </div>
 
@@ -170,7 +170,7 @@ function LoginPage({ onLogin }: { onLogin: (user: AuthUser) => void }) {
       <section className="flex min-h-svh items-center justify-center bg-[#f7f7f8] p-5 sm:p-10">
         <div className="w-full max-w-md">
           <div className="mb-8 flex items-center gap-3 lg:hidden">
-            <div className="flex size-11 items-center justify-center rounded-xl bg-[#ef1428] text-white">
+            <div className="flex size-11 items-center justify-center rounded-xl bg-[#047857] text-white">
               <UtensilsCrossed className="size-5" />
             </div>
 
@@ -183,7 +183,7 @@ function LoginPage({ onLogin }: { onLogin: (user: AuthUser) => void }) {
           </div>
 
           <div>
-            <p className="text-xs font-semibold tracking-[0.22em] text-[#ef1428] uppercase">
+            <p className="text-xs font-semibold tracking-[0.22em] text-[#047857] uppercase">
               Welcome back
             </p>
 
@@ -205,7 +205,7 @@ function LoginPage({ onLogin }: { onLogin: (user: AuthUser) => void }) {
 
                 <Input
                   id="email"
-                  className="h-13 rounded-xl border-0 bg-white pl-11 shadow-none ring-1 ring-neutral-200 transition focus-visible:ring-2 focus-visible:ring-[#ef1428]"
+                  className="h-13 rounded-xl border-0 bg-white pl-11 shadow-none ring-1 ring-neutral-200 transition focus-visible:ring-2 focus-visible:ring-[#047857]"
                   type="email"
                   autoComplete="email"
                   value={email}
@@ -224,7 +224,7 @@ function LoginPage({ onLogin }: { onLogin: (user: AuthUser) => void }) {
 
                 <Input
                   id="password"
-                  className="h-13 rounded-xl border-0 bg-white pr-12 pl-11 shadow-none ring-1 ring-neutral-200 transition focus-visible:ring-2 focus-visible:ring-[#ef1428]"
+                  className="h-13 rounded-xl border-0 bg-white pr-12 pl-11 shadow-none ring-1 ring-neutral-200 transition focus-visible:ring-2 focus-visible:ring-[#047857]"
                   type={showPassword ? "text" : "password"}
                   autoComplete="current-password"
                   value={password}
@@ -256,7 +256,7 @@ function LoginPage({ onLogin }: { onLogin: (user: AuthUser) => void }) {
             )}
 
             <Button
-              className="h-13 w-full cursor-pointer rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
+              className="h-13 w-full cursor-pointer rounded-xl bg-[#047857] text-white hover:bg-[#065F46]"
               disabled={loading}
             >
               {loading ? (

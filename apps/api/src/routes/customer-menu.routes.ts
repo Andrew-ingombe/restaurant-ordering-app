@@ -75,7 +75,7 @@ customerMenuRouter.get(
       _id: restaurantId,
       active: true,
     })
-      .select("name")
+      .select("name settings.currency")
       .lean()
 
     if (!restaurant) {
@@ -107,6 +107,7 @@ customerMenuRouter.get(
       restaurant: {
         id: restaurant._id,
         name: restaurant.name,
+        currency: restaurant.settings?.currency || "ZMW",
       },
       table: {
         id: table._id,

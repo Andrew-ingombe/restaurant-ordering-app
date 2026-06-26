@@ -686,7 +686,7 @@ export function WaiterOrderDetailPage({
               {formatStatus(order.paymentStatus)}
             </Badge>
 
-            <span className="truncate text-lg font-black text-[#ef1428] sm:text-xl">
+            <span className="truncate text-lg font-black text-[#047857] sm:text-xl">
               {formatPrice(order.total)}
             </span>
           </div>
@@ -731,7 +731,7 @@ export function WaiterOrderDetailPage({
                           </p>
                         </div>
 
-                        <p className="shrink-0 font-black text-[#ef1428]">
+                        <p className="shrink-0 font-black text-[#047857]">
                           {formatPrice(item.lineTotal)}
                         </p>
                       </div>
@@ -753,7 +753,7 @@ export function WaiterOrderDetailPage({
           <div className="rounded-[24px] bg-white p-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-semibold tracking-[0.16em] text-[#ef1428] uppercase">
+                <p className="text-xs font-semibold tracking-[0.16em] text-[#047857] uppercase">
                   Customer
                 </p>
 
@@ -834,7 +834,7 @@ export function WaiterOrderDetailPage({
 
             {canSubmitOrder && (
               <Button
-                className="mt-3 h-12 w-full rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
+                className="mt-3 h-12 w-full rounded-xl bg-[#047857] text-white hover:bg-[#065F46]"
                 disabled={actionBusy}
                 onClick={handleSubmitOrder}
               >
@@ -854,7 +854,7 @@ export function WaiterOrderDetailPage({
 
             {canRecordPayment && (
               <Button
-                className="mt-3 h-12 w-full rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
+                className="mt-3 h-12 w-full rounded-xl bg-[#047857] text-white hover:bg-[#065F46]"
                 disabled={actionBusy}
                 onClick={openPaymentDialog}
               >
@@ -891,7 +891,7 @@ export function WaiterOrderDetailPage({
 
           {canMarkServed && (
             <Button
-              className="h-12 w-full rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
+              className="h-12 w-full rounded-xl bg-[#047857] text-white hover:bg-[#065F46]"
               disabled={actionBusy}
               onClick={() => handleStatusChange("served")}
             >
@@ -911,7 +911,7 @@ export function WaiterOrderDetailPage({
 
           {canCompleteOrder && (
             <Button
-              className="h-12 w-full rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
+              className="h-12 w-full rounded-xl bg-[#047857] text-white hover:bg-[#065F46]"
               disabled={actionBusy}
               onClick={() => handleStatusChange("completed")}
             >
@@ -943,7 +943,7 @@ export function WaiterOrderDetailPage({
                   <SelectedManualPaymentIcon className="size-5" />
                 </div>
 
-                <p className="mt-5 text-xs font-semibold tracking-[0.18em] text-[#ef1428] uppercase">
+                <p className="mt-5 text-xs font-semibold tracking-[0.18em] text-[#047857] uppercase">
                   Confirm payment
                 </p>
 
@@ -1008,7 +1008,7 @@ export function WaiterOrderDetailPage({
                 </Button>
 
                 <Button
-                  className="h-12 rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
+                  className="h-12 rounded-xl bg-[#047857] text-white hover:bg-[#065F46]"
                   disabled={Boolean(manualProcessingMethod)}
                   onClick={() =>
                     void handleManualPayment(selectedManualPaymentMethod)
@@ -1032,7 +1032,7 @@ export function WaiterOrderDetailPage({
             <>
               <div className="bg-white p-5 md:p-6">
                 <DialogHeader className="text-left">
-                  <p className="text-xs font-semibold tracking-[0.18em] text-[#ef1428] uppercase">
+                  <p className="text-xs font-semibold tracking-[0.18em] text-[#047857] uppercase">
                     Collect payment
                   </p>
 
@@ -1047,11 +1047,11 @@ export function WaiterOrderDetailPage({
                       </p>
                     </div>
 
-                    <div className="rounded-2xl bg-[#fff0f1] px-4 py-3 text-right">
-                      <p className="text-xs font-semibold text-[#ef1428]">
+                    <div className="rounded-2xl bg-[#ECFDF5] px-4 py-3 text-right">
+                      <p className="text-xs font-semibold text-[#047857]">
                         Amount due
                       </p>
-                      <p className="mt-1 text-2xl font-black text-[#ef1428]">
+                      <p className="mt-1 text-2xl font-black text-[#047857]">
                         {formatPrice(order.total)}
                       </p>
                     </div>
@@ -1111,7 +1111,7 @@ export function WaiterOrderDetailPage({
                 {!paymentOptionsLoading && paymentOptions.lenco.enabled && (
                   <section className="rounded-[22px] bg-white p-4 md:p-5">
                     <div className="flex items-start gap-3">
-                      <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-[#ef1428] text-white">
+                      <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-[#047857] text-white">
                         <WalletCards className="size-5" />
                       </div>
 
@@ -1178,7 +1178,7 @@ export function WaiterOrderDetailPage({
                       </div>
 
                       <Button
-                        className="h-12 w-full rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
+                        className="h-12 w-full rounded-xl bg-[#047857] text-white hover:bg-[#065F46]"
                         disabled={actionBusy}
                         onClick={handleLencoPayment}
                       >

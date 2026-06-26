@@ -11,6 +11,7 @@ import {
   ShoppingBag,
   UserRound,
   UtensilsCrossed,
+  Search,
 } from "lucide-react"
 
 import { Badge } from "@workspace/ui/components/badge"
@@ -93,6 +94,7 @@ export function WaiterRequestsPage({
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState("")
   const [, setClock] = useState(Date.now())
+  const [searchQuery, setSearchQuery] = useState("")
 
   const loadRequests = async (showRefreshing = false) => {
     if (showRefreshing) {
@@ -107,10 +109,16 @@ export function WaiterRequestsPage({
         user.sharedHub ? getActiveWaiters() : Promise.resolve([]),
       ])
 
-      setRequests(customerRequests)
+      const sortedCustomerRequests = [...customerRequests].sort(
+        (firstRequest, secondRequest) =>
+          new Date(secondRequest.createdAt).getTime() -
+          new Date(firstRequest.createdAt).getTime()
+      )
+
+      setRequests(sortedCustomerRequests)
       setActiveWaiters(waiters)
       knownRequestIdsRef.current = new Set(
-        customerRequests.map((request) => request._id)
+        sortedCustomerRequests.map((request) => request._id)
       )
 
       if (user.sharedHub && waiters.length === 1) {
@@ -162,7 +170,7 @@ export function WaiterRequestsPage({
       setRequests((current) => {
         const exists = current.some((request) => request._id === order._id)
 
-        return exists ? current : [...current, order]
+        return exists ? current : [order, ...current]
       })
 
       if (isNew) {
@@ -248,14 +256,33 @@ export function WaiterRequestsPage({
     }
   }
 
-  const totalItems = requests.reduce(
+  const normalizedSearchQuery = searchQuery.trim().toLowerCase()
+
+  const visibleRequests = requests.filter((order) => {
+    if (!normalizedSearchQuery) return true
+
+    return (
+      order.orderNumber.toLowerCase().includes(normalizedSearchQuery) ||
+      order.tableName.toLowerCase().includes(normalizedSearchQuery) ||
+      order.customer.name?.toLowerCase().includes(normalizedSearchQuery) ||
+      order.customer.phone?.toLowerCase().includes(normalizedSearchQuery) ||
+      order.items.some((item) =>
+        item.name.toLowerCase().includes(normalizedSearchQuery)
+      )
+    )
+  })
+
+  const totalItems = visibleRequests.reduce(
     (total, order) =>
       total +
       order.items.reduce((orderTotal, item) => orderTotal + item.quantity, 0),
     0
   )
 
-  const totalValue = requests.reduce((total, order) => total + order.total, 0)
+  const totalValue = visibleRequests.reduce(
+    (total, order) => total + order.total,
+    0
+  )
 
   return (
     <WaiterShell
@@ -278,7 +305,7 @@ export function WaiterRequestsPage({
       ) : (
         <section className="shrink-0 rounded-[20px] bg-white p-3">
           <div className="flex flex-wrap items-center gap-2">
-            <Badge className="flex h-10 items-center rounded-xl border-0 bg-[#ef1428] px-4 text-sm font-semibold text-white">
+            <Badge className="flex h-10 items-center rounded-xl border-0 bg-[#047857] px-4 text-sm font-semibold text-white">
               <BellRing className="size-4" />
               {requests.length} waiting
             </Badge>
@@ -288,13 +315,13 @@ export function WaiterRequestsPage({
               {totalItems} menu items
             </Badge>
 
-            <Badge className="flex h-10 items-center rounded-xl border-0 bg-[#fff0f1] px-4 text-sm font-semibold text-[#ef1428]">
+            <Badge className="flex h-10 items-center rounded-xl border-0 bg-[#ECFDF5] px-4 text-sm font-semibold text-[#047857]">
               {formatPrice(totalValue)} request value
             </Badge>
 
             {user.sharedHub && (
               <div className="flex min-w-[220px] flex-1 items-center gap-2 rounded-xl bg-neutral-100 px-3 py-2 sm:max-w-sm">
-                <MonitorSmartphone className="size-4 shrink-0 text-[#ef1428]" />
+                <MonitorSmartphone className="size-4 shrink-0 text-[#047857]" />
 
                 <div className="min-w-0 flex-1">
                   <Label className="sr-only">Served by waiter</Label>
@@ -331,6 +358,17 @@ export function WaiterRequestsPage({
                 </div>
               </div>
             )}
+
+            <div className="relative min-w-[220px] flex-1 sm:max-w-sm">
+              <Search className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-neutral-400" />
+
+              <input
+                className="h-10 w-full cursor-text rounded-xl border-0 bg-neutral-100 pr-4 pl-11 text-sm outline-none placeholder:text-neutral-400"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Search requests"
+              />
+            </div>
 
             <div className="ml-auto flex items-center gap-2">
               <div className="flex items-center gap-2 px-2 text-xs font-semibold text-emerald-700">
@@ -371,9 +409,9 @@ export function WaiterRequestsPage({
 
         {loading ? (
           <RequestCardsSkeleton />
-        ) : requests.length > 0 ? (
+        ) : visibleRequests.length > 0 ? (
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {requests.map((order) => {
+            {visibleRequests.map((order) => {
               const orderItemCount = order.items.reduce(
                 (total, item) => total + item.quantity,
                 0
@@ -386,7 +424,7 @@ export function WaiterRequestsPage({
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="text-xs font-semibold tracking-[0.16em] text-[#ef1428] uppercase">
+                      <p className="text-xs font-semibold tracking-[0.16em] text-[#047857] uppercase">
                         {order.tableName}
                       </p>
 
@@ -445,7 +483,7 @@ export function WaiterRequestsPage({
                                 {item.name}
                               </p>
 
-                              <p className="shrink-0 font-semibold text-[#ef1428]">
+                              <p className="shrink-0 font-semibold text-[#047857]">
                                 {formatPrice(item.lineTotal)}
                               </p>
                             </div>
@@ -476,7 +514,7 @@ export function WaiterRequestsPage({
                         {orderItemCount === 1 ? "item" : "items"}
                       </p>
 
-                      <p className="mt-1 text-lg font-black text-[#ef1428]">
+                      <p className="mt-1 text-lg font-black text-[#047857]">
                         {formatPrice(order.total)}
                       </p>
                     </div>
@@ -521,20 +559,33 @@ export function WaiterRequestsPage({
                 <CheckCircle2 className="size-7" />
               </div>
 
-              <h2 className="mt-5 text-xl font-black">All caught up</h2>
+              <h2 className="mt-5 text-xl font-black">
+                {searchQuery ? "No matching requests" : "All caught up"}
+              </h2>
 
               <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-neutral-400">
-                No customer QR requests are waiting. New requests will appear
-                here automatically.
+                {searchQuery
+                  ? "Try searching by order number, table, customer, phone, or item name."
+                  : "No customer QR requests are waiting. New requests will appear here automatically."}
               </p>
 
-              <Button
-                className="mt-6 h-12 cursor-pointer rounded-xl bg-neutral-950 text-white hover:bg-neutral-800"
-                onClick={() => navigate("/waiter")}
-              >
-                <UtensilsCrossed className="size-4" />
-                Create a waiter order
-              </Button>
+              {searchQuery ? (
+                <Button
+                  className="mt-6 h-12 cursor-pointer rounded-xl"
+                  variant="outline"
+                  onClick={() => setSearchQuery("")}
+                >
+                  Clear search
+                </Button>
+              ) : (
+                <Button
+                  className="mt-6 h-12 cursor-pointer rounded-xl bg-neutral-950 text-white hover:bg-neutral-800"
+                  onClick={() => navigate("/waiter")}
+                >
+                  <UtensilsCrossed className="size-4" />
+                  Create a waiter order
+                </Button>
+              )}
             </div>
           </div>
         )}

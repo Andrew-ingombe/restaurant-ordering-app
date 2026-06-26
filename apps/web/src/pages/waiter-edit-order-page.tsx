@@ -9,6 +9,7 @@ import {
   Plus,
   ReceiptText,
   RefreshCw,
+  Search,
   ShoppingBag,
   Store,
   UserRound,
@@ -61,10 +62,10 @@ type CartItem = {
   notes: string
 }
 
-const formatPrice = (price: number) =>
+const formatPrice = (price: number, currency = "ZMW") =>
   new Intl.NumberFormat("en-ZM", {
     style: "currency",
-    currency: "ZMW",
+    currency,
   }).format(price / 100)
 
 export function WaiterEditOrderPage({
@@ -81,6 +82,7 @@ export function WaiterEditOrderPage({
   >([])
   const [cart, setCart] = useState<Record<string, CartItem>>({})
   const [selectedCategory, setSelectedCategory] = useState("all")
+  const [menuSearchQuery, setMenuSearchQuery] = useState("")
   const [orderType, setOrderType] = useState<"dine_in" | "takeaway">("dine_in")
   const [tableName, setTableName] = useState("")
   const [customerName, setCustomerName] = useState("")
@@ -92,6 +94,7 @@ export function WaiterEditOrderPage({
   const [submitting, setSubmitting] = useState(false)
   const [summaryOpen, setSummaryOpen] = useState(false)
   const [error, setError] = useState("")
+  const [currency, setCurrency] = useState("ZMW")
 
   useEffect(() => {
     if (!id) {
@@ -119,6 +122,7 @@ export function WaiterEditOrderPage({
         setCustomerName(order.customer.name || "")
         setCustomerPhone(order.customer.phone || "")
         setCustomerEmail(order.customer.email || "")
+        setCurrency(order.currency || menu.currency || "ZMW")
 
         const menuMap = new Map(menu.items.map((item) => [item._id, item]))
         const initialCart: Record<string, CartItem> = {}
@@ -155,10 +159,21 @@ export function WaiterEditOrderPage({
   }, [id])
 
   const visibleItems = useMemo(() => {
-    if (selectedCategory === "all") return items
+    const normalizedQuery = menuSearchQuery.trim().toLowerCase()
 
-    return items.filter((item) => item.category._id === selectedCategory)
-  }, [items, selectedCategory])
+    return items.filter((item) => {
+      const matchesCategory =
+        selectedCategory === "all" || item.category._id === selectedCategory
+
+      const matchesSearch =
+        !normalizedQuery ||
+        item.name.toLowerCase().includes(normalizedQuery) ||
+        (item.description || "").toLowerCase().includes(normalizedQuery) ||
+        item.category.name.toLowerCase().includes(normalizedQuery)
+
+      return matchesCategory && matchesSearch
+    })
+  }, [items, selectedCategory, menuSearchQuery])
 
   const cartItems = Object.values(cart)
 
@@ -283,7 +298,7 @@ export function WaiterEditOrderPage({
     >
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-xs font-semibold tracking-[0.18em] text-[#ef1428] uppercase">
+          <p className="text-xs font-semibold tracking-[0.18em] text-[#047857] uppercase">
             Draft summary
           </p>
 
@@ -301,11 +316,11 @@ export function WaiterEditOrderPage({
           <p className="mt-1 text-2xl font-black">{totalItems}</p>
         </div>
 
-        <div className="min-w-0 rounded-2xl bg-[#fff0f1] p-4">
-          <p className="text-xs text-[#ef1428]/70">Total</p>
+        <div className="min-w-0 rounded-2xl bg-[#ECFDF5] p-4">
+          <p className="text-xs text-[#047857]/70">Total</p>
 
-          <p className="mt-1 text-xl font-black break-words text-[#ef1428]">
-            {formatPrice(total)}
+          <p className="mt-1 text-xl font-black break-words text-[#047857]">
+            {formatPrice(total, currency)}
           </p>
         </div>
       </div>
@@ -405,8 +420,11 @@ export function WaiterEditOrderPage({
                     {cartItem.item.name}
                   </p>
 
-                  <p className="shrink-0 font-bold text-[#ef1428]">
-                    {formatPrice(cartItem.item.price * cartItem.quantity)}
+                  <p className="shrink-0 font-bold text-[#047857]">
+                    {formatPrice(
+                      cartItem.item.price * cartItem.quantity,
+                      currency
+                    )}
                   </p>
                 </div>
 
@@ -492,13 +510,13 @@ export function WaiterEditOrderPage({
       <div className="flex items-center justify-between gap-3 border-t border-neutral-100 pt-5">
         <span className="font-bold">Order total</span>
 
-        <span className="text-right text-2xl font-black break-words text-[#ef1428]">
-          {formatPrice(total)}
+        <span className="text-right text-2xl font-black break-words text-[#047857]">
+          {formatPrice(total, currency)}
         </span>
       </div>
 
       <Button
-        className="h-13 w-full rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
+        className="h-13 w-full rounded-xl bg-[#047857] text-white hover:bg-[#065F46]"
         disabled={submitting || cartItems.length === 0}
         onClick={saveChanges}
       >
@@ -581,7 +599,7 @@ export function WaiterEditOrderPage({
       contentClassName="flex min-h-0 flex-col gap-4 pb-24 md:pb-24 xl:pb-6"
     >
       <section className="shrink-0 rounded-[18px] bg-white p-2.5">
-        <div className="flex min-w-0 items-center gap-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
           <Button
             className="size-10 shrink-0 rounded-xl p-0 sm:w-auto sm:px-3"
             variant="outline"
@@ -621,13 +639,24 @@ export function WaiterEditOrderPage({
             </SelectContent>
           </Select>
 
+          <div className="relative min-w-[180px] flex-1 sm:max-w-72">
+            <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-neutral-400" />
+
+            <Input
+              className="h-10 rounded-xl border-0 bg-neutral-100 pr-4 pl-10 shadow-none"
+              value={menuSearchQuery}
+              onChange={(event) => setMenuSearchQuery(event.target.value)}
+              placeholder="Search menu"
+            />
+          </div>
+
           <div className="ml-auto flex shrink-0 items-center gap-3">
             <span className="hidden text-sm font-semibold text-neutral-500 md:inline">
               {totalItems} {totalItems === 1 ? "item" : "items"}
             </span>
 
-            <span className="text-base font-black whitespace-nowrap text-[#ef1428] sm:text-lg">
-              {formatPrice(total)}
+            <span className="text-base font-black whitespace-nowrap text-[#047857] sm:text-lg">
+              {formatPrice(total, currency)}
             </span>
           </div>
         </div>
@@ -644,7 +673,7 @@ export function WaiterEditOrderPage({
                   key={item._id}
                   className={`overflow-hidden rounded-[24px] bg-white transition ${
                     quantity > 0
-                      ? "ring-2 ring-[#ef1428]"
+                      ? "ring-2 ring-[#047857]"
                       : "hover:-translate-y-0.5 hover:shadow-lg"
                   }`}
                 >
@@ -661,12 +690,12 @@ export function WaiterEditOrderPage({
                       </div>
                     )}
 
-                    <Badge className="absolute top-3 right-3 rounded-full border-0 bg-white font-bold text-[#ef1428] shadow-sm">
-                      {formatPrice(item.price)}
+                    <Badge className="absolute top-3 right-3 rounded-full border-0 bg-white font-bold text-[#047857] shadow-sm">
+                      {formatPrice(item.price, currency)}
                     </Badge>
 
                     {quantity > 0 && (
-                      <div className="absolute top-3 left-3 flex size-9 items-center justify-center rounded-full bg-[#ef1428] font-black text-white shadow-sm">
+                      <div className="absolute top-3 left-3 flex size-9 items-center justify-center rounded-full bg-[#047857] font-black text-white shadow-sm">
                         {quantity}
                       </div>
                     )}
@@ -719,10 +748,16 @@ export function WaiterEditOrderPage({
               <div className="rounded-[24px] border border-dashed border-neutral-300 bg-white p-12 text-center sm:col-span-2 2xl:col-span-3">
                 <Store className="mx-auto size-8 text-neutral-300" />
 
-                <p className="mt-4 font-bold">No menu items available</p>
+                <p className="mt-4 font-bold">
+                  {menuSearchQuery
+                    ? "No matching menu items"
+                    : "No menu items available"}
+                </p>
 
                 <p className="mt-1 text-sm text-neutral-400">
-                  This category currently has no available items.
+                  {menuSearchQuery
+                    ? "Try another item, drink or category name."
+                    : "This category currently has no available items."}
                 </p>
               </div>
             )}
@@ -743,7 +778,7 @@ export function WaiterEditOrderPage({
                   <span className="relative flex size-10 items-center justify-center rounded-full bg-white/10">
                     <ShoppingBag className="size-5" />
 
-                    <span className="absolute -top-1 -right-1 flex size-5 items-center justify-center rounded-full bg-[#ef1428] text-[10px] font-black">
+                    <span className="absolute -top-1 -right-1 flex size-5 items-center justify-center rounded-full bg-[#047857] text-[10px] font-black">
                       {totalItems}
                     </span>
                   </span>
@@ -759,7 +794,9 @@ export function WaiterEditOrderPage({
                   </span>
                 </span>
 
-                <span className="text-lg font-black">{formatPrice(total)}</span>
+                <span className="text-lg font-black">
+                  {formatPrice(total, currency)}
+                </span>
               </Button>
             </div>
           </SheetTrigger>

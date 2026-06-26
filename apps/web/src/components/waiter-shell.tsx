@@ -151,10 +151,10 @@ export function WaiterShell({
           mobile
             ? isActive
               ? "bg-white/20 text-white"
-              : "bg-[#ef1428] text-white"
+              : "bg-[#047857] text-white"
             : isActive
               ? "bg-white/20 text-white"
-              : "bg-[#ef1428] text-white"
+              : "bg-[#047857] text-white"
         }`}
       >
         {formatQrCount(qrRequestCount)}
@@ -168,12 +168,12 @@ export function WaiterShell({
         <header className="z-20 shrink-0 border-b border-black/5 bg-white/95 px-4 py-4 backdrop-blur md:px-7">
           <div className="flex items-center justify-between gap-4">
             <div className="flex min-w-0 items-center gap-3 md:gap-4">
-              <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-[#ef1428] text-white md:size-12">
+              <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-[#047857] text-white md:size-12">
                 {icon || <UtensilsCrossed className="size-6" />}
               </div>
 
               <div className="min-w-0">
-                <p className="truncate text-[10px] font-semibold tracking-[0.18em] text-[#ef1428] uppercase sm:text-xs sm:tracking-[0.2em]">
+                <p className="truncate text-[10px] font-semibold tracking-[0.18em] text-[#047857] uppercase sm:text-xs sm:tracking-[0.2em]">
                   {eyebrow}
                 </p>
 
@@ -198,7 +198,7 @@ export function WaiterShell({
                     key={item.path}
                     className={`h-11 cursor-pointer rounded-xl ${
                       isActive
-                        ? "bg-[#ef1428] text-white hover:bg-[#d91023]"
+                        ? "bg-[#047857] text-white hover:bg-[#065F46]"
                         : ""
                     }`}
                     variant={isActive ? "default" : "outline"}
@@ -248,7 +248,7 @@ export function WaiterShell({
               >
                 <SheetHeader className="border-b border-neutral-100 px-6 py-6 text-left">
                   <div className="flex items-center gap-4 pr-10">
-                    <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-[#ef1428] text-white">
+                    <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-[#047857] text-white">
                       <UtensilsCrossed className="size-7" />
                     </div>
 

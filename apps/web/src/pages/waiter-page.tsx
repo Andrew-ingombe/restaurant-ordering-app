@@ -8,6 +8,7 @@ import {
   MonitorSmartphone,
   Plus,
   ReceiptText,
+  Search,
   ShoppingBag,
   Store,
   UserRound,
@@ -72,10 +73,10 @@ type WaiterPageProps = {
   onLogout: () => void
 }
 
-const formatPrice = (price: number) =>
+const formatPrice = (price: number, currency = "ZMW") =>
   new Intl.NumberFormat("en-ZM", {
     style: "currency",
-    currency: "ZMW",
+    currency,
   }).format(price / 100)
 
 const getStaffId = (staff: StaffUser) => staff.id || staff._id || ""
@@ -92,6 +93,7 @@ export function WaiterPage({ user, onLogout }: WaiterPageProps) {
   const [selectedWaiterId, setSelectedWaiterId] = useState("")
   const [cart, setCart] = useState<Record<string, CartItem>>({})
   const [selectedCategory, setSelectedCategory] = useState("all")
+  const [menuSearchQuery, setMenuSearchQuery] = useState("")
   const [orderType, setOrderType] = useState<"dine_in" | "takeaway">("dine_in")
   const [tableName, setTableName] = useState("")
   const [customerName, setCustomerName] = useState("")
@@ -103,6 +105,7 @@ export function WaiterPage({ user, onLogout }: WaiterPageProps) {
   const [success, setSuccess] = useState("")
   const [tableError, setTableError] = useState("")
   const [clearOrderDialogOpen, setClearOrderDialogOpen] = useState(false)
+  const [currency, setCurrency] = useState("ZMW")
 
   useEffect(() => {
     const loadOrderingData = async () => {
@@ -117,6 +120,7 @@ export function WaiterPage({ user, onLogout }: WaiterPageProps) {
 
         setCategories(menu.categories)
         setItems(menu.items)
+        setCurrency(menu.currency || "ZMW")
         setAvailableTables(tables)
         setActiveWaiters(waiters)
 
@@ -142,10 +146,21 @@ export function WaiterPage({ user, onLogout }: WaiterPageProps) {
   }, [user.sharedHub])
 
   const visibleItems = useMemo(() => {
-    if (selectedCategory === "all") return items
+    const normalizedQuery = menuSearchQuery.trim().toLowerCase()
 
-    return items.filter((item) => item.category._id === selectedCategory)
-  }, [items, selectedCategory])
+    return items.filter((item) => {
+      const matchesCategory =
+        selectedCategory === "all" || item.category._id === selectedCategory
+
+      const matchesSearch =
+        !normalizedQuery ||
+        item.name.toLowerCase().includes(normalizedQuery) ||
+        (item.description || "").toLowerCase().includes(normalizedQuery) ||
+        item.category.name.toLowerCase().includes(normalizedQuery)
+
+      return matchesCategory && matchesSearch
+    })
+  }, [items, selectedCategory, menuSearchQuery])
 
   const selectedWaiter = activeWaiters.find(
     (waiter) => getStaffId(waiter) === selectedWaiterId
@@ -315,7 +330,7 @@ export function WaiterPage({ user, onLogout }: WaiterPageProps) {
     >
       <div className="flex items-center justify-between gap-4 pr-10 sm:pr-0">
         <div>
-          <p className="text-xs font-semibold tracking-[0.18em] text-[#ef1428] uppercase">
+          <p className="text-xs font-semibold tracking-[0.18em] text-[#047857] uppercase">
             Current order
           </p>
 
@@ -328,9 +343,9 @@ export function WaiterPage({ user, onLogout }: WaiterPageProps) {
       </div>
 
       {user.sharedHub && (
-        <div className="rounded-2xl bg-[#fff0f1] p-4">
+        <div className="rounded-2xl bg-[#ECFDF5] p-4">
           <div className="mb-3 flex items-start gap-3">
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#ef1428] text-white">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#047857] text-white">
               <MonitorSmartphone className="size-4" />
             </div>
 
@@ -397,11 +412,11 @@ export function WaiterPage({ user, onLogout }: WaiterPageProps) {
           <p className="mt-1 text-2xl font-black">{totalItems}</p>
         </div>
 
-        <div className="min-w-0 rounded-2xl bg-[#fff0f1] p-4">
-          <p className="text-xs text-[#ef1428]/70">Total</p>
+        <div className="min-w-0 rounded-2xl bg-[#ECFDF5] p-4">
+          <p className="text-xs text-[#047857]/70">Total</p>
 
-          <p className="mt-1 text-xl font-black break-words text-[#ef1428]">
-            {formatPrice(total)}
+          <p className="mt-1 text-xl font-black break-words text-[#047857]">
+            {formatPrice(total, currency)}
           </p>
         </div>
       </div>
@@ -511,8 +526,11 @@ export function WaiterPage({ user, onLogout }: WaiterPageProps) {
                     {cartItem.item.name}
                   </p>
 
-                  <p className="shrink-0 font-bold text-[#ef1428]">
-                    {formatPrice(cartItem.item.price * cartItem.quantity)}
+                  <p className="shrink-0 font-bold text-[#047857]">
+                    {formatPrice(
+                      cartItem.item.price * cartItem.quantity,
+                      currency
+                    )}
                   </p>
                 </div>
 
@@ -592,8 +610,8 @@ export function WaiterPage({ user, onLogout }: WaiterPageProps) {
       <div className="flex items-center justify-between gap-3 border-t border-neutral-100 pt-5">
         <span className="font-bold">Order total</span>
 
-        <span className="text-right text-2xl font-black break-words text-[#ef1428]">
-          {formatPrice(total)}
+        <span className="text-right text-2xl font-black break-words text-[#047857]">
+          {formatPrice(total, currency)}
         </span>
       </div>
 
@@ -610,7 +628,7 @@ export function WaiterPage({ user, onLogout }: WaiterPageProps) {
         </Button>
 
         <Button
-          className="h-13 cursor-pointer rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
+          className="h-13 cursor-pointer rounded-xl bg-[#047857] text-white hover:bg-[#065F46]"
           disabled={
             submitting ||
             cartItems.length === 0 ||
@@ -674,7 +692,7 @@ export function WaiterPage({ user, onLogout }: WaiterPageProps) {
         <DialogContent className="rounded-[28px] border-0 p-0 sm:max-w-md">
           <div className="p-5 md:p-6">
             <DialogHeader>
-              <div className="mb-4 flex size-12 items-center justify-center rounded-full bg-red-50 text-[#ef1428]">
+              <div className="mb-4 flex size-12 items-center justify-center rounded-full bg-red-50 text-[#047857]">
                 <AlertTriangle className="size-5" />
               </div>
 
@@ -699,7 +717,7 @@ export function WaiterPage({ user, onLogout }: WaiterPageProps) {
               </Button>
 
               <Button
-                className="h-12 cursor-pointer rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
+                className="h-12 cursor-pointer rounded-xl bg-[#047857] text-white hover:bg-[#065F46]"
                 type="button"
                 onClick={clearCurrentOrder}
               >
@@ -712,7 +730,7 @@ export function WaiterPage({ user, onLogout }: WaiterPageProps) {
 
       <section className="flex min-h-0 min-w-0 flex-col gap-4">
         <div className="shrink-0 rounded-[20px] bg-white p-3">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
             <div className="flex min-w-0 flex-1 gap-2 overflow-x-auto pb-1">
               <Button
                 className={`h-10 shrink-0 cursor-pointer rounded-xl px-4 ${
@@ -731,7 +749,7 @@ export function WaiterPage({ user, onLogout }: WaiterPageProps) {
                   key={category._id}
                   className={`h-10 shrink-0 cursor-pointer rounded-xl px-4 ${
                     selectedCategory === category._id
-                      ? "bg-[#ef1428] text-white hover:bg-[#d91023] hover:text-white"
+                      ? "bg-[#047857] text-white hover:bg-[#065F46] hover:text-white"
                       : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
                   }`}
                   variant="ghost"
@@ -740,6 +758,17 @@ export function WaiterPage({ user, onLogout }: WaiterPageProps) {
                   {category.name}
                 </Button>
               ))}
+            </div>
+
+            <div className="relative min-w-0 lg:w-80">
+              <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-neutral-400" />
+
+              <Input
+                className="h-10 rounded-xl border-0 bg-neutral-100 pr-4 pl-10 shadow-none"
+                value={menuSearchQuery}
+                onChange={(event) => setMenuSearchQuery(event.target.value)}
+                placeholder="Search menu items"
+              />
             </div>
 
             <Badge
@@ -762,7 +791,7 @@ export function WaiterPage({ user, onLogout }: WaiterPageProps) {
                   key={item._id}
                   className={`overflow-hidden rounded-[24px] bg-white transition ${
                     quantity > 0
-                      ? "outline-2 outline-offset-2 outline-[#ef1428]"
+                      ? "outline-2 outline-offset-2 outline-[#047857]"
                       : "hover:-translate-y-0.5 hover:shadow-lg"
                   }`}
                 >
@@ -779,12 +808,12 @@ export function WaiterPage({ user, onLogout }: WaiterPageProps) {
                       </div>
                     )}
 
-                    <Badge className="absolute top-3 right-3 rounded-full border-0 bg-white font-bold text-[#ef1428] shadow-sm">
-                      {formatPrice(item.price)}
+                    <Badge className="absolute top-3 right-3 rounded-full border-0 bg-white font-bold text-[#047857] shadow-sm">
+                      {formatPrice(item.price, currency)}
                     </Badge>
 
                     {quantity > 0 && (
-                      <div className="absolute top-3 left-3 flex size-9 items-center justify-center rounded-full bg-[#ef1428] font-black text-white shadow-sm">
+                      <div className="absolute top-3 left-3 flex size-9 items-center justify-center rounded-full bg-[#047857] font-black text-white shadow-sm">
                         {quantity}
                       </div>
                     )}
@@ -837,10 +866,16 @@ export function WaiterPage({ user, onLogout }: WaiterPageProps) {
               <div className="rounded-[24px] border border-dashed border-neutral-300 bg-white p-12 text-center sm:col-span-2 2xl:col-span-3">
                 <Store className="mx-auto size-8 text-neutral-300" />
 
-                <p className="mt-4 font-bold">No menu items available</p>
+                <p className="mt-4 font-bold">
+                  {menuSearchQuery
+                    ? "No matching menu items"
+                    : "No menu items available"}
+                </p>
 
                 <p className="mt-1 text-sm text-neutral-400">
-                  This category currently has no available items.
+                  {menuSearchQuery
+                    ? "Try another item, drink or category name."
+                    : "This category currently has no available items."}
                 </p>
               </div>
             )}
@@ -861,7 +896,7 @@ export function WaiterPage({ user, onLogout }: WaiterPageProps) {
                   <span className="relative flex size-10 items-center justify-center rounded-full bg-white/10">
                     <ShoppingBag className="size-5" />
 
-                    <span className="absolute -top-1 -right-1 flex size-5 items-center justify-center rounded-full bg-[#ef1428] text-[10px] font-black">
+                    <span className="absolute -top-1 -right-1 flex size-5 items-center justify-center rounded-full bg-[#047857] text-[10px] font-black">
                       {totalItems}
                     </span>
                   </span>
@@ -879,7 +914,9 @@ export function WaiterPage({ user, onLogout }: WaiterPageProps) {
                   </span>
                 </span>
 
-                <span className="text-lg font-black">{formatPrice(total)}</span>
+                <span className="text-lg font-black">
+                  {formatPrice(total, currency)}
+                </span>
               </Button>
             </div>
           </SheetTrigger>

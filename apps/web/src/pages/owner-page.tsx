@@ -9,6 +9,7 @@ import {
   Pencil,
   Phone,
   Plus,
+  Search,
   ShieldCheck,
   UserRound,
   Users,
@@ -77,6 +78,7 @@ export function OwnerPage({ user, onLogout }: OwnerPageProps) {
   const [password, setPassword] = useState("")
   const [role, setRole] = useState<StaffRole>("waiter")
   const [sharedHub, setSharedHub] = useState(false)
+  const [staffSearch, setStaffSearch] = useState("")
 
   const [passwordTarget, setPasswordTarget] = useState<StaffUser | null>(null)
   const [temporaryPassword, setTemporaryPassword] = useState("")
@@ -353,6 +355,22 @@ export function OwnerPage({ user, onLogout }: OwnerPageProps) {
     (member) => member.role === "waiter" && member.sharedHub
   ).length
 
+  const normalizedStaffSearch = staffSearch.trim().toLowerCase()
+
+  const visibleStaff = staff.filter((member) => {
+    if (!normalizedStaffSearch) return true
+
+    return (
+      member.name.toLowerCase().includes(normalizedStaffSearch) ||
+      member.email.toLowerCase().includes(normalizedStaffSearch) ||
+      member.phone?.toLowerCase().includes(normalizedStaffSearch) ||
+      member.role.toLowerCase().includes(normalizedStaffSearch) ||
+      (member.sharedHub ? "shared ordering hub" : "").includes(
+        normalizedStaffSearch
+      )
+    )
+  })
+
   const statusTargetId = statusTarget ? getStaffId(statusTarget) : ""
 
   return (
@@ -363,7 +381,7 @@ export function OwnerPage({ user, onLogout }: OwnerPageProps) {
       contentClassName="space-y-5"
       headerContent={
         <div>
-          <p className="text-xs font-semibold tracking-[0.2em] text-[#ef1428] uppercase">
+          <p className="text-xs font-semibold tracking-[0.2em] text-[#047857] uppercase">
             Team management
           </p>
 
@@ -371,7 +389,7 @@ export function OwnerPage({ user, onLogout }: OwnerPageProps) {
             Restaurant staff
           </h1>
 
-          <p className="mt-1 text-sm text-neutral-400">
+          <p className="mt-1 text-sm leading-6 text-neutral-400">
             Create accounts and control staff access.
           </p>
         </div>
@@ -379,7 +397,7 @@ export function OwnerPage({ user, onLogout }: OwnerPageProps) {
       headerActions={
         <div className="flex flex-wrap gap-2">
           <Button
-            className="h-11 rounded-xl bg-[#ef1428] px-5 text-white hover:bg-[#d91023]"
+            className="h-11 cursor-pointer rounded-xl bg-[#047857] px-5 text-white hover:bg-[#065F46]"
             onClick={openCreateDialog}
           >
             <Plus className="size-4" />
@@ -387,7 +405,7 @@ export function OwnerPage({ user, onLogout }: OwnerPageProps) {
           </Button>
 
           <Button
-            className="h-11 rounded-xl"
+            className="h-11 cursor-pointer rounded-xl"
             variant="outline"
             onClick={() => navigate("/owner/menu")}
           >
@@ -560,7 +578,7 @@ export function OwnerPage({ user, onLogout }: OwnerPageProps) {
                 </div>
 
                 {role !== "waiter" && (
-                  <p className="mt-3 text-xs text-neutral-400">
+                  <p className="mt-3 text-xs leading-5 text-neutral-400">
                     Shared hubs are only available for waiter accounts.
                   </p>
                 )}
@@ -574,7 +592,7 @@ export function OwnerPage({ user, onLogout }: OwnerPageProps) {
 
               <div className="grid gap-2 pt-2 sm:grid-cols-2">
                 <Button
-                  className="h-12 rounded-xl"
+                  className="h-12 cursor-pointer rounded-xl"
                   type="button"
                   variant="outline"
                   disabled={submitting}
@@ -584,7 +602,7 @@ export function OwnerPage({ user, onLogout }: OwnerPageProps) {
                 </Button>
 
                 <Button
-                  className="h-12 rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
+                  className="h-12 cursor-pointer rounded-xl bg-[#047857] text-white hover:bg-[#065F46]"
                   disabled={submitting}
                 >
                   {submitting
@@ -610,7 +628,7 @@ export function OwnerPage({ user, onLogout }: OwnerPageProps) {
         <DialogContent className="rounded-[28px] border-0 p-0 sm:max-w-md">
           <div className="p-5 md:p-6">
             <DialogHeader>
-              <div className="mb-4 flex size-12 items-center justify-center rounded-full bg-red-50 text-[#ef1428]">
+              <div className="mb-4 flex size-12 items-center justify-center rounded-full bg-red-50 text-[#047857]">
                 <AlertTriangle className="size-5" />
               </div>
 
@@ -627,7 +645,7 @@ export function OwnerPage({ user, onLogout }: OwnerPageProps) {
 
             <div className="mt-6 grid gap-2 sm:grid-cols-2">
               <Button
-                className="h-12 rounded-xl"
+                className="h-12 cursor-pointer rounded-xl"
                 variant="outline"
                 disabled={Boolean(updatingId)}
                 onClick={() => setStatusTarget(null)}
@@ -636,7 +654,7 @@ export function OwnerPage({ user, onLogout }: OwnerPageProps) {
               </Button>
 
               <Button
-                className="h-12 rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
+                className="h-12 cursor-pointer rounded-xl bg-[#047857] text-white hover:bg-[#065F46]"
                 disabled={Boolean(updatingId)}
                 onClick={() => {
                   if (statusTarget) {
@@ -664,7 +682,7 @@ export function OwnerPage({ user, onLogout }: OwnerPageProps) {
         <DialogContent className="rounded-[28px] border-0 p-0 sm:max-w-md">
           <div className="p-5 md:p-6">
             <DialogHeader>
-              <div className="mb-4 flex size-12 items-center justify-center rounded-full bg-[#fff0f1] text-[#ef1428]">
+              <div className="mb-4 flex size-12 items-center justify-center rounded-full bg-[#ECFDF5] text-[#047857]">
                 <KeyRound className="size-5" />
               </div>
 
@@ -770,7 +788,7 @@ export function OwnerPage({ user, onLogout }: OwnerPageProps) {
 
               <div className="grid gap-2 pt-2 sm:grid-cols-2">
                 <Button
-                  className="h-12 rounded-xl"
+                  className="h-12 cursor-pointer rounded-xl"
                   type="button"
                   variant="outline"
                   disabled={resettingPassword}
@@ -780,7 +798,7 @@ export function OwnerPage({ user, onLogout }: OwnerPageProps) {
                 </Button>
 
                 <Button
-                  className="h-12 rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
+                  className="h-12 cursor-pointer rounded-xl bg-[#047857] text-white hover:bg-[#065F46]"
                   disabled={resettingPassword}
                 >
                   {resettingPassword
@@ -796,14 +814,14 @@ export function OwnerPage({ user, onLogout }: OwnerPageProps) {
       <section className="min-w-0 rounded-[24px] bg-white p-5">
         <div>
           <h2 className="text-xl font-black">Staff accounts</h2>
-          <p className="mt-1 text-sm text-neutral-400">
+          <p className="mt-1 text-sm leading-6 text-neutral-400">
             Manage access for the restaurant team.
           </p>
         </div>
 
         <div className="mt-5 grid gap-2 sm:grid-cols-5">
-          <div className="rounded-2xl bg-[#fff0f1] px-4 py-3">
-            <p className="text-xs font-semibold text-[#ef1428]">Active staff</p>
+          <div className="rounded-2xl bg-[#ECFDF5] px-4 py-3">
+            <p className="text-xs font-semibold text-[#047857]">Active staff</p>
             <p className="mt-1 text-2xl font-black">
               {loading ? (
                 <span className="block h-7 w-10 animate-pulse rounded-lg bg-neutral-200" />
@@ -862,6 +880,29 @@ export function OwnerPage({ user, onLogout }: OwnerPageProps) {
           </div>
         </div>
 
+        <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="relative w-full sm:max-w-sm">
+            <Search className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-neutral-400" />
+
+            <Input
+              className="h-11 rounded-xl border-0 bg-neutral-100 pr-4 pl-11 shadow-none"
+              value={staffSearch}
+              onChange={(event) => setStaffSearch(event.target.value)}
+              placeholder="Search staff"
+            />
+          </div>
+
+          {staffSearch && (
+            <Button
+              className="h-11 cursor-pointer rounded-xl"
+              variant="outline"
+              onClick={() => setStaffSearch("")}
+            >
+              Clear search
+            </Button>
+          )}
+        </div>
+
         {error && !staffDialogOpen && !passwordTarget && (
           <p className="mt-5 rounded-2xl bg-red-50 p-4 text-sm text-red-700">
             {error}
@@ -872,7 +913,7 @@ export function OwnerPage({ user, onLogout }: OwnerPageProps) {
           <StaffCardsSkeleton />
         ) : (
           <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {staff.map((staffMember) => {
+            {visibleStaff.map((staffMember) => {
               const id = getStaffId(staffMember)
               const RoleIcon =
                 staffMember.role === "kitchen"
@@ -886,7 +927,7 @@ export function OwnerPage({ user, onLogout }: OwnerPageProps) {
               return (
                 <article
                   key={id}
-                  className="rounded-[20px] border border-neutral-100 p-4 transition hover:border-neutral-200 hover:bg-neutral-50"
+                  className="flex h-full flex-col rounded-[20px] border border-neutral-100 p-4 transition hover:border-neutral-200 hover:bg-neutral-50"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex size-11 items-center justify-center rounded-full bg-neutral-950 text-white">
@@ -915,7 +956,7 @@ export function OwnerPage({ user, onLogout }: OwnerPageProps) {
 
                   <div className="mt-5">
                     <h3 className="text-lg font-black">{staffMember.name}</h3>
-                    <p className="mt-1 text-xs font-semibold tracking-wider text-[#ef1428] uppercase">
+                    <p className="mt-1 text-xs font-semibold tracking-wider text-[#047857] uppercase">
                       {staffMember.sharedHub
                         ? "Shared ordering hub"
                         : staffMember.role === "kitchen"
@@ -924,7 +965,7 @@ export function OwnerPage({ user, onLogout }: OwnerPageProps) {
                     </p>
                   </div>
 
-                  <div className="mt-4 space-y-2 text-sm text-neutral-500">
+                  <div className="mt-4 flex-1 space-y-2 text-sm text-neutral-500">
                     <div className="flex items-center gap-2">
                       <Mail className="size-3.5 shrink-0" />
                       <span className="truncate">{staffMember.email}</span>
@@ -938,9 +979,9 @@ export function OwnerPage({ user, onLogout }: OwnerPageProps) {
                     )}
                   </div>
 
-                  <div className="mt-5 grid grid-cols-2 gap-2 border-t border-neutral-100 pt-4">
+                  <div className="mt-auto grid grid-cols-2 gap-2 border-t border-neutral-100 pt-4">
                     <Button
-                      className="h-10 rounded-xl"
+                      className="h-10 cursor-pointer rounded-xl"
                       size="sm"
                       variant="outline"
                       disabled={updatingId === id || resettingPassword}
@@ -951,7 +992,7 @@ export function OwnerPage({ user, onLogout }: OwnerPageProps) {
                     </Button>
 
                     <Button
-                      className={`h-10 rounded-xl ${
+                      className={`h-10 cursor-pointer rounded-xl ${
                         !staffMember.active
                           ? "bg-neutral-950 text-white hover:bg-neutral-800"
                           : ""
@@ -969,7 +1010,7 @@ export function OwnerPage({ user, onLogout }: OwnerPageProps) {
                     </Button>
 
                     <Button
-                      className="col-span-2 h-10 rounded-xl"
+                      className="col-span-2 h-10 cursor-pointer rounded-xl"
                       size="sm"
                       variant="outline"
                       disabled={updatingId === id || resettingPassword}
@@ -991,16 +1032,38 @@ export function OwnerPage({ user, onLogout }: OwnerPageProps) {
 
                 <p className="mt-4 font-bold">No staff accounts</p>
 
-                <p className="mt-1 text-sm text-neutral-400">
+                <p className="mt-1 text-sm leading-6 text-neutral-400">
                   Add your first staff member using the button above.
                 </p>
 
                 <Button
-                  className="mt-5 rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
+                  className="mt-5 cursor-pointer rounded-xl bg-[#047857] text-white hover:bg-[#065F46]"
                   onClick={openCreateDialog}
                 >
                   <Plus className="size-4" />
                   Add staff
+                </Button>
+              </div>
+            )}
+
+            {staff.length > 0 && visibleStaff.length === 0 && (
+              <div className="rounded-2xl border border-dashed border-neutral-200 p-12 text-center md:col-span-2 xl:col-span-3">
+                <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-neutral-100">
+                  <Search className="size-5 text-neutral-500" />
+                </div>
+
+                <p className="mt-4 font-bold">No matching staff</p>
+
+                <p className="mt-1 text-sm leading-6 text-neutral-400">
+                  Try searching by name, email, phone, role, or shared hub.
+                </p>
+
+                <Button
+                  className="mt-5 cursor-pointer rounded-xl"
+                  variant="outline"
+                  onClick={() => setStaffSearch("")}
+                >
+                  Clear search
                 </Button>
               </div>
             )}

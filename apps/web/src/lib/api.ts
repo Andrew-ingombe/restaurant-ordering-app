@@ -195,6 +195,7 @@ export type MenuCategory = {
 }
 
 export const getManagedMenu = async (): Promise<{
+  currency: string
   categories: MenuCategory[]
   items: MenuItem[]
 }> => authenticatedRequest("/menu/manage")
@@ -334,6 +335,7 @@ export type DraftOrder = {
 }
 
 export const getPublicMenu = async (): Promise<{
+  currency: string
   categories: MenuCategory[]
   items: PublicMenuItem[]
 }> => {
@@ -589,6 +591,7 @@ export type CustomerTableMenu = {
   restaurant: {
     id: string
     name: string
+    currency: string
   }
   table: {
     id: string
@@ -605,6 +608,7 @@ export type CustomerOrderResponse = {
     orderNumber: string
     tableName: string
     total: number
+    currency: string
     status: "awaiting_waiter"
   }
 }

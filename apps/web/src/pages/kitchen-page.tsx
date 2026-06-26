@@ -55,7 +55,7 @@ const columns: {
     nextStatus: "accepted",
     action: "Accept order",
     icon: BellRing,
-    accent: "bg-[#ef1428]",
+    accent: "bg-[#047857]",
     badge: "bg-red-50 text-red-700",
   },
   {
@@ -161,7 +161,7 @@ function KitchenOrderCard({
       <div className="p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-xs font-semibold tracking-[0.16em] text-[#ef1428] uppercase">
+            <p className="text-xs font-semibold tracking-[0.16em] text-[#047857] uppercase">
               {order.tableName || "Takeaway"}
             </p>
 
@@ -219,7 +219,7 @@ function KitchenOrderCard({
 
         {nextStatus && action ? (
           <Button
-            className="mt-4 h-11 w-full cursor-pointer rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
+            className="mt-4 h-11 w-full cursor-pointer rounded-xl bg-[#047857] text-white hover:bg-[#065F46]"
             disabled={updating}
             onClick={() => onAdvance(order._id, nextStatus)}
           >
@@ -483,12 +483,12 @@ export function KitchenPage({ user, onLogout }: KitchenPageProps) {
         <header className="z-20 shrink-0 border-b border-black/5 bg-white/95 px-4 py-4 backdrop-blur md:px-7">
           <div className="flex items-center justify-between gap-4">
             <div className="flex min-w-0 items-center gap-3 md:gap-4">
-              <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-[#ef1428] text-white md:size-12">
+              <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-[#047857] text-white md:size-12">
                 <ChefHat className="size-6" />
               </div>
 
               <div className="min-w-0">
-                <p className="truncate text-[10px] font-semibold tracking-[0.18em] text-[#ef1428] uppercase sm:text-xs sm:tracking-[0.2em]">
+                <p className="truncate text-[10px] font-semibold tracking-[0.18em] text-[#047857] uppercase sm:text-xs sm:tracking-[0.2em]">
                   Live kitchen
                 </p>
 
@@ -552,7 +552,7 @@ export function KitchenPage({ user, onLogout }: KitchenPageProps) {
               >
                 <SheetHeader className="border-b border-neutral-100 px-6 py-6 text-left">
                   <div className="flex items-center gap-4 pr-10">
-                    <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-[#ef1428] text-white">
+                    <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-[#047857] text-white">
                       <ChefHat className="size-7" />
                     </div>
 
@@ -641,7 +641,7 @@ export function KitchenPage({ user, onLogout }: KitchenPageProps) {
           <section className="mb-5 rounded-[24px] bg-white p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex flex-wrap items-center gap-2">
-                <Badge className="flex h-9 min-w-32 items-center justify-center rounded-xl border-0 bg-[#ef1428] px-4 py-2 text-sm font-semibold text-white">
+                <Badge className="flex h-9 min-w-32 items-center justify-center rounded-xl border-0 bg-[#047857] px-4 py-2 text-sm font-semibold text-white">
                   {loading ? (
                     <span className="animate-pulse">Loading...</span>
                   ) : (

@@ -143,7 +143,7 @@ export function OwnerSettingsPage({ user, onLogout }: OwnerSettingsPageProps) {
       contentClassName="min-w-0 space-y-5 overflow-x-hidden"
       headerContent={
         <div>
-          <p className="text-xs font-semibold tracking-[0.2em] text-[#ef1428] uppercase">
+          <p className="text-xs font-semibold tracking-[0.2em] text-[#047857] uppercase">
             Restaurant settings
           </p>
           <h1 className="mt-1 text-2xl font-black tracking-tight md:text-3xl">
@@ -155,8 +155,8 @@ export function OwnerSettingsPage({ user, onLogout }: OwnerSettingsPageProps) {
         </div>
       }
       sidebarPanel={
-        <div className="rounded-2xl bg-[#fff0f1] p-4">
-          <div className="flex size-10 items-center justify-center rounded-full bg-[#ef1428] text-white">
+        <div className="rounded-2xl bg-[#ECFDF5] p-4">
+          <div className="flex size-10 items-center justify-center rounded-full bg-[#047857] text-white">
             <Settings2 className="size-4" />
           </div>
 
@@ -272,7 +272,7 @@ export function OwnerSettingsPage({ user, onLogout }: OwnerSettingsPageProps) {
                 </div>
 
                 <Button
-                  className="h-10 rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
+                  className="h-10 rounded-xl bg-[#047857] text-white hover:bg-[#065F46]"
                   disabled={saving}
                 >
                   {saving ? (

@@ -252,7 +252,7 @@ export function OwnerTablesPage({ user, onLogout }: OwnerTablesPageProps) {
           : restaurantName
 
       // Background
-      pdf.setFillColor("#ef1428")
+      pdf.setFillColor("#047857")
       pdf.rect(0, 0, 105, 148, "F")
 
       // Decorative shapes
@@ -285,7 +285,7 @@ export function OwnerTablesPage({ user, onLogout }: OwnerTablesPageProps) {
       pdf.text("FOOD MENU", 52.5, 43, { align: "center" })
 
       // Scan pill
-      pdf.setFillColor("#ef1428")
+      pdf.setFillColor("#047857")
       pdf.roundedRect(26, 49, 53, 11, 5.5, 5.5, "F")
 
       pdf.setTextColor("#ffffff")
@@ -293,16 +293,16 @@ export function OwnerTablesPage({ user, onLogout }: OwnerTablesPageProps) {
       pdf.text("SCAN HERE", 52.5, 56.4, { align: "center" })
 
       // Table pill
-      pdf.setFillColor("#fff0f1")
+      pdf.setFillColor("#ECFDF5")
       pdf.roundedRect(28, 64, 49, 9.5, 4.75, 4.75, "F")
 
-      pdf.setTextColor("#ef1428")
+      pdf.setTextColor("#047857")
       pdf.setFontSize(9.5)
       pdf.text(table.name.toUpperCase(), 52.5, 70.4, { align: "center" })
 
       // QR frame
       pdf.setFillColor("#ffffff")
-      pdf.setDrawColor("#ef1428")
+      pdf.setDrawColor("#047857")
       pdf.setLineWidth(1.2)
       pdf.roundedRect(27, 78, 51, 51, 6.5, 6.5, "FD")
 
@@ -367,7 +367,7 @@ export function OwnerTablesPage({ user, onLogout }: OwnerTablesPageProps) {
       contentClassName="min-w-0 space-y-5"
       headerContent={
         <div className="min-w-0">
-          <p className="text-xs font-semibold tracking-[0.2em] text-[#ef1428] uppercase">
+          <p className="text-xs font-semibold tracking-[0.2em] text-[#047857] uppercase">
             Customer ordering
           </p>
 
@@ -382,7 +382,7 @@ export function OwnerTablesPage({ user, onLogout }: OwnerTablesPageProps) {
       }
       headerActions={
         <Button
-          className="h-11 rounded-xl bg-[#ef1428] px-4 text-white hover:bg-[#d91023] sm:px-5"
+          className="h-11 rounded-xl bg-[#047857] px-4 text-white hover:bg-[#065F46] sm:px-5"
           onClick={openCreateDialog}
         >
           <Plus className="size-4" />
@@ -390,8 +390,8 @@ export function OwnerTablesPage({ user, onLogout }: OwnerTablesPageProps) {
         </Button>
       }
       sidebarPanel={
-        <div className="rounded-2xl bg-[#fff0f1] p-4">
-          <div className="flex size-10 items-center justify-center rounded-full bg-[#ef1428] text-white">
+        <div className="rounded-2xl bg-[#ECFDF5] p-4">
+          <div className="flex size-10 items-center justify-center rounded-full bg-[#047857] text-white">
             <QrCode className="size-4" />
           </div>
 
@@ -453,7 +453,7 @@ export function OwnerTablesPage({ user, onLogout }: OwnerTablesPageProps) {
                 </Button>
 
                 <Button
-                  className="h-12 rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
+                  className="h-12 rounded-xl bg-[#047857] text-white hover:bg-[#065F46]"
                   disabled={submitting}
                 >
                   {submitting ? "Creating..." : "Create table"}
@@ -475,7 +475,7 @@ export function OwnerTablesPage({ user, onLogout }: OwnerTablesPageProps) {
         <DialogContent className="rounded-[28px] border-0 p-0 sm:max-w-md">
           <div className="p-5 md:p-6">
             <DialogHeader>
-              <div className="mb-4 flex size-12 items-center justify-center rounded-full bg-red-50 text-[#ef1428]">
+              <div className="mb-4 flex size-12 items-center justify-center rounded-full bg-red-50 text-[#047857]">
                 <AlertTriangle className="size-5" />
               </div>
 
@@ -504,7 +504,7 @@ export function OwnerTablesPage({ user, onLogout }: OwnerTablesPageProps) {
               </Button>
 
               <Button
-                className="h-12 rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
+                className="h-12 rounded-xl bg-[#047857] text-white hover:bg-[#065F46]"
                 disabled={Boolean(updatingId)}
                 onClick={() => {
                   if (disableTarget) {
@@ -586,7 +586,7 @@ export function OwnerTablesPage({ user, onLogout }: OwnerTablesPageProps) {
                   <div className="min-w-0">
                     <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
-                        <p className="text-xs font-semibold tracking-[0.16em] text-[#ef1428] uppercase">
+                        <p className="text-xs font-semibold tracking-[0.16em] text-[#047857] uppercase">
                           Dine-in table
                         </p>
 
@@ -734,7 +734,7 @@ export function OwnerTablesPage({ user, onLogout }: OwnerTablesPageProps) {
                 </p>
 
                 <Button
-                  className="mt-5 rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
+                  className="mt-5 rounded-xl bg-[#047857] text-white hover:bg-[#065F46]"
                   onClick={openCreateDialog}
                 >
                   <Plus className="size-4" />

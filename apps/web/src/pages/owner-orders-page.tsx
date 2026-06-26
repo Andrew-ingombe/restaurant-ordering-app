@@ -274,7 +274,7 @@ export function OwnerOrdersPage({ user, onLogout }: OwnerOrdersPageProps) {
       contentClassName="space-y-5"
       headerContent={
         <div>
-          <p className="text-xs font-semibold tracking-[0.2em] text-[#ef1428] uppercase">
+          <p className="text-xs font-semibold tracking-[0.2em] text-[#047857] uppercase">
             Restaurant records
           </p>
           <h1 className="mt-1 text-2xl font-black tracking-tight md:text-3xl">
@@ -283,7 +283,7 @@ export function OwnerOrdersPage({ user, onLogout }: OwnerOrdersPageProps) {
         </div>
       }
     >
-      <section className="rounded-[24px] bg-white p-4 md:p-5">
+      <section className="rounded-[24px] border border-neutral-100 bg-white p-4 md:p-5 lg:sticky lg:top-0 lg:z-20 lg:bg-white/95 lg:backdrop-blur">
         <form
           className="grid gap-3 xl:grid-cols-[1.3fr_0.8fr_1fr_1fr_auto]"
           onSubmit={handleSearch}
@@ -340,7 +340,7 @@ export function OwnerOrdersPage({ user, onLogout }: OwnerOrdersPageProps) {
             }}
           />
 
-          <Button className="h-12 rounded-xl bg-[#ef1428] px-6 text-white hover:bg-[#d91023]">
+          <Button className="h-12 rounded-xl bg-[#047857] px-6 text-white hover:bg-[#065F46]">
             <Search className="size-4" />
             Search
           </Button>
@@ -500,7 +500,7 @@ export function OwnerOrdersPage({ user, onLogout }: OwnerOrdersPageProps) {
                       </p>
                     </div>
 
-                    <p className="font-black text-[#ef1428]">
+                    <p className="font-black text-[#047857]">
                       {formatPrice(order.total)}
                     </p>
                   </div>

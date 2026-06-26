@@ -16,6 +16,7 @@ import {
 } from "../middleware/role.middleware"
 import { MenuCategory } from "../models/menu-category.model"
 import { MenuItem } from "../models/menu-item.model"
+import { Restaurant } from "../models/restaurant.model"
 
 export const menuRouter = Router()
 
@@ -73,7 +74,8 @@ menuRouter.get(
     const authenticatedRequest = request as AuthenticatedRequest
     const restaurantId = authenticatedRequest.user!.restaurantId
 
-    const [categories, items] = await Promise.all([
+    const [restaurant, categories, items] = await Promise.all([
+      Restaurant.findById(restaurantId).select("settings.currency").lean(),
       MenuCategory.find({
         restaurant: restaurantId,
         active: true,
@@ -89,7 +91,11 @@ menuRouter.get(
         .sort({ sortOrder: 1, name: 1 }),
     ])
 
-    response.json({ categories, items })
+    response.json({
+      currency: restaurant?.settings?.currency || "ZMW",
+      categories,
+      items,
+    })
   })
 )
 
@@ -100,7 +106,8 @@ menuRouter.get(
     const authenticatedRequest = request as AuthenticatedRequest
     const restaurantId = authenticatedRequest.user!.restaurantId
 
-    const [categories, items] = await Promise.all([
+    const [restaurant, categories, items] = await Promise.all([
+      Restaurant.findById(restaurantId).select("settings.currency").lean(),
       MenuCategory.find({
         restaurant: restaurantId,
       }).sort({
@@ -114,7 +121,11 @@ menuRouter.get(
         .sort({ sortOrder: 1, name: 1 }),
     ])
 
-    response.json({ categories, items })
+    response.json({
+      currency: restaurant?.settings?.currency || "ZMW",
+      categories,
+      items,
+    })
   })
 )
 

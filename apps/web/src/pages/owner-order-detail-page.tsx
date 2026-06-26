@@ -134,7 +134,7 @@ export function OwnerOrderDetailPage({
           </Button>
 
           <div>
-            <p className="text-xs font-semibold tracking-[0.2em] text-[#ef1428] uppercase">
+            <p className="text-xs font-semibold tracking-[0.2em] text-[#047857] uppercase">
               Order record
             </p>
             <h1 className="mt-1 text-xl font-black tracking-tight md:text-3xl">
@@ -212,7 +212,7 @@ export function OwnerOrderDetailPage({
                         </p>
                       </div>
 
-                      <p className="font-black text-[#ef1428]">
+                      <p className="font-black text-[#047857]">
                         {formatPrice(item.lineTotal)}
                       </p>
                     </div>

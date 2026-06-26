@@ -105,7 +105,7 @@ export function OwnerShell({
       <div className="mx-auto flex h-full w-full max-w-[1800px] overflow-hidden bg-[#f5f5f6]">
         <aside className="hidden h-full w-64 shrink-0 flex-col overflow-y-auto border-r border-black/5 bg-white p-5 lg:flex">
           <div className="flex items-center gap-3 px-2 py-3">
-            <div className="flex size-10 items-center justify-center rounded-xl bg-[#ef1428] text-white">
+            <div className="flex size-10 items-center justify-center rounded-xl bg-[#047857] text-white">
               <UtensilsCrossed className="size-5" />
             </div>
 
@@ -202,7 +202,7 @@ export function OwnerShell({
                     <div className="flex min-h-full flex-col p-5">
                       <SheetHeader className="text-left">
                         <div className="flex items-center gap-3">
-                          <div className="flex size-11 items-center justify-center rounded-xl bg-[#ef1428] text-white">
+                          <div className="flex size-11 items-center justify-center rounded-xl bg-[#047857] text-white">
                             <UtensilsCrossed className="size-5" />
                           </div>
 

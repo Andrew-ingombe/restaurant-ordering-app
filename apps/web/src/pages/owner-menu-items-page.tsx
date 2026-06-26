@@ -54,10 +54,10 @@ type OwnerMenuItemsPageProps = {
   onLogout: () => void
 }
 
-const formatPrice = (price: number) =>
+const formatPrice = (price: number, currency = "ZMW") =>
   new Intl.NumberFormat("en-ZM", {
     style: "currency",
-    currency: "ZMW",
+    currency,
   }).format(price / 100)
 
 const MENU_ITEM_DESCRIPTION_MAX_LENGTH = 240
@@ -84,12 +84,14 @@ export function OwnerMenuItemsPage({
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(true)
   const [disableTarget, setDisableTarget] = useState<MenuItem | null>(null)
+  const [currency, setCurrency] = useState("ZMW")
 
   useEffect(() => {
     void getManagedMenu()
       .then((menu) => {
         setCategories(menu.categories)
         setItems(menu.items)
+        setCurrency(menu.currency || "ZMW")
       })
       .catch((requestError) => {
         setError(
@@ -268,7 +270,7 @@ export function OwnerMenuItemsPage({
     try {
       const uploaded = await uploadMenuItemImage(file)
       setImageUrl(uploaded.secureUrl)
-      toast.success("Dish image uploaded")
+      toast.success("Menu item image uploaded")
     } catch (requestError) {
       const message =
         requestError instanceof Error
@@ -285,6 +287,36 @@ export function OwnerMenuItemsPage({
   const availableItems = items.filter((item) => item.available).length
   const unavailableItems = items.length - availableItems
   const canUploadImage = Boolean(category && name.trim()) && !uploadingImage
+
+  const editingItem = editingId
+    ? items.find((item) => item._id === editingId)
+    : null
+
+  const normalizedPrice = Number(price)
+  const normalizedPriceInMinorUnits = Number.isFinite(normalizedPrice)
+    ? Math.round(normalizedPrice * 100)
+    : -1
+
+  const itemFormChanged = editingItem
+    ? category !== editingItem.category._id ||
+      name.trim() !== editingItem.name ||
+      description.trim() !== (editingItem.description || "") ||
+      normalizedPriceInMinorUnits !== editingItem.price ||
+      imageUrl !== (editingItem.imageUrl || "")
+    : Boolean(category) ||
+      Boolean(name.trim()) ||
+      Boolean(description.trim()) ||
+      Boolean(price) ||
+      Boolean(imageUrl)
+
+  const canSubmitItem =
+    Boolean(category) &&
+    Boolean(name.trim()) &&
+    Number.isFinite(normalizedPrice) &&
+    normalizedPrice >= 0 &&
+    !submitting &&
+    !uploadingImage &&
+    (!editingId || itemFormChanged)
 
   return (
     <OwnerShell
@@ -304,7 +336,7 @@ export function OwnerMenuItemsPage({
           </Button>
 
           <div>
-            <p className="text-xs font-semibold tracking-[0.2em] text-[#ef1428] uppercase">
+            <p className="text-xs font-semibold tracking-[0.2em] text-[#047857] uppercase">
               Menu setup
             </p>
             <h1 className="mt-1 text-2xl font-black tracking-tight md:text-3xl">
@@ -317,8 +349,8 @@ export function OwnerMenuItemsPage({
         </div>
       }
       sidebarPanel={
-        <div className="rounded-2xl bg-[#fff0f1] p-4">
-          <div className="flex size-10 items-center justify-center rounded-full bg-[#ef1428] text-white">
+        <div className="rounded-2xl bg-[#ECFDF5] p-4">
+          <div className="flex size-10 items-center justify-center rounded-full bg-[#047857] text-white">
             <Tags className="size-4" />
           </div>
 
@@ -328,7 +360,7 @@ export function OwnerMenuItemsPage({
           </p>
 
           <Button
-            className="mt-4 w-full cursor-pointer rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
+            className="mt-4 w-full cursor-pointer rounded-xl bg-[#047857] text-white hover:bg-[#065F46]"
             onClick={() => navigate("/owner/menu")}
           >
             Manage categories
@@ -388,7 +420,7 @@ export function OwnerMenuItemsPage({
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="item-price">Price (ZMW)</Label>
+                  <Label htmlFor="item-price">Price ({currency})</Label>
                   <Input
                     id="item-price"
                     className="h-12 rounded-xl border-0 bg-neutral-100 px-4 shadow-none"
@@ -434,7 +466,7 @@ export function OwnerMenuItemsPage({
               </div>
 
               <div className="space-y-2">
-                <Label>Dish image</Label>
+                <Label>Menu item image</Label>
 
                 <div className="rounded-2xl border border-dashed border-neutral-200 bg-neutral-50 p-4">
                   <input
@@ -525,8 +557,8 @@ export function OwnerMenuItemsPage({
                 </Button>
 
                 <Button
-                  className="h-12 cursor-pointer rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
-                  disabled={submitting || uploadingImage || !category}
+                  className="h-12 cursor-pointer rounded-xl bg-[#047857] text-white hover:bg-[#065F46]"
+                  disabled={!canSubmitItem}
                 >
                   {submitting
                     ? "Saving..."
@@ -551,7 +583,7 @@ export function OwnerMenuItemsPage({
         <DialogContent className="rounded-[28px] border-0 p-0 sm:max-w-md">
           <div className="p-5 md:p-6">
             <DialogHeader>
-              <div className="mb-4 flex size-12 items-center justify-center rounded-full bg-red-50 text-[#ef1428]">
+              <div className="mb-4 flex size-12 items-center justify-center rounded-full bg-red-50 text-[#047857]">
                 <AlertTriangle className="size-5" />
               </div>
 
@@ -579,7 +611,7 @@ export function OwnerMenuItemsPage({
               </Button>
 
               <Button
-                className="h-12 cursor-pointer rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
+                className="h-12 cursor-pointer rounded-xl bg-[#047857] text-white hover:bg-[#065F46]"
                 disabled={Boolean(updatingId)}
                 onClick={() => {
                   if (disableTarget) {
@@ -611,7 +643,7 @@ export function OwnerMenuItemsPage({
               </div>
 
               <Button
-                className="h-11 cursor-pointer rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
+                className="h-11 cursor-pointer rounded-xl bg-[#047857] text-white hover:bg-[#065F46]"
                 onClick={openCreateDialog}
               >
                 <Plus className="size-4" />
@@ -620,8 +652,8 @@ export function OwnerMenuItemsPage({
             </div>
 
             <div className="mt-4 grid gap-3 sm:grid-cols-3">
-              <div className="rounded-2xl bg-[#fff0f1] p-4">
-                <p className="text-xs font-semibold tracking-[0.14em] text-[#ef1428] uppercase">
+              <div className="rounded-2xl bg-[#ECFDF5] p-4">
+                <p className="text-xs font-semibold tracking-[0.14em] text-[#047857] uppercase">
                   Items
                 </p>
                 <p className="mt-2 text-2xl font-black">{items.length}</p>
@@ -710,8 +742,8 @@ export function OwnerMenuItemsPage({
                         </h3>
                       </div>
 
-                      <p className="shrink-0 font-black text-[#ef1428]">
-                        {formatPrice(item.price)}
+                      <p className="shrink-0 font-black text-[#047857]">
+                        {formatPrice(item.price, currency)}
                       </p>
                     </div>
 
@@ -763,7 +795,7 @@ export function OwnerMenuItemsPage({
                   </p>
 
                   <Button
-                    className="mt-5 cursor-pointer rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
+                    className="mt-5 cursor-pointer rounded-xl bg-[#047857] text-white hover:bg-[#065F46]"
                     onClick={openCreateDialog}
                   >
                     <Plus className="size-4" />

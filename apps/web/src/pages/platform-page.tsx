@@ -461,12 +461,12 @@ export function PlatformPage({ user, onLogout }: PlatformPageProps) {
       <header className="shrink-0 border-b border-black/5 bg-white/90 px-4 py-4 backdrop-blur md:px-7">
         <div className="mx-auto flex max-w-[1600px] flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="flex size-11 items-center justify-center rounded-xl bg-[#ef1428] text-white">
+            <div className="flex size-11 items-center justify-center rounded-xl bg-[#047857] text-white">
               <ShieldCheck className="size-5" />
             </div>
 
             <div>
-              <p className="text-xs font-semibold tracking-[0.2em] text-[#ef1428] uppercase">
+              <p className="text-xs font-semibold tracking-[0.2em] text-[#047857] uppercase">
                 Platform admin
               </p>
               <h1 className="text-2xl font-black tracking-tight">
@@ -477,7 +477,7 @@ export function PlatformPage({ user, onLogout }: PlatformPageProps) {
 
           <div className="flex flex-wrap items-center gap-3">
             <Button
-              className="rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
+              className="rounded-xl bg-[#047857] text-white hover:bg-[#065F46]"
               onClick={() => navigate("/platform/restaurants/new")}
             >
               <Plus className="size-4" />
@@ -511,26 +511,26 @@ export function PlatformPage({ user, onLogout }: PlatformPageProps) {
         )}
 
         <section className="flex shrink-0 gap-4 overflow-x-auto pb-1 md:grid md:grid-cols-4 md:overflow-visible">
-          <div className="min-w-[220px] rounded-[24px] bg-[#ef1428] p-5 text-white md:min-w-0">
+          <div className="min-w-[220px] rounded-[24px] bg-[#047857] p-5 text-white md:min-w-0">
             <Building2 className="size-6" />
             <p className="mt-5 text-sm text-white/70">Restaurants</p>
             <p className="mt-1 text-3xl font-black">{restaurants.length}</p>
           </div>
 
           <div className="min-w-[220px] rounded-[24px] bg-white p-5 md:min-w-0">
-            <WalletCards className="size-6 text-[#ef1428]" />
+            <WalletCards className="size-6 text-[#047857]" />
             <p className="mt-5 text-sm text-neutral-400">Active</p>
             <p className="mt-1 text-3xl font-black">{activeCount}</p>
           </div>
 
           <div className="min-w-[220px] rounded-[24px] bg-white p-5 md:min-w-0">
-            <ShieldCheck className="size-6 text-[#ef1428]" />
+            <ShieldCheck className="size-6 text-[#047857]" />
             <p className="mt-5 text-sm text-neutral-400">Trialing</p>
             <p className="mt-1 text-3xl font-black">{trialingCount}</p>
           </div>
 
           <div className="min-w-[220px] rounded-[24px] bg-white p-5 md:min-w-0">
-            <CreditCard className="size-6 text-[#ef1428]" />
+            <CreditCard className="size-6 text-[#047857]" />
             <p className="mt-5 text-sm text-neutral-400">Payments ready</p>
             <p className="mt-1 text-3xl font-black">{configuredCount}</p>
           </div>
@@ -787,7 +787,7 @@ export function PlatformPage({ user, onLogout }: PlatformPageProps) {
             </div>
 
             <Button
-              className="h-12 w-full rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
+              className="h-12 w-full rounded-xl bg-[#047857] text-white hover:bg-[#065F46]"
               disabled={resettingOwnerPassword}
             >
               {resettingOwnerPassword
@@ -911,7 +911,7 @@ export function PlatformPage({ user, onLogout }: PlatformPageProps) {
             />
 
             <Button
-              className="h-12 w-full rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
+              className="h-12 w-full rounded-xl bg-[#047857] text-white hover:bg-[#065F46]"
               disabled={savingSubscription}
             >
               {savingSubscription ? (
@@ -1035,7 +1035,7 @@ export function PlatformPage({ user, onLogout }: PlatformPageProps) {
             </div>
 
             <Button
-              className="h-12 w-full rounded-xl bg-[#ef1428] text-white hover:bg-[#d91023]"
+              className="h-12 w-full rounded-xl bg-[#047857] text-white hover:bg-[#065F46]"
               disabled={savingPayment}
             >
               {savingPayment ? (

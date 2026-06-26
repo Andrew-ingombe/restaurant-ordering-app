@@ -74,7 +74,6 @@ authRouter.post("/login", async (request, response) => {
 
   const user = await User.findOne({
     email: result.data.email,
-    active: true,
   }).select("+passwordHash")
 
   if (!user) {
@@ -88,7 +87,18 @@ authRouter.post("/login", async (request, response) => {
   )
 
   if (!passwordMatches) {
-    response.status(401).json({ message: "Invalid email or password" })
+    response.status(401).json({
+      message: user.mustChangePassword
+        ? "Your password was reset. Please enter your temporary password to continue."
+        : "Invalid email or password",
+    })
+    return
+  }
+
+  if (!user.active) {
+    response.status(403).json({
+      message: "Your account is deactivated. Please contact your manager.",
+    })
     return
   }
 
@@ -140,8 +150,15 @@ authRouter.get(
   async (request: AuthenticatedRequest, response) => {
     const user = await User.findById(request.user?.id)
 
-    if (!user || !user.active) {
+    if (!user) {
       response.status(401).json({ message: "User not found" })
+      return
+    }
+
+    if (!user.active) {
+      response.status(403).json({
+        message: "Your account is deactivated. Please contact your manager.",
+      })
       return
     }
 
@@ -213,7 +230,9 @@ authRouter.patch(
 
     if (!passwordMatches) {
       response.status(400).json({
-        message: "Current password is incorrect",
+        message: user.mustChangePassword
+          ? "Enter your temporary password to create a new password."
+          : "Current password is incorrect",
       })
       return
     }
