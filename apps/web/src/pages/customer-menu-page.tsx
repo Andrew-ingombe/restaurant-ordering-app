@@ -17,6 +17,16 @@ import {
 } from "lucide-react"
 
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@workspace/ui/components/alert-dialog"
+import {
   Sheet,
   SheetContent,
   SheetDescription,
@@ -69,6 +79,7 @@ export function CustomerMenuPage() {
   const [selectedItem, setSelectedItem] = useState<PublicMenuItem | null>(null)
   const [detailQuantity, setDetailQuantity] = useState(1)
   const [cartOpen, setCartOpen] = useState(false)
+  const [clearCartConfirmOpen, setClearCartConfirmOpen] = useState(false)
   const [result, setResult] = useState<CustomerOrderResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -178,9 +189,14 @@ export function CustomerMenuPage() {
     setSearchOpen(false)
   }
 
+  const requestClearCart = () => {
+    setClearCartConfirmOpen(true)
+  }
+
   const clearCart = () => {
     setCart({})
     setCartOpen(false)
+    setClearCartConfirmOpen(false)
   }
 
   const submitOrder = async () => {
@@ -258,6 +274,7 @@ export function CustomerMenuPage() {
 
             <div className="min-w-0">
               <p className="truncate font-black">{restaurantName}</p>
+
               <p className="text-sm text-neutral-400">
                 {result.order.tableName}
               </p>
@@ -843,7 +860,7 @@ export function CustomerMenuPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <Button
-                  className="h-12 rounded-xl"
+                  className="h-12 cursor-pointer rounded-xl"
                   variant="outline"
                   onClick={() => setCartOpen(false)}
                 >
@@ -851,9 +868,9 @@ export function CustomerMenuPage() {
                 </Button>
 
                 <Button
-                  className="h-12 rounded-xl text-red-600 hover:bg-red-50 hover:text-red-700"
+                  className="h-12 cursor-pointer rounded-xl text-red-600 hover:bg-red-50 hover:text-red-700"
                   variant="outline"
-                  onClick={clearCart}
+                  onClick={requestClearCart}
                 >
                   <Trash2 className="size-4" />
                   Clear cart
@@ -863,7 +880,7 @@ export function CustomerMenuPage() {
 
             <div className="shrink-0 border-t border-neutral-100 bg-white px-5 py-4">
               <Button
-                className="h-14 w-full rounded-[22px] bg-[#047857] text-base font-black text-white hover:bg-[#065F46]"
+                className="h-14 w-full cursor-pointer rounded-[22px] bg-[#047857] text-base font-black text-white hover:bg-[#065F46]"
                 disabled={submitting || cartItems.length === 0}
                 onClick={submitOrder}
               >
@@ -883,6 +900,41 @@ export function CustomerMenuPage() {
           </div>
         </SheetContent>
       </Sheet>
+
+      <AlertDialog
+        open={clearCartConfirmOpen}
+        onOpenChange={setClearCartConfirmOpen}
+      >
+        <AlertDialogContent className="w-[calc(100vw-2rem)] max-w-md rounded-[28px] border-0 p-6">
+          <AlertDialogHeader>
+            <div className="flex size-12 items-center justify-center rounded-full bg-red-50 text-red-600">
+              <Trash2 className="size-5" />
+            </div>
+
+            <AlertDialogTitle className="pt-2 text-2xl font-black">
+              Clear your cart?
+            </AlertDialogTitle>
+
+            <AlertDialogDescription className="text-sm leading-6 text-neutral-500">
+              This will remove all selected items from your current order. You
+              can add them again from the menu if needed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <AlertDialogFooter className="gap-3 sm:grid sm:grid-cols-2 sm:space-x-0">
+            <AlertDialogCancel className="mt-0 h-12 cursor-pointer rounded-xl">
+              Keep order
+            </AlertDialogCancel>
+
+            <AlertDialogAction
+              className="h-12 cursor-pointer rounded-xl bg-red-600 text-white hover:bg-red-700"
+              onClick={clearCart}
+            >
+              Clear cart
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </main>
   )
 }
