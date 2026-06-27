@@ -179,8 +179,8 @@ export function OwnerShell({
 
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           <header className="z-30 shrink-0 border-b border-black/5 bg-white/95 px-4 py-4 backdrop-blur md:px-7">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <div className="flex min-w-0 items-start justify-between gap-3">
+            <div className="flex w-full flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex w-full min-w-0 flex-1 items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">{headerContent}</div>
 
                 <Sheet>

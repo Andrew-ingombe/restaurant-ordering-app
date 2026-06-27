@@ -325,27 +325,38 @@ export function OwnerMenuItemsPage({
       active="menu"
       contentClassName="space-y-5"
       headerContent={
-        <div className="flex items-center gap-4">
-          <Button
-            className="size-11 shrink-0 cursor-pointer rounded-xl"
-            size="icon"
-            variant="outline"
-            onClick={() => navigate("/owner/menu")}
-          >
-            <ArrowLeft className="size-4" />
-          </Button>
+        <div className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-6">
+          <div className="flex min-w-0 items-center gap-4">
+            <Button
+              className="size-12 shrink-0 cursor-pointer rounded-2xl"
+              variant="outline"
+              onClick={() => navigate("/owner/menu")}
+            >
+              <ArrowLeft className="size-5" />
+            </Button>
 
-          <div>
-            <p className="text-xs font-semibold tracking-[0.2em] text-[#047857] uppercase">
-              Menu setup
-            </p>
-            <h1 className="mt-1 text-2xl font-black tracking-tight md:text-3xl">
-              Menu items
-            </h1>
-            <p className="mt-1 text-sm text-neutral-400">
-              Manage dishes, pricing, images, and availability.
-            </p>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold tracking-[0.24em] text-[#047857] uppercase">
+                Menu setup
+              </p>
+
+              <h1 className="truncate text-3xl font-black tracking-tight md:text-4xl">
+                Menu items
+              </h1>
+
+              <p className="mt-1 max-w-xl text-sm leading-6 text-neutral-400 md:text-base">
+                Manage dishes, pricing, images, and availability.
+              </p>
+            </div>
           </div>
+
+          <Button
+            className="hidden h-11 cursor-pointer rounded-xl bg-[#047857] px-5 text-white hover:bg-[#065F46] lg:inline-flex"
+            onClick={openCreateDialog}
+          >
+            <Plus className="size-4" />
+            Add menu item
+          </Button>
         </div>
       }
       sidebarPanel={
@@ -642,13 +653,12 @@ export function OwnerMenuItemsPage({
                 </p>
               </div>
 
-              <Button
-                className="h-11 cursor-pointer rounded-xl bg-[#047857] text-white hover:bg-[#065F46]"
-                onClick={openCreateDialog}
+              <Badge
+                variant="secondary"
+                className="w-fit rounded-full px-3 py-1"
               >
-                <Plus className="size-4" />
-                Add menu item
-              </Button>
+                {items.length} items
+              </Badge>
             </div>
 
             <div className="mt-4 grid gap-3 sm:grid-cols-3">
@@ -807,6 +817,13 @@ export function OwnerMenuItemsPage({
           </section>
         </>
       )}
+      <Button
+        className="fixed right-5 bottom-5 z-40 h-14 cursor-pointer rounded-full bg-[#047857] px-5 text-white ring-1 ring-emerald-700/10 hover:bg-[#065F46] lg:hidden"
+        onClick={openCreateDialog}
+      >
+        <Plus className="size-5" />
+        Add item
+      </Button>
     </OwnerShell>
   )
 }
